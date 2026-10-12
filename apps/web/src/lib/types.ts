@@ -37,4 +37,19 @@ export interface FdaRow {
 }
 export interface FdaResponse { results: FdaRow[]; source: string; sourceUrl: string; fetchedAt: string; note?: string }
 
-export interface Health { ok: boolean; version: string; time: string; secConfigured: boolean; priceProviders: string[] }
+export interface Health {
+  ok: boolean; version: string; time: string; secConfigured: boolean; priceProviders: string[];
+  tradingview?: { webhook: boolean; storage: boolean; telegram: boolean };
+}
+
+export interface TvAlert {
+  id: string; receivedAt: string; symbol: string; exchange: string | null; interval: string | null; signal: string | null;
+  price: number | null; level: number | null; barTime: string | null; message: string | null; source: string | null;
+  enrichment: {
+    name: string | null; score: number | null; rating: string; riskLevel: string;
+    flags: Array<{ level: 'warn' | 'info'; text: string; url?: string }>;
+    nearestSupport: number | null; nearestResistance: number | null; computedAt: string;
+  } | null;
+  enrichmentError?: string | null;
+  telegram?: 'sent' | 'failed' | 'disabled';
+}

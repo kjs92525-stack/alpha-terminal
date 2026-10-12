@@ -13,15 +13,16 @@ import { parseStooqCsv, parseYahooChart, isDailyBarClosed } from '../../../packa
 import { resampleWeekly } from '../../../packages/analysis/indicators.mjs';
 import { scoreStock, rankUniverse } from '../../../packages/analysis/scoring.mjs';
 import type { Bar, Filing, Fundamentals } from '../../../packages/analysis/types';
+import { handleTvWebhook, listTvAlerts, TvError, type TvEnv, type WaitCtx, type AnalyzeLike } from './tradingview.ts';
 
-export interface Env {
+export interface Env extends TvEnv {
   SEC_USER_AGENT?: string;
   ALLOWED_ORIGIN?: string;
   PRICE_PROVIDERS?: string;
   SCREEN_MAX?: string;
 }
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const SEC_TTL = 600;
 const FACTS_TTL = 6 * 3600;
 const TICKERS_TTL = 24 * 3600;
@@ -47,7 +48,7 @@ function corsHeaders(env: Env, req: Request): Record<string, string> {
   const allowed = (env.ALLOWED_ORIGIN || '*').split(',').map((s) => s.trim());
   const origin = req.headers.get('Origin') || '';
   const allow = allowed.includes('*') ? '*' : allowed.includes(origin) ? origin : allowed[0];
-  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' };
+  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Alpha-Key', Vary: 'Origin' };
 }
 
 function json(data: unknown, status = 200, extra: Record<string, string> = {}, maxAge = 0): Response {
@@ -298,17 +299,39 @@ async function fda(query: string) {
 
 // ---------- router ----------
 
-export async function handle(req: Request, env: Env): Promise<Response> {
+export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Response> {
   const cors = corsHeaders(env, req);
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  if (req.method !== 'GET') return json({ error: 'Method not allowed' }, 405, cors);
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/+$/, '');
+  if (path === '/api/v1/tv/webhook') {
+    if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405, cors);
+    try {
+      const r = await handleTvWebhook(req, env, ctx, url.searchParams.get('key'), (s) => analyze(env, s) as Promise<AnalyzeLike>);
+      return json({ ok: true, ...r }, 200, cors);
+    } catch (e) {
+      const status = e instanceof TvError ? e.status : 500;
+      return json({ ok: false, error: (e as Error).message }, status, cors);
+    }
+  }
+  if (req.method !== 'GET') return json({ error: 'Method not allowed' }, 405, cors);
   const m = (re: RegExp) => path.match(re);
   try {
     let r: RegExpMatchArray | null;
     if (path === '/health' || path === '/api/v1/health') {
-      return json({ ok: true, version: VERSION, time: new Date().toISOString(), secConfigured: Boolean(env.SEC_USER_AGENT?.trim()), priceProviders: providers(env) }, 200, cors);
+      return json({
+        ok: true, version: VERSION, time: new Date().toISOString(), secConfigured: Boolean(env.SEC_USER_AGENT?.trim()), priceProviders: providers(env),
+        tradingview: { webhook: Boolean(env.TV_WEBHOOK_SECRET?.trim()), storage: Boolean(env.ALERTS), telegram: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) },
+      }, 200, cors);
+    }
+    if (path === '/api/v1/tv/alerts') {
+      try {
+        const limit = Number(url.searchParams.get('limit') || 50);
+        return json(await listTvAlerts(env, req.headers.get('X-Alpha-Key') ?? url.searchParams.get('key'), limit), 200, cors);
+      } catch (e) {
+        if (e instanceof TvError) return json({ error: e.message }, e.status, cors);
+        throw e;
+      }
     }
     if (path === '/api/v1/search') {
       const q = url.searchParams.get('q') || '';

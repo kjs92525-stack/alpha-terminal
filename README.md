@@ -1,4 +1,4 @@
-# ALPHA TERMINAL — V0.3
+# ALPHA TERMINAL — V0.4
 
 미국 주식 퀀트 분석 터미널. React 19 + TypeScript + Vite, TradingView Lightweight Charts v5, Cloudflare Pages Functions(Workers) API, Supabase(선택).
 
@@ -11,6 +11,10 @@
 | **이벤트 레이더** | SEC 공시 분류(8-K 항목별, S-1/S-3/424B 희석, 13D, M&A 등), 중요도, 접수 시각(ET), 공시 후 첫 거래일 주가·거래량 반응, 현금·런웨이·주식수 증가, openFDA 승인 이력 | SEC EDGAR, openFDA |
 
 > **투자 자문이 아닙니다.** 점수는 결정적 규칙 기반 상대평가이며 확률이 아닙니다. 시나리오 범위는 과거 변동성 ±1σ이며 예측이 아닙니다. LLM 서술형 분석은 아직 연결되지 않았습니다.
+
+## TradingView 연동 (V0.4)
+
+TradingView 알림 웹훅 수신 → SEC 공시·희석·런웨이·퀀트 점수를 붙여 텔레그램 전송, ALPHA 구조 신호 Pine Script, TradingView 차트 위젯. 설정은 [`integrations/tradingview/README.md`](integrations/tradingview/README.md).
 
 ## 데이터 모드
 
@@ -42,7 +46,7 @@ supabase/migrations/   스키마 + RLS
 
 ### API
 
-`GET /api/v1/health` · `/api/v1/search?q=` · `/api/v1/bars/{SYMBOL}?tf=5m|1H|1D|1W` · `/api/v1/analyze/{SYMBOL}` · `/api/v1/screen?symbols=A,B` · `/api/v1/sec/filings/{CIK|SYMBOL}?limit=&forms=` · `/api/v1/sec/facts/{CIK}` · `/api/v1/sec/submissions/{CIK}` · `/api/v1/fda?q=`
+`GET /api/v1/health` · `/api/v1/search?q=` · `/api/v1/bars/{SYMBOL}?tf=5m|1H|1D|1W` · `/api/v1/analyze/{SYMBOL}` · `/api/v1/screen?symbols=A,B` · `/api/v1/sec/filings/{CIK|SYMBOL}?limit=&forms=` · `/api/v1/sec/facts/{CIK}` · `/api/v1/sec/submissions/{CIK}` · `/api/v1/fda?q=` · `POST /api/v1/tv/webhook` · `/api/v1/tv/alerts` (키 필요)
 
 ## 로컬 실행
 
@@ -50,7 +54,7 @@ Node.js 22.18+ 필요.
 
 ```bash
 npm install
-npm test            # 42 tests
+npm test            # 49 tests
 npm run typecheck
 npm run build
 npm run dev         # UI만 (API 없으면 SIMULATED 모드)
@@ -81,6 +85,6 @@ service_role 키는 브라우저에 절대 넣지 마세요.
 
 ## 검증 상태 (2026-10-12)
 
-- ✅ 단위·통합 테스트 42개 통과, TypeScript 검사, 프로덕션 빌드, Wrangler 번들(Pages Functions + Worker)
+- ✅ 단위·통합 테스트 49개 통과, TypeScript 검사, 프로덕션 빌드, Wrangler 번들(Pages Functions + Worker)
 - ✅ 헤드리스 Chromium에서 전체 화면(데스크톱·모바일) 렌더링 확인 — API는 실제 핸들러, 상류 응답은 합성 픽스처
 - ⚠️ 실제 SEC/Stooq/Yahoo/openFDA 호출은 개발 환경 네트워크 정책으로 차단되어 **실서버 검증 전**입니다. 배포 후 `/api/v1/health`, `/api/v1/analyze/AAPL`로 확인하세요.

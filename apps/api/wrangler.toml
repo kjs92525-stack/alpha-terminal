@@ -11,3 +11,8 @@ SCREEN_MAX = "5"
 
 # Secret (never commit): wrangler secret put SEC_USER_AGENT
 #   value example: "AlphaTerminal/0.3 you@example.com"
+
+# TradingView webhook: wrangler secret put TV_WEBHOOK_SECRET (+ TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+# [[kv_namespaces]]
+# binding = "ALERTS"
+# id = "<namespace id>"

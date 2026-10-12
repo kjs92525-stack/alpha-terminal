@@ -10,6 +10,7 @@ const SOURCES: Array<[string, string, string, string]> = [
   ['Stooq', '무료 · 비공식', '일봉 OHLCV (EOD)', '장 마감 후 갱신, 접근 제한 가능'],
   ['Yahoo Finance chart', '무료 · 비공식', '일봉 대체, 5분/60분봉', '지연 시세, 약관·차단 위험 — PRICE_PROVIDERS로 끌 수 있음'],
   ['openFDA drugsfda', '공식 · 무료', 'FDA 승인 제출 이력', '임상 결과·PDUFA 일정 없음'],
+  ['TradingView', '연동 (유료 플랜)', '알림 웹훅 수신, 차트 위젯, Pine Script', '데이터 API 없음 — 분석용 시세로는 사용 불가'],
   ['FINRA short interest', '미연결', '공매도 잔고', '다음 단계'],
   ['컨센서스 추정치', '미연결 (유료)', '어닝 서프라이즈', '사용자 승인 전 연결 안 함'],
   ['LLM 분석 (Claude API)', '미연결', '서술형 리서치 요약', 'API 키를 Worker secret으로만 보관해야 함'],

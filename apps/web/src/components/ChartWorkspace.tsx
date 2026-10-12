@@ -8,6 +8,7 @@ import { PriceChart, type Overlay } from './PriceChart';
 import { ErrorBox, Loading, SourceBadge } from './ui';
 import { TechSummary } from './TechSummary';
 import { SignalTable } from './SignalTable';
+import { TradingViewWidget } from './TradingViewWidget';
 
 const TFS: Timeframe[] = ['5m', '1H', '1D', '1W'];
 const OVERLAYS: Array<[Overlay, string]> = [
@@ -34,7 +35,9 @@ export function useBars(symbol: string, tf: Timeframe) {
 export function ChartWorkspace({ symbol, full = false, height }: { symbol: string; full?: boolean; height?: number }) {
   const [tf, setTf] = useState<Timeframe>(() => load('alpha:tf', '1D'));
   const [show, setShow] = useState<Set<Overlay>>(() => new Set(load<Overlay[]>(full ? 'alpha:overlays:full' : 'alpha:overlays', full ? [...DEFAULT_OVERLAYS, 'rsi', 'macd', 'fvg'] : DEFAULT_OVERLAYS)));
-  const { data, error } = useBars(symbol, tf);
+  const [engine, setEngine] = useState<'alpha' | 'tv'>(() => load('alpha:engine', 'alpha'));
+  const pickEngine = (e: 'alpha' | 'tv') => { setEngine(e); save('alpha:engine', e); };
+  const { data, error } = useBars(engine === 'alpha' ? symbol : '', tf);
   const intraday = tf === '5m' || tf === '1H';
   const analysis = useMemo(() => (data ? analyzeBars(data.bars, { lastBarClosed: data.lastBarClosed, vwapAnchor: intraday ? 'session' : 'none' }) : null), [data, intraday]);
 
@@ -67,17 +70,24 @@ export function ChartWorkspace({ symbol, full = false, height }: { symbol: strin
         </div>
       </div>
       <div className="chart-toolbar">
-        <div className="tf-list">{TFS.map((t) => <button key={t} className={t === tf ? 'selected' : ''} onClick={() => pickTf(t)}>{t}</button>)}</div>
-        <div className="chart-options">
+        <div className="tf-list">
+          {TFS.map((t) => <button key={t} className={t === tf ? 'selected' : ''} onClick={() => pickTf(t)}>{t}</button>)}
+          <span className="tf-sep" />
+          <button className={engine === 'alpha' ? 'selected' : ''} onClick={() => pickEngine('alpha')} title="ALPHA 분석 엔진 (신호·확정 여부)">ALPHA</button>
+          <button className={engine === 'tv' ? 'selected' : ''} onClick={() => pickEngine('tv')} title="TradingView 공식 위젯">TradingView</button>
+        </div>
+        {engine === 'alpha' && <div className="chart-options">
           {OVERLAYS.filter(([o]) => full || !['rsi', 'macd', 'ob', 'profile', 'sma200'].includes(o)).map(([o, label]) => (
             <button key={o} className={show.has(o) ? 'selected' : ''} onClick={() => toggle(o)}>{label}</button>
           ))}
-        </div>
+        </div>}
       </div>
-      {error && <ErrorBox error={error} hint={intraday ? '분봉/시간봉은 Yahoo 공급자가 활성화되어야 합니다.' : undefined} />}
-      {!error && !analysis && <div className="chart-placeholder" style={{ height: height ?? (full ? 560 : 400) }}><Loading label="시세 로딩" /></div>}
-      {analysis && <PriceChart bars={bars} analysis={analysis} show={show} intraday={intraday} height={height ?? (full ? 560 : 400)} watermark={`${symbol} · ${tf}`} />}
-      {full && analysis && data && (
+      {engine === 'tv' && (symbol.startsWith('SIM') ? <div className="pad-box muted">가상 종목(SIM)은 TradingView에 없습니다. 실데이터 모드에서 사용하세요.</div> : <TradingViewWidget symbol={symbol} tf={tf} height={height ?? (full ? 560 : 400)} />)}
+      {engine === 'tv' && <p className="footnote pad">TradingView 위젯은 TradingView 자체 데이터로 그려지며 ALPHA 신호·확정 표시는 포함되지 않습니다. 같은 신호를 TradingView에서 보려면 “TradingView 연동” 메뉴의 Pine Script를 추가하세요.</p>}
+      {engine === 'alpha' && error && <ErrorBox error={error} hint={intraday ? '분봉/시간봉은 Yahoo 공급자가 활성화되어야 합니다.' : undefined} />}
+      {engine === 'alpha' && !error && !analysis && <div className="chart-placeholder" style={{ height: height ?? (full ? 560 : 400) }}><Loading label="시세 로딩" /></div>}
+      {engine === 'alpha' && analysis && <PriceChart bars={bars} analysis={analysis} show={show} intraday={intraday} height={height ?? (full ? 560 : 400)} watermark={`${symbol} · ${tf}`} />}
+      {engine === 'alpha' && full && analysis && data && (
         <div className="lab-grid">
           <section className="panel inner">
             <div className="panel-head slim"><div><span className="panel-kicker">TECHNICAL READING</span><h2>기술적 판단 요약</h2></div></div>

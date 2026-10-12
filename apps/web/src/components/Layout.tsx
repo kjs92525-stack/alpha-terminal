@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
+import { Activity, BarChart3, BellRing, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
 import { useTerminal, type Page } from '../lib/store';
 import type { TickerHit } from '../lib/types';
 
@@ -9,6 +9,7 @@ export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNo
   { id: 'charts', label: '차트 연구실', code: 'CHART LAB', icon: <CandlestickChart size={16} /> },
   { id: 'events', label: '이벤트 레이더', code: 'EVENT RADAR', icon: <Radar size={16} /> },
   { id: 'research', label: '기업 정밀분석', code: 'RESEARCH', icon: <FileSearch size={16} /> },
+  { id: 'alerts', label: 'TradingView 연동', code: 'TRADINGVIEW', icon: <BellRing size={16} /> },
   { id: 'settings', label: '데이터 연결', code: 'CONNECTIONS', icon: <Settings size={16} /> },
 ];
 
@@ -48,7 +49,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <span className={`status-circle ${mode === 'live' ? '' : 'amber'}`} />
           <div><b>{mode === 'live' ? '실데이터 모드' : '가상 데이터 모드'}</b><small>{modeReason}</small>{health && <small>API v{health.version}</small>}</div>
         </div>
-        <div className="sidebar-version">ALPHA TERMINAL <span>V0.3</span></div>
+        <div className="sidebar-version">ALPHA TERMINAL <span>V0.4</span></div>
       </div>
     </aside>
   );

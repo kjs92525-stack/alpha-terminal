@@ -228,3 +228,18 @@ P0~P2만 끝나도 "매일 전 종목을 공식 데이터로 채점하고 그 �
 4. **2단계 유료 데이터 예산** (월 $0 / ~$100 / ~$200) — P3 이후 결정해도 됨.
 5. **Claude API 사용 여부와 월 상한** — P6 전에 결정.
 6. **추천 스타일 우선순위** — 중장기(20~60일) 퀀트 vs 단기(1~5일) 이벤트·차트 트레이딩. 둘 다 지원하지만 첫 모델의 타깃 기간을 정해야 함.
+
+---
+
+## 10. TradingView 연동 (사용자: 유료 플랜) — V0.4 구현
+
+TradingView는 개인용 시세 데이터 API를 제공하지 않으므로 **분석·백테스트의 데이터 공급원이 아니라 사용자 인터페이스·신호 입력 채널**로 연동한다.
+
+| 연동 | 역할 | 상태 |
+|---|---|---|
+| 알림 웹훅 `POST /api/v1/tv/webhook` | TradingView 알림 → 즉시 응답 → 백그라운드로 SEC 공시·희석·런웨이·퀀트 점수·지지/저항·가격 불일치 검사 → KV 저장(30일) + 텔레그램 | 구현·테스트 완료, 배포 대기 |
+| Pine Script `integrations/tradingview/alpha_structure.pine` | ALPHA 엔진과 같은 규칙의 BOS/CHoCH/FVG/OB를 TradingView 차트에 표시, 봉 마감 시 JSON 알림 | 외부 컴파일러 문법 검증 통과, TradingView 실차트 미검증 |
+| 차트 위젯 | 차트 화면에서 ALPHA ↔ TradingView 엔진 전환 | 구현 |
+| Advanced Charts 라이브러리 | TradingView급 차트에 ALPHA 데이터·신호 직접 표시 | 라이선스 신청 필요 (P7) |
+
+향후: 웹훅으로 들어온 사용자 신호도 `signals` 원장에 기록해 **사용자 본인 TradingView 전략의 성과**를 ALPHA 데이터로 추적한다 (P3 백테스트 엔진 재사용).

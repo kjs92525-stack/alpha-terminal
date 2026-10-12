@@ -10,3 +10,12 @@ SCREEN_MAX = "5"
 
 # Secret (Pages > Settings > Variables and Secrets, or `wrangler pages secret put SEC_USER_AGENT`):
 #   SEC_USER_AGENT = "AlphaTerminal/0.3 you@example.com"
+
+# TradingView webhook (see integrations/tradingview/README.md)
+#   Secrets: TV_WEBHOOK_SECRET (required), TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (optional)
+#   Alert history: create a KV namespace and bind it as ALERTS, e.g.
+#     npx wrangler kv namespace create ALERTS
+#   then uncomment with the returned id:
+# [[kv_namespaces]]
+# binding = "ALERTS"
+# id = "<namespace id>"

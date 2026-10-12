@@ -1,0 +1,153 @@
+//@version=6
+// ALPHA TERMINAL — Market Structure (BOS / CHoCH / FVG / Order Block)
+// Same rules as packages/analysis/indicators.mjs so TradingView and ALPHA TERMINAL agree:
+//  - Swing pivots need `right` closed bars on the right → only known `right` bars later.
+//  - BOS / CHoCH = CLOSE beyond the latest confirmed, unbroken swing.
+//  - FVG = 3-candle gap, known when the 3rd candle closes; "filled" when price trades through it.
+//  - Order block = last opposite-colour candle between the broken swing and the break.
+// Alerts fire once per bar close only (no intrabar repainting) and send JSON to the
+// ALPHA TERMINAL webhook. Create ONE alert: Condition = this indicator → "Any alert() function call".
+indicator("ALPHA TERMINAL · Structure", shorttitle = "ALPHA STRUCT", overlay = true, max_boxes_count = 200, max_labels_count = 200, max_lines_count = 200, max_bars_back = 500)
+
+// ---------- inputs ----------
+leftLen   = input.int(3, "Pivot left bars", minval = 1, group = "Structure")
+rightLen  = input.int(3, "Pivot right bars (confirmation delay)", minval = 1, group = "Structure")
+showSwing = input.bool(false, "Show confirmed swing points", group = "Structure")
+showFvg   = input.bool(true, "Show FVG", group = "FVG")
+minGapPct = input.float(0.15, "Min FVG size (% of price)", minval = 0, step = 0.05, group = "FVG") / 100
+maxFvg    = input.int(12, "Max open FVG boxes", minval = 1, maxval = 50, group = "FVG")
+showOb    = input.bool(true, "Show order blocks", group = "Order block")
+maxOb     = input.int(6, "Max active order blocks", minval = 1, maxval = 30, group = "Order block")
+secret    = input.string("", "Webhook secret (TV_WEBHOOK_SECRET)", group = "Alerts")
+alertBos  = input.bool(true, "Alert on BOS", group = "Alerts")
+alertChoch = input.bool(true, "Alert on CHoCH", group = "Alerts")
+alertFvg  = input.bool(false, "Alert on new FVG", group = "Alerts")
+
+colBull = color.new(#58d7b0, 0)
+colBear = color.new(#ee7c89, 0)
+
+// ---------- alert payload ----------
+sendAlert(string signal, float level) =>
+    msg = '{"secret":"' + secret + '","source":"ALPHA_PINE","symbol":"' + syminfo.ticker + '","exchange":"' + syminfo.prefix +
+          '","interval":"' + timeframe.period + '","signal":"' + signal + '","price":' + str.tostring(close) +
+          ',"level":' + str.tostring(level) + ',"bar_time":' + str.tostring(time) + '}'
+    alert(msg, alert.freq_once_per_bar_close)
+
+// ---------- swings (confirmed rightLen bars later) ----------
+ph = ta.pivothigh(high, leftLen, rightLen)
+pl = ta.pivotlow(low, leftLen, rightLen)
+
+var float lastHigh = na
+var int   lastHighIdx = na
+var bool  highBroken = true
+var float lastLow = na
+var int   lastLowIdx = na
+var bool  lowBroken = true
+var int   trend = 0   // 1 up, -1 down, 0 neutral
+
+if not na(ph)
+    lastHigh := ph
+    lastHighIdx := bar_index - rightLen
+    highBroken := false
+if not na(pl)
+    lastLow := pl
+    lastLowIdx := bar_index - rightLen
+    lowBroken := false
+
+plotshape(showSwing and not na(ph), "Swing high", shape.triangledown, location.abovebar, color.new(colBear, 40), offset = -rightLen, size = size.tiny)
+plotshape(showSwing and not na(pl), "Swing low", shape.triangleup, location.belowbar, color.new(colBull, 40), offset = -rightLen, size = size.tiny)
+
+// ---------- order blocks ----------
+var array<box> obBoxes = array.new<box>()
+var array<int> obDir = array.new<int>()
+var array<int> obBorn = array.new<int>()
+
+addOb(int dir, int swingIdx) =>
+    // last opposite-colour candle between swing and the breaking bar
+    int span = math.min(bar_index - swingIdx, 400)
+    for k = 1 to span
+        isOpp = dir == 1 ? close[k] < open[k] : close[k] > open[k]
+        if isOpp
+            b = box.new(bar_index - k, high[k], bar_index, low[k], border_color = dir == 1 ? color.new(#7aa2f7, 20) : color.new(#c58af9, 20),
+                 bgcolor = dir == 1 ? color.new(#7aa2f7, 85) : color.new(#c58af9, 85), extend = extend.right,
+                 text = "OB", text_size = size.tiny, text_color = dir == 1 ? #7aa2f7 : #c58af9, text_halign = text.align_left, text_valign = text.align_top)
+            array.push(obBoxes, b)
+            array.push(obDir, dir)
+            array.push(obBorn, bar_index)
+            if array.size(obBoxes) > maxOb
+                box.delete(array.shift(obBoxes))
+                array.shift(obDir)
+                array.shift(obBorn)
+            break
+
+// ---------- BOS / CHoCH (close-based) ----------
+bullBreak = not highBroken and not na(lastHigh) and close > lastHigh
+if bullBreak
+    kind = trend == -1 ? "CHoCH" : "BOS"
+    line.new(lastHighIdx, lastHigh, bar_index, lastHigh, color = colBull, style = line.style_dashed)
+    label.new(bar_index, lastHigh, kind, style = label.style_label_down, color = color.new(colBull, 70), textcolor = colBull, size = size.small)
+    if showOb
+        addOb(1, lastHighIdx)
+    if (kind == "BOS" and alertBos) or (kind == "CHoCH" and alertChoch)
+        sendAlert(kind + "_BULL", lastHigh)
+    highBroken := true
+    trend := 1
+
+bearBreak = not lowBroken and not na(lastLow) and close < lastLow
+if bearBreak
+    kind = trend == 1 ? "CHoCH" : "BOS"
+    line.new(lastLowIdx, lastLow, bar_index, lastLow, color = colBear, style = line.style_dashed)
+    label.new(bar_index, lastLow, kind, style = label.style_label_up, color = color.new(colBear, 70), textcolor = colBear, size = size.small)
+    if showOb
+        addOb(-1, lastLowIdx)
+    if (kind == "BOS" and alertBos) or (kind == "CHoCH" and alertChoch)
+        sendAlert(kind + "_BEAR", lastLow)
+    lowBroken := true
+    trend := -1
+
+// mitigate order blocks once price trades back into them
+if array.size(obBoxes) > 0
+    for i = array.size(obBoxes) - 1 to 0
+        b = array.get(obBoxes, i)
+        d = array.get(obDir, i)
+        touched = d == 1 ? low <= box.get_top(b) : high >= box.get_bottom(b)
+        if touched and array.get(obBorn, i) < bar_index
+            box.set_right(b, bar_index)
+            box.set_extend(b, extend.none)
+            box.set_bgcolor(b, color.new(color.gray, 92))
+            array.remove(obBoxes, i)
+            array.remove(obDir, i)
+            array.remove(obBorn, i)
+
+// ---------- FVG ----------
+var array<box> fvgBoxes = array.new<box>()
+var array<int> fvgDir = array.new<int>()
+
+if showFvg and bar_index >= 2
+    gapBull = low > high[2] and (low - high[2]) / close[1] >= minGapPct
+    gapBear = high < low[2] and (low[2] - high) / close[1] >= minGapPct
+    if gapBull or gapBear
+        top = gapBull ? low : low[2]
+        bot = gapBull ? high[2] : high
+        b = box.new(bar_index - 1, top, bar_index, bot, border_color = color.new(gapBull ? colBull : colBear, 60),
+             bgcolor = color.new(gapBull ? colBull : colBear, 88), extend = extend.right,
+             text = "FVG", text_size = size.tiny, text_color = gapBull ? colBull : colBear, text_halign = text.align_left, text_valign = text.align_top)
+        array.push(fvgBoxes, b)
+        array.push(fvgDir, gapBull ? 1 : -1)
+        if array.size(fvgBoxes) > maxFvg
+            box.delete(array.shift(fvgBoxes))
+            array.shift(fvgDir)
+        if alertFvg
+            sendAlert(gapBull ? "FVG_BULL" : "FVG_BEAR", gapBull ? bot : top)
+
+// close FVGs once price has traded through the whole gap
+if array.size(fvgBoxes) > 0
+    for i = array.size(fvgBoxes) - 1 to 0
+        b = array.get(fvgBoxes, i)
+        d = array.get(fvgDir, i)
+        filled = d == 1 ? low <= box.get_bottom(b) : high >= box.get_top(b)
+        if filled and box.get_left(b) < bar_index - 1
+            box.set_right(b, bar_index)
+            box.set_extend(b, extend.none)
+            array.remove(fvgBoxes, i)
+            array.remove(fvgDir, i)

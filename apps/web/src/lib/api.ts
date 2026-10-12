@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, BarsResponse, DataMode, FdaResponse, FilingsResponse, Health, ScreenRow, Timeframe, TickerHit } from './types';
+import type { TvAlert, AnalyzeResponse, BarsResponse, DataMode, FdaResponse, FilingsResponse, Health, ScreenRow, Timeframe, TickerHit } from './types';
 import { mockAnalyze, mockBars, mockFda, mockFilingsResponse, mockScreen } from './mock';
 
 const BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
@@ -93,3 +93,13 @@ export const mockSource: DataSource = {
   fda: () => delay(mockFda()),
   search: async (q) => mockScreen(['SIM01', 'SIM02', 'SIM03', 'SIM04', 'SIM05', 'SIM06']).filter((r) => r.symbol.includes(q.toUpperCase()) || (r.name ?? '').toUpperCase().includes(q.toUpperCase())).map((r) => ({ ticker: r.symbol, name: r.name ?? '', cik: '' })),
 };
+
+export const API_BASE = BASE;
+
+/** TradingView alerts stored by the webhook (needs the webhook key). */
+export async function fetchTvAlerts(key: string, limit = 50): Promise<{ alerts: TvAlert[]; storage: boolean }> {
+  const res = await fetch(`${BASE}/api/v1/tv/alerts?limit=${limit}`, { headers: { 'X-Alpha-Key': key, Accept: 'application/json' } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, body?.error || `HTTP ${res.status}`, null);
+  return body;
+}
