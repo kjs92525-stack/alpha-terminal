@@ -7,3 +7,9 @@ export function parseFilings(submissions: unknown, opts?: { limit?: number; form
 export function dilutionSignals(filings: Filing[], asOf: string, days?: number): Filing[];
 export function summarizeFacts(facts: unknown): Fundamentals;
 export function searchTickers(tickersJson: unknown, query: string, limit?: number): TickerHit[];
+export interface CurrentFiling {
+  accession: string | null; form: string; company: string; cik: string; role: string; acceptedAt: string | null;
+  filingDate: string | null; items: string; url: string | null; label: string; category: string; importance: Importance; itemDetails: FilingItem[];
+}
+export function currentFeedUrl(type: string, count?: number): string;
+export function parseCurrentAtom(xml: string): CurrentFiling[];

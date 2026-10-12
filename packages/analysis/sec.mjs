@@ -231,3 +231,38 @@ export function searchTickers(tickersJson, query, limit = 12) {
   }
   return [...exact, ...prefix, ...name].slice(0, limit).map((t) => ({ ticker: t.ticker, name: t.title, cik: padCik(t.cik_str) }));
 }
+
+// ---------- EDGAR "latest filings" Atom feed ----------
+// https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=40&output=atom
+
+const decode = (s) => String(s ?? '')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+
+export function currentFeedUrl(type, count = 40) {
+  return `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=${encodeURIComponent(type)}&company=&dateb=&owner=include&start=0&count=${count}&output=atom`;
+}
+
+/** Parse the EDGAR current-events Atom feed into classified filings (filer entries only). */
+export function parseCurrentAtom(xml) {
+  const out = [];
+  const entries = String(xml || '').split(/<entry>/i).slice(1);
+  for (const e of entries) {
+    const title = decode((e.match(/<title>([\s\S]*?)<\/title>/i) || [])[1]).trim();
+    const m = title.match(/^(.+?) - (.+) \((\d{10})\) \((Filer|Subject|Reporting|Filed by)\)$/);
+    if (!m) continue;
+    const [, form, company, cik, role] = m;
+    if (role === 'Reporting') continue; // Form 4 reporting-owner duplicates
+    const link = (e.match(/<link[^>]*href="([^"]+)"/i) || [])[1] ?? null;
+    const updated = (e.match(/<updated>([^<]+)<\/updated>/i) || [])[1] ?? null;
+    const summary = decode((e.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i) || [])[1]);
+    const accession = (summary.match(/AccNo:<\/b>\s*([\d-]+)/i) || e.match(/accession-number=([\d-]+)/i) || [])[1] ?? null;
+    const filed = (summary.match(/Filed:<\/b>\s*(\d{4}-\d{2}-\d{2})/i) || [])[1] ?? null;
+    const items = [...summary.matchAll(/Item (\d\.\d{2})/g)].map((x) => x[1]).join(',');
+    out.push({
+      accession, form, company: company.trim(), cik, role,
+      acceptedAt: updated ? new Date(updated).toISOString() : null, filingDate: filed, items, url: link,
+      ...classifyFiling(form, items),
+    });
+  }
+  return out;
+}

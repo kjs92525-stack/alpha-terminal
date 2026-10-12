@@ -8,7 +8,7 @@ ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
 SCREEN_MAX = "5"
 
-# Secret (Pages > Settings > Variables and Secrets, or `wrangler pages secret put SEC_USER_AGENT`):
+# Secrets (Pages > Settings > Variables and Secrets): SEC_USER_AGENT, ALPACA_KEY_ID, ALPACA_SECRET_KEY
 #   SEC_USER_AGENT = "AlphaTerminal/0.3 you@example.com"
 
 # TradingView webhook (see integrations/tradingview/README.md)

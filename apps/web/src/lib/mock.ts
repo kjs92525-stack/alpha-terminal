@@ -3,7 +3,8 @@
 import { resampleWeekly } from '../../../../packages/analysis/indicators.mjs';
 import { classifyFiling } from '../../../../packages/analysis/sec.mjs';
 import { scoreStock, rankUniverse } from '../../../../packages/analysis/scoring.mjs';
-import type { AnalyzeResponse, Bar, BarsResponse, FdaResponse, Filing, FilingsResponse, Fundamentals, ScreenRow, Timeframe } from './types';
+import { classifyHeadline } from '../../../../packages/analysis/news.mjs';
+import type { AnalyzeResponse, Bar, BarsResponse, FdaResponse, Filing, FilingsResponse, Fundamentals, MoversResponse, NewsResponse, Quote, ScreenRow, SecLatestResponse, Timeframe } from './types';
 
 interface SimSpec { symbol: string; name: string; price: number; drift: number; vol: number; seed: number; shares: number; revenue: number; growth: number; margin: number; ocf: number; cash: number; sharesYoY: number }
 
@@ -111,4 +112,42 @@ export function mockFilingsResponse(symbol: string): FilingsResponse {
 
 export function mockFda(): FdaResponse {
   return { results: [], source: 'SIMULATED', sourceUrl: '', fetchedAt: new Date().toISOString(), note: '가상 모드에서는 openFDA를 조회하지 않습니다' };
+}
+
+// ---------- simulated feeds (SIM tickers only) ----------
+
+function simQuote(symbol: string): Quote {
+  const b = mockBars(symbol, '1D').bars;
+  const last = b[b.length - 1];
+  const prev = b[b.length - 2];
+  return { symbol, price: last.close, prevClose: prev.close, changePct: last.close / prev.close - 1, open: last.open, dayHigh: last.high, dayLow: last.low, volume: last.volume, time: new Date(last.time * 1000).toISOString() };
+}
+
+const SIM_HEADLINES: Array<[string, string, number]> = [
+  ['SIM01', 'Aurora Dynamics (가상) Wins $120 Million Defense Contract', 21],
+  ['SIM04', 'Solara Bio (가상) Announces Proposed Public Offering of Common Stock and Warrants', 34],
+  ['SIM02', 'Northstar AI (가상) Beats Estimates, Raises Full-Year Guidance on Strong AI Demand', 48],
+  ['SIM04', 'Solara Bio (가상) Reports Positive Topline Phase 2 Trial Results', 95],
+  ['SIM06', 'Analyst Upgrades Orbit Energy (가상) to Outperform, Raises Price Target', 130],
+  ['SIM03', 'Vector Systems (가상) Receives Nasdaq Delisting Notice', 200],
+];
+
+export function mockNews(): NewsResponse {
+  const now = Date.now();
+  const items = SIM_HEADLINES.map(([sym, h, mins], i) => ({
+    id: `sim-${i}`, time: new Date(now - mins * 60000).toISOString(), headline: h, summary: '가상 데이터 — 실제 뉴스가 아닙니다', url: '', source: 'SIMULATED', author: null, symbols: [sym], ...classifyHeadline(h),
+  })) as NewsResponse['items'];
+  return { items, quotes: Object.fromEntries(SIM_UNIVERSE.map((s) => [s.symbol, simQuote(s.symbol)])), source: 'SIMULATED', fetchedAt: new Date().toISOString(), note: '가상 뉴스' };
+}
+
+export function mockSecLatest(): SecLatestResponse {
+  const items = mockFilings().map((f, i) => ({ ...f, company: SIM_UNIVERSE.find((s) => f.accession.includes(s.symbol))?.name ?? '', cik: String(i), ticker: f.accession.split('-')[1], url: null }));
+  return { items, quotes: Object.fromEntries(SIM_UNIVERSE.map((s) => [s.symbol, simQuote(s.symbol)])), source: 'SIMULATED', fetchedAt: new Date().toISOString() };
+}
+
+export function mockMovers(minPrice: number): MoversResponse {
+  const qs = SIM_UNIVERSE.map((s) => simQuote(s.symbol)).filter((q) => (q.price ?? 0) >= minPrice);
+  const toMover = (q: Quote) => ({ symbol: q.symbol, price: q.price, changePct: q.changePct, change: q.price !== null && q.prevClose !== null ? q.price - q.prevClose : null, dayLow: q.dayLow, dayHigh: q.dayHigh, open: q.open, prevClose: q.prevClose, volume: q.volume });
+  const sorted = [...qs].sort((a, b) => (b.changePct ?? 0) - (a.changePct ?? 0));
+  return { gainers: sorted.filter((q) => (q.changePct ?? 0) > 0).map(toMover), losers: sorted.filter((q) => (q.changePct ?? 0) < 0).reverse().map(toMover), lastUpdated: new Date().toISOString(), minPrice, source: 'SIMULATED', fetchedAt: new Date().toISOString() };
 }

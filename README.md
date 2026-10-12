@@ -1,4 +1,4 @@
-# ALPHA TERMINAL — V0.5
+# ALPHA TERMINAL — V0.6
 
 미국 주식 퀀트 분석 터미널. React 19 + TypeScript + Vite, TradingView Lightweight Charts v5, Cloudflare Pages Functions(Workers) API, Supabase(선택).
 
@@ -11,6 +11,13 @@
 | **이벤트 레이더** | SEC 공시 분류(8-K 항목별, S-1/S-3/424B 희석, 13D, M&A 등), 중요도, 접수 시각(ET), 공시 후 첫 거래일 주가·거래량 반응, 현금·런웨이·주식수 증가, openFDA 승인 이력 | SEC EDGAR, openFDA |
 
 > **투자 자문이 아닙니다.** 점수는 결정적 규칙 기반 상대평가이며 확률이 아닙니다. 시나리오 범위는 과거 변동성 ±1σ이며 예측이 아닙니다. LLM 서술형 분석은 아직 연결되지 않았습니다.
+
+## 대시보드 피드 (V0.6)
+
+- **뉴스 피드**: Alpaca News API(Benzinga) → 키워드 규칙으로 태그(실적·FDA·오퍼링·M&A…), 감정(긍정/부정/중립, 근거 단어 표시), 영향도(1–5). 문맥을 이해하는 모델이 아님.
+- **SEC 공시 탭**: EDGAR 실시간 공시 피드(8-K, 424B, S-1/S-3, 13D, 10-Q/K) → 중요도 분류, CIK→티커 매핑, 원문 링크.
+- **상승률/하락률 상위**: Alpaca movers + 스냅샷의 당일 고가·저가 범위 막대(시가 ○, 현재가 ●), 최소 가격 필터.
+- Alpaca 키가 Pages 시크릿에 있으면 시세 공급자도 Alpaca(공식)를 우선 사용. 무료 플랜 실시간 가격은 IEX 거래소 기준.
 
 ## 전 종목 야간 파이프라인 (V0.5)
 
@@ -65,7 +72,7 @@ supabase/migrations/   스키마 + RLS
 
 ### API
 
-`GET /api/v1/health` · `/api/v1/search?q=` · `/api/v1/bars/{SYMBOL}?tf=5m|1H|1D|1W` · `/api/v1/analyze/{SYMBOL}` · `/api/v1/screen?symbols=A,B` · `/api/v1/sec/filings/{CIK|SYMBOL}?limit=&forms=` · `/api/v1/sec/facts/{CIK}` · `/api/v1/sec/submissions/{CIK}` · `/api/v1/fda?q=` · `POST /api/v1/tv/webhook` · `/api/v1/tv/alerts` (키 필요)
+`GET /api/v1/health` · `/api/v1/search?q=` · `/api/v1/bars/{SYMBOL}?tf=5m|1H|1D|1W` · `/api/v1/analyze/{SYMBOL}` · `/api/v1/screen?symbols=A,B` · `/api/v1/sec/filings/{CIK|SYMBOL}?limit=&forms=` · `/api/v1/sec/facts/{CIK}` · `/api/v1/sec/submissions/{CIK}` · `/api/v1/fda?q=` · `/api/v1/news` · `/api/v1/movers` · `/api/v1/sec/latest` · `POST /api/v1/tv/webhook` · `/api/v1/tv/alerts` (키 필요)
 
 ## 로컬 실행
 
@@ -73,7 +80,7 @@ Node.js 22.18+ 필요.
 
 ```bash
 npm install
-npm test            # 61 tests
+npm test            # 68 tests
 npm run typecheck
 npm run build
 npm run dev         # UI만 (API 없으면 SIMULATED 모드)
@@ -104,6 +111,6 @@ service_role 키는 브라우저에 절대 넣지 마세요.
 
 ## 검증 상태 (2026-10-12)
 
-- ✅ 단위·통합 테스트 61개 통과 (야간 파이프라인 종단 테스트 포함: 증분 재실행, 원장 불변, 성과 평가), TypeScript 검사, 프로덕션 빌드, Wrangler 번들(Pages Functions + Worker)
+- ✅ 단위·통합 테스트 68개 통과 (야간 파이프라인 종단 테스트 포함: 증분 재실행, 원장 불변, 성과 평가), TypeScript 검사, 프로덕션 빌드, Wrangler 번들(Pages Functions + Worker)
 - ✅ 헤드리스 Chromium에서 전체 화면(데스크톱·모바일) 렌더링 확인 — API는 실제 핸들러, 상류 응답은 합성 픽스처
 - ⚠️ 실제 SEC/Stooq/Yahoo/openFDA 호출은 개발 환경 네트워크 정책으로 차단되어 **실서버 검증 전**입니다. 배포 후 `/api/v1/health`, `/api/v1/analyze/AAPL`로 확인하세요.

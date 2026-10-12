@@ -14,8 +14,10 @@ import { resampleWeekly } from '../../../packages/analysis/indicators.mjs';
 import { scoreStock, rankUniverse } from '../../../packages/analysis/scoring.mjs';
 import type { Bar, Filing, Fundamentals } from '../../../packages/analysis/types';
 import { handleTvWebhook, listTvAlerts, TvError, type TvEnv, type WaitCtx, type AnalyzeLike } from './tradingview.ts';
+import { FeedError, hasAlpaca, movers, news, secLatest, type FeedEnv } from './feeds.ts';
+import { fetchDailyBars } from '../../../packages/pipeline/alpaca.mjs';
 
-export interface Env extends TvEnv {
+export interface Env extends TvEnv, FeedEnv {
   SEC_USER_AGENT?: string;
   ALLOWED_ORIGIN?: string;
   PRICE_PROVIDERS?: string;
@@ -172,12 +174,43 @@ async function yahooChart(symbol: string, interval: string, range: string, daily
 }
 
 function providers(env: Env): string[] {
+  if (hasAlpaca(env)) return ['alpaca', ...(env.PRICE_PROVIDERS || 'stooq,yahoo').split(',').map((s) => s.trim().toLowerCase()).filter((p) => p && p !== 'alpaca')];
   return (env.PRICE_PROVIDERS || 'stooq,yahoo').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
+async function alpacaDaily(env: Env, symbol: string): Promise<{ bars: Bar[]; url: string; fetchedAt: string }> {
+  const end = new Date(Math.floor((Date.now() - 16 * 60000) / 60000) * 60000).toISOString();
+  const start = new Date(Date.now() - 7.5 * 365 * 86400000).toISOString().slice(0, 10);
+  const r = await fetchDailyBars({ symbols: [symbol], start, end, keyId: env.ALPACA_KEY_ID, secretKey: env.ALPACA_SECRET_KEY, minIntervalMs: 0 });
+  const bars = (r.bars[symbol] ?? []) as Bar[];
+  if (!bars.length) throw new HttpError(404, 'Alpaca returned no bars');
+  return { bars, url: 'https://data.alpaca.markets/v2/stocks/bars', fetchedAt: new Date().toISOString() };
+}
+
+async function alpacaIntraday(env: Env, symbol: string, tf: '5m' | '1H'): Promise<BarsResult> {
+  const [timeframe, days, step] = tf === '5m' ? ['5Min', 7, 300] : ['1Hour', 90, 3600];
+  const end = new Date(Math.floor((Date.now() - 16 * 60000) / 60000) * 60000).toISOString();
+  const start = new Date(Date.now() - days * 86400000).toISOString();
+  const url = `https://data.alpaca.markets/v2/stocks/bars?symbols=${encodeURIComponent(symbol)}&timeframe=${timeframe}&start=${start}&end=${end}&limit=10000&adjustment=all&feed=sip&sort=asc`;
+  const res = await cachedFetch(url, { headers: { 'APCA-API-KEY-ID': env.ALPACA_KEY_ID!, 'APCA-API-SECRET-KEY': env.ALPACA_SECRET_KEY!, Accept: 'application/json' } }, BARS_TTL_INTRADAY);
+  if (!res.ok) throw new HttpError(502, `Alpaca intraday HTTP ${res.status}`);
+  const json = (await res.json()) as { bars?: Record<string, Array<{ t: string; o: number; h: number; l: number; c: number; v: number }>> };
+  const bars: Bar[] = (json.bars?.[symbol] ?? []).map((b) => ({ time: Date.parse(b.t) / 1000, open: b.o, high: b.h, low: b.l, close: b.c, volume: b.v }));
+  if (!bars.length) throw new HttpError(404, 'Alpaca returned no intraday bars');
+  const lastT = bars[bars.length - 1].time;
+  return { symbol, timeframe: tf, bars, source: 'Alpaca (SIP, 15분 지연)', sourceUrl: 'https://data.alpaca.markets/v2/stocks/bars', fetchedAt: res.headers.get('X-Fetched-At') || new Date().toISOString(), lastBarClosed: Date.now() / 1000 >= lastT + step, delayNote: '무료 플랜: 최근 15분 제외' };
 }
 
 async function getBars(env: Env, symbol: string, tf: Timeframe): Promise<BarsResult> {
   const list = providers(env);
   const errors: string[] = [];
+  if ((tf === '5m' || tf === '1H') && hasAlpaca(env)) {
+    try {
+      return await alpacaIntraday(env, symbol, tf);
+    } catch (e) {
+      errors.push(`alpaca: ${(e as Error).message}`);
+    }
+  }
   if (tf === '5m' || tf === '1H') {
     if (!list.includes('yahoo')) throw new HttpError(501, 'Intraday bars need the yahoo provider (PRICE_PROVIDERS)');
     const [interval, range, sec] = tf === '5m' ? ['5m', '5d', 300] : ['60m', '3mo', 3600];
@@ -189,7 +222,8 @@ async function getBars(env: Env, symbol: string, tf: Timeframe): Promise<BarsRes
     try {
       let r: { bars: Bar[]; url: string; fetchedAt: string };
       let source: string;
-      if (p === 'stooq') { r = await stooqDaily(symbol); source = 'Stooq EOD'; }
+      if (p === 'alpaca') { r = await alpacaDaily(env, symbol); source = 'Alpaca (SIP, 수정주가)'; }
+      else if (p === 'stooq') { r = await stooqDaily(symbol); source = 'Stooq EOD'; }
       else if (p === 'yahoo') { r = await yahooChart(symbol, '1d', tf === '1W' ? '10y' : '5y', true, BARS_TTL_DAILY); source = 'Yahoo Finance chart (비공식)'; }
       else continue;
       let bars = r.bars;
@@ -321,6 +355,7 @@ export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Res
     if (path === '/health' || path === '/api/v1/health') {
       return json({
         ok: true, version: VERSION, time: new Date().toISOString(), secConfigured: Boolean(env.SEC_USER_AGENT?.trim()), priceProviders: providers(env),
+        alpaca: hasAlpaca(env),
         tradingview: { webhook: Boolean(env.TV_WEBHOOK_SECRET?.trim()), storage: Boolean(env.ALERTS), telegram: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) },
       }, 200, cors);
     }
@@ -367,6 +402,25 @@ export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Res
       const symbols = (url.searchParams.get('symbols') || '').split(',').map((s) => s.trim()).filter(Boolean);
       if (!symbols.length) throw new HttpError(400, 'symbols query parameter required');
       return json(await screen(env, symbols), 200, cors, 300);
+    }
+    if (path === '/api/v1/news' || path === '/api/v1/movers' || path === '/api/v1/sec/latest') {
+      try {
+        const limit = Number(url.searchParams.get('limit') || 40);
+        if (path === '/api/v1/news') {
+          const syms = (url.searchParams.get('symbols') || '').split(',').map((x) => x.trim().toUpperCase()).filter((x) => SYMBOL_RE.test(x));
+          return json(await news(env, syms, limit), 200, cors, 60);
+        }
+        if (path === '/api/v1/movers') {
+          return json(await movers(env, Math.min(25, Number(url.searchParams.get('top') || 10)), Number(url.searchParams.get('minPrice') || 1)), 200, cors, 60);
+        }
+        const map = await tickerMap(env);
+        const byCik = new Map<string, string>();
+        for (const t of Object.values(map)) { const k = padCik(t.cik_str); if (!byCik.has(k)) byCik.set(k, t.ticker); }
+        return json(await secLatest(env, (cik) => byCik.get(cik) ?? null, limit), 200, cors, 60);
+      } catch (e) {
+        if (e instanceof FeedError) return json({ error: e.message }, e.status, cors);
+        throw e;
+      }
     }
     if (path === '/api/v1/fda') {
       return json(await fda(url.searchParams.get('q') || ''), 200, cors, 900);

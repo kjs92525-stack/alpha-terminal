@@ -5,6 +5,8 @@ import { ResearchDesk } from '../components/ResearchDesk';
 import { ChartWorkspace } from '../components/ChartWorkspace';
 import { CATEGORY_LABEL, fmtEt } from '../lib/format';
 import { PanelHead } from '../components/ui';
+import { NewsFeed } from '../components/NewsFeed';
+import { TopMovers } from '../components/TopMovers';
 
 const RANK = { critical: 4, high: 3, medium: 2, low: 1 } as const;
 
@@ -23,6 +25,10 @@ export function Dashboard() {
         <div className="kpi-card"><div className="kpi-top">TOP CANDIDATE <Sparkles size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{top?.symbol ?? '—'}</strong><span>{top ? `${top.score}/100 · ${top.rating}` : ''}</span></div><div className="kpi-foot">● 평균 점수 {avg ?? '—'} · 규칙 기반</div></div>
         <div className="kpi-card"><div className="kpi-top">EVENT SIGNALS <Radar size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{String(data?.filings.length ?? 0).padStart(2, '0')}</strong><span>{selected} 최근 공시</span></div><div className="kpi-foot">● {mode === 'live' ? 'SEC EDGAR 공식' : '가상 이벤트'}</div></div>
         <div className="kpi-card"><div className="kpi-top">SYSTEM STATUS <Gauge size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{mode === 'live' ? 'LIVE' : 'SIM'}</strong><span>{mode === 'live' ? (health?.secConfigured ? 'SEC 연결' : 'SEC 미설정') : 'API 미연결'}</span></div><div className="kpi-foot">● 시세: {health?.priceProviders.join(' → ') ?? '합성 OHLCV'}</div></div>
+      </div>
+      <div className="feed-row">
+        <NewsFeed />
+        <TopMovers />
       </div>
       <div className="workbench">
         <ScannerPanel />

@@ -1,5 +1,5 @@
-import type { TvAlert, AnalyzeResponse, BarsResponse, DataMode, FdaResponse, FilingsResponse, Health, ScreenRow, Timeframe, TickerHit } from './types';
-import { mockAnalyze, mockBars, mockFda, mockFilingsResponse, mockScreen } from './mock';
+import type { TvAlert, NewsResponse, MoversResponse, SecLatestResponse, AnalyzeResponse, BarsResponse, DataMode, FdaResponse, FilingsResponse, Health, ScreenRow, Timeframe, TickerHit } from './types';
+import { mockAnalyze, mockBars, mockFda, mockFilingsResponse, mockScreen, mockNews, mockMovers, mockSecLatest } from './mock';
 
 const BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
@@ -47,6 +47,9 @@ export interface DataSource {
   filings(symbol: string, signal?: AbortSignal): Promise<FilingsResponse>;
   fda(query: string, signal?: AbortSignal): Promise<FdaResponse>;
   search(query: string, signal?: AbortSignal): Promise<TickerHit[]>;
+  news(symbols: string[], signal?: AbortSignal): Promise<NewsResponse>;
+  secLatest(signal?: AbortSignal): Promise<SecLatestResponse>;
+  movers(minPrice: number, signal?: AbortSignal): Promise<MoversResponse>;
 }
 
 // Cloudflare free plan allows 50 subrequests per invocation; keep each screen call small.
@@ -73,6 +76,9 @@ export const liveSource: DataSource = {
   filings: (s, signal) => getJson(`/api/v1/sec/filings/${encodeURIComponent(s)}?limit=60`, signal),
   fda: (q, signal) => getJson(`/api/v1/fda?q=${encodeURIComponent(q)}`, signal),
   search: async (q, signal) => (await getJson<{ results: TickerHit[] }>(`/api/v1/search?q=${encodeURIComponent(q)}`, signal)).results,
+  news: (syms, signal) => getJson(`/api/v1/news?limit=40${syms.length ? `&symbols=${syms.map(encodeURIComponent).join(',')}` : ''}`, signal),
+  secLatest: (signal) => getJson('/api/v1/sec/latest?limit=60', signal),
+  movers: (minPrice, signal) => getJson(`/api/v1/movers?top=10&minPrice=${minPrice}`, signal),
 };
 
 function rankLocal(rows: ScreenRow[]): ScreenRow[] {
@@ -91,6 +97,9 @@ export const mockSource: DataSource = {
   async screen(symbols, onProgress) { const r = mockScreen(symbols); onProgress?.(symbols.length, symbols.length, r); return delay(r); },
   filings: (s) => delay(mockFilingsResponse(s)),
   fda: () => delay(mockFda()),
+  news: () => delay(mockNews()),
+  secLatest: () => delay(mockSecLatest()),
+  movers: (minPrice) => delay(mockMovers(minPrice)),
   search: async (q) => mockScreen(['SIM01', 'SIM02', 'SIM03', 'SIM04', 'SIM05', 'SIM06']).filter((r) => r.symbol.includes(q.toUpperCase()) || (r.name ?? '').toUpperCase().includes(q.toUpperCase())).map((r) => ({ ticker: r.symbol, name: r.name ?? '', cik: '' })),
 };
 
