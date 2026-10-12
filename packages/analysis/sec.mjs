@@ -66,11 +66,11 @@ export function classifyFiling(form, items = '') {
       category: top?.category ?? 'DISCLOSURE',
       importance: top?.importance ?? 'medium',
       label: top ? top.label : '수시 공시 (8-K)',
-      items: known,
+      itemDetails: known,
     };
   }
-  for (const [re, info] of FORM_RULES) if (re.test(form)) return { ...info, items: [] };
-  return { label: form, category: 'OTHER', importance: 'low', items: [] };
+  for (const [re, info] of FORM_RULES) if (re.test(form)) return { ...info, itemDetails: [] };
+  return { label: form, category: 'OTHER', importance: 'low', itemDetails: [] };
 }
 
 /** Flatten `filings.recent` (columnar) into rows with classification and source links. */

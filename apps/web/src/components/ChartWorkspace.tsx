@@ -1,0 +1,94 @@
+import { useEffect, useMemo, useState } from 'react';
+import { analyzeBars } from '../../../../packages/analysis/indicators.mjs';
+import { useTerminal } from '../lib/store';
+import { load, save } from '../lib/storage';
+import type { BarsResponse, Timeframe } from '../lib/types';
+import { fmtPct, fmtPrice, signClass } from '../lib/format';
+import { PriceChart, type Overlay } from './PriceChart';
+import { ErrorBox, Loading, SourceBadge } from './ui';
+import { TechSummary } from './TechSummary';
+import { SignalTable } from './SignalTable';
+
+const TFS: Timeframe[] = ['5m', '1H', '1D', '1W'];
+const OVERLAYS: Array<[Overlay, string]> = [
+  ['volume', 'VOL'], ['ema20', 'EMA20'], ['sma50', 'SMA50'], ['sma200', 'SMA200'], ['vwap', 'VWAP'], ['rsi', 'RSI'], ['macd', 'MACD'],
+  ['structure', 'BOS/CHoCH'], ['fvg', 'FVG'], ['ob', 'OB'], ['levels', 'S/R'], ['profile', 'VPVR'],
+];
+const DEFAULT_OVERLAYS: Overlay[] = ['volume', 'ema20', 'sma50', 'structure', 'levels'];
+
+export function useBars(symbol: string, tf: Timeframe) {
+  const { source } = useTerminal();
+  const [data, setData] = useState<BarsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!symbol) return;
+    const ctrl = new AbortController();
+    setError(null);
+    setData(null);
+    source.bars(symbol, tf, ctrl.signal).then(setData).catch((e) => { if (!ctrl.signal.aborted) setError(e.message); });
+    return () => ctrl.abort();
+  }, [symbol, tf, source]);
+  return { data, error };
+}
+
+export function ChartWorkspace({ symbol, full = false, height }: { symbol: string; full?: boolean; height?: number }) {
+  const [tf, setTf] = useState<Timeframe>(() => load('alpha:tf', '1D'));
+  const [show, setShow] = useState<Set<Overlay>>(() => new Set(load<Overlay[]>(full ? 'alpha:overlays:full' : 'alpha:overlays', full ? [...DEFAULT_OVERLAYS, 'rsi', 'macd', 'fvg'] : DEFAULT_OVERLAYS)));
+  const { data, error } = useBars(symbol, tf);
+  const intraday = tf === '5m' || tf === '1H';
+  const analysis = useMemo(() => (data ? analyzeBars(data.bars, { lastBarClosed: data.lastBarClosed, vwapAnchor: intraday ? 'session' : 'none' }) : null), [data, intraday]);
+
+  const toggle = (o: Overlay) => {
+    const next = new Set(show);
+    if (next.has(o)) next.delete(o); else next.add(o);
+    setShow(next);
+    save(full ? 'alpha:overlays:full' : 'alpha:overlays', [...next]);
+  };
+  const pickTf = (t: Timeframe) => { setTf(t); save('alpha:tf', t); };
+
+  const bars = data?.bars ?? [];
+  const last = bars[bars.length - 1];
+  const prev = bars[bars.length - 2];
+  const chg = last && prev ? last.close / prev.close - 1 : null;
+
+  return (
+    <div className="chart-workspace">
+      <div className="chart-header">
+        <div>
+          <div className="ticker-row">
+            <span className="ticker-large">{symbol || '—'}</span>
+            {data && <SourceBadge name={data.source} fetchedAt={data.fetchedAt} url={data.sourceUrl || undefined} />}
+          </div>
+          <div className="subline">USD · {tf} · {data ? `${bars.length} bars · ${data.delayNote}` : '—'}{data && !data.lastBarClosed && <span className="neutral"> · 마지막 봉 진행 중 (미확정)</span>}</div>
+        </div>
+        <div className="quote">
+          <strong>{last ? `$${fmtPrice(last.close)}` : '—'}</strong>
+          <span className={signClass(chg)}>{fmtPct(chg, 2)}</span>
+        </div>
+      </div>
+      <div className="chart-toolbar">
+        <div className="tf-list">{TFS.map((t) => <button key={t} className={t === tf ? 'selected' : ''} onClick={() => pickTf(t)}>{t}</button>)}</div>
+        <div className="chart-options">
+          {OVERLAYS.filter(([o]) => full || !['rsi', 'macd', 'ob', 'profile', 'sma200'].includes(o)).map(([o, label]) => (
+            <button key={o} className={show.has(o) ? 'selected' : ''} onClick={() => toggle(o)}>{label}</button>
+          ))}
+        </div>
+      </div>
+      {error && <ErrorBox error={error} hint={intraday ? '분봉/시간봉은 Yahoo 공급자가 활성화되어야 합니다.' : undefined} />}
+      {!error && !analysis && <div className="chart-placeholder" style={{ height: height ?? (full ? 560 : 400) }}><Loading label="시세 로딩" /></div>}
+      {analysis && <PriceChart bars={bars} analysis={analysis} show={show} intraday={intraday} height={height ?? (full ? 560 : 400)} watermark={`${symbol} · ${tf}`} />}
+      {full && analysis && data && (
+        <div className="lab-grid">
+          <section className="panel inner">
+            <div className="panel-head slim"><div><span className="panel-kicker">TECHNICAL READING</span><h2>기술적 판단 요약</h2></div></div>
+            <TechSummary bars={bars} analysis={analysis} lastBarClosed={data.lastBarClosed} />
+          </section>
+          <section className="panel inner">
+            <div className="panel-head slim"><div><span className="panel-kicker">SIGNAL LEDGER</span><h2>신호 원장 · 확정 여부</h2></div></div>
+            <SignalTable bars={bars} analysis={analysis} intraday={intraday} />
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}

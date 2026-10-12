@@ -376,7 +376,8 @@ export function analyzeBars(bars, { lastBarClosed = false, vwapAnchor = 'session
     vwap: vwap(bars, vwapAnchor),
     obv: obv(bars),
     structure,
-    fvg: fairValueGaps(bars, { lastBarClosed }),
+    // Ignore micro-gaps (< 0.15% of price) that carry no practical information.
+    fvg: fairValueGaps(bars, { lastBarClosed, minGapPct: 0.0015 }),
     orderBlocks: orderBlocks(bars, structure.events),
     levels: supportResistance(bars),
     profile: volumeProfile(bars),

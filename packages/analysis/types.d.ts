@@ -31,6 +31,7 @@ export type Importance = 'low' | 'medium' | 'high' | 'critical';
 export interface Filing {
   accession: string; form: string; filingDate: string | null; acceptedAt: string | null; reportDate: string | null;
   items: string; description: string; url: string; label: string; category: string; importance: Importance;
+  itemDetails: FilingItem[];
 }
 export interface FactPoint { end: string; value: number; filed: string; form: string; fy?: number }
 export interface Fundamentals {

@@ -7,7 +7,7 @@ compatibility_date = "2025-09-01"
 [vars]
 ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
-SCREEN_MAX = "25"
+SCREEN_MAX = "5"
 
 # Secret (never commit): wrangler secret put SEC_USER_AGENT
 #   value example: "AlphaTerminal/0.3 you@example.com"

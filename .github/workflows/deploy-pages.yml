@@ -1,0 +1,29 @@
+# Deploys dist/ + functions/ to Cloudflare Pages on push to main.
+# Requires repository secrets CLOUDFLARE_API_TOKEN (Pages:Edit) and CLOUDFLARE_ACCOUNT_ID.
+# Skips cleanly when the secrets are not configured.
+name: Deploy to Cloudflare Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check secrets
+        id: check
+        run: echo "ok=${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.check.outputs.ok == 'true'
+        run: npm ci && npm test && npm run build
+      - if: steps.check.outputs.ok == 'true'
+        run: npx wrangler pages deploy dist --project-name alpha-terminal --branch main
+      - if: steps.check.outputs.ok != 'true'
+        run: echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — deployment skipped."

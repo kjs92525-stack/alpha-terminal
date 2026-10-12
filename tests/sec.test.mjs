@@ -26,7 +26,7 @@ test('8-K items are classified by the most important item', () => {
   assert.equal(classifyFiling('8-K', '2.02,9.01').category, 'EARNINGS');
   const c = classifyFiling('8-K', '1.01,3.02,9.01');
   assert.equal(c.importance, 'high');
-  assert.equal(c.items.length, 3);
+  assert.equal(c.itemDetails.length, 3);
   assert.equal(classifyFiling('8-K', '4.02').importance, 'critical');
   assert.equal(classifyFiling('424B5').category, 'DILUTION');
   assert.equal(classifyFiling('S-3').category, 'DILUTION');
@@ -38,6 +38,7 @@ test('parseFilings flattens columnar data and keeps acceptance timestamps', () =
   const rows = parseFilings(submissions, { limit: 10 });
   assert.equal(rows.length, 5);
   assert.equal(rows[0].category, 'EARNINGS');
+  assert.equal(rows[0].items, '2.02,9.01'); // raw item string must survive classification
   assert.equal(rows[0].acceptedAt, '2025-06-10T16:05:12.000Z');
   assert.ok(rows[1].url.endsWith('/000123456725000009/prospectus.htm'));
   const d = dilutionSignals(rows, '2025-06-30', 365);
