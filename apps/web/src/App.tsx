@@ -52,7 +52,7 @@ function Shell() {
               {page === 'settings' && <Settings />}
             </>
           )}
-          <footer className="footer"><span>ALPHA TERMINAL V0.4 · NOT FINANCIAL ADVICE</span><span>점수는 규칙 기반 상대평가이며 확률·수익을 보장하지 않습니다</span></footer>
+          <footer className="footer"><span>ALPHA TERMINAL V0.6 · NOT FINANCIAL ADVICE</span><span>점수는 규칙 기반 상대평가이며 확률·수익을 보장하지 않습니다</span></footer>
         </main>
       </div>
     </div>

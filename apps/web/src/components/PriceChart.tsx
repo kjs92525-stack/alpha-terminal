@@ -9,8 +9,8 @@ import { fmtPrice } from '../lib/format';
 export type Overlay = 'volume' | 'ema20' | 'sma50' | 'sma200' | 'vwap' | 'structure' | 'fvg' | 'ob' | 'levels' | 'profile' | 'rsi' | 'macd';
 
 export const C = {
-  up: '#58d7b0', down: '#ee7c89', ema: '#e5b970', sma50: '#7aa2f7', sma200: '#c58af9', vwap: '#5bc0eb',
-  grid: '#1b2a33', text: '#7f99a5', bg: '#0c151d', provisional: '#9aa7ad',
+  up: '#2fd27a', down: '#ff5470', ema: '#e5b970', sma50: '#7aa2f7', sma200: '#c58af9', vwap: '#5bc0eb',
+  grid: '#1a1d40', text: '#8a8fbf', bg: '#0b0d22', provisional: '#9aa7ad',
 };
 
 interface Props {
@@ -48,11 +48,11 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
     const chart: IChartApi = createChart(el, {
       autoSize: true,
       localization: { locale: 'en-US' },
-      layout: { background: { color: C.bg }, textColor: C.text, fontSize: 11, fontFamily: 'Inter, sans-serif', panes: { separatorColor: '#23343e', separatorHoverColor: '#2f4a55' } },
+      layout: { background: { color: C.bg }, textColor: C.text, fontSize: 11, fontFamily: 'Inter, sans-serif', panes: { separatorColor: '#23264d', separatorHoverColor: '#3a3f7a' } },
       grid: { vertLines: { color: C.grid }, horzLines: { color: C.grid } },
       crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: '#24343d' },
-      timeScale: { borderColor: '#24343d', timeVisible: intraday, secondsVisible: false, rightOffset: 6 },
+      rightPriceScale: { borderColor: '#23264d' },
+      timeScale: { borderColor: '#23264d', timeVisible: intraday, secondsVisible: false, rightOffset: 6 },
     });
 
     const candle: ISeriesApi<'Candlestick'> = chart.addSeries(CandlestickSeries, {
@@ -62,7 +62,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
 
     if (show.has('volume')) {
       const vol = chart.addSeries(HistogramSeries, { priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
-      vol.setData(bars.map((b) => ({ time: T(b.time), value: b.volume, color: b.close >= b.open ? '#58d7b055' : '#ee7c8955' })));
+      vol.setData(bars.map((b) => ({ time: T(b.time), value: b.volume, color: b.close >= b.open ? '#2fd27a55' : '#ff547055' })));
       chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     }
 
@@ -79,13 +79,13 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
     let pane = 1;
     if (show.has('rsi')) {
       const r = addLine(analysis.rsi14, '#b9a3f5', pane, 1, 'RSI 14');
-      r.createPriceLine({ price: 70, color: '#ee7c8988', lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: false, title: '' });
-      r.createPriceLine({ price: 30, color: '#58d7b088', lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: false, title: '' });
+      r.createPriceLine({ price: 70, color: '#ff547088', lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: false, title: '' });
+      r.createPriceLine({ price: 30, color: '#2fd27a88', lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: false, title: '' });
       pane++;
     }
     if (show.has('macd')) {
       const h = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, pane);
-      h.setData(bars.flatMap((b, i) => { const v = analysis.macd.hist[i]; return v === null ? [] : [{ time: T(b.time), value: v, color: v >= 0 ? '#58d7b088' : '#ee7c8988' }]; }));
+      h.setData(bars.flatMap((b, i) => { const v = analysis.macd.hist[i]; return v === null ? [] : [{ time: T(b.time), value: v, color: v >= 0 ? '#2fd27a88' : '#ff547088' }]; }));
       addLine(analysis.macd.macd, '#5bc0eb', pane, 1, 'MACD');
       addLine(analysis.macd.signal, '#e5b970', pane, 1, 'Signal');
       pane++;
@@ -109,7 +109,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
 
     if (show.has('levels')) {
       for (const l of analysis.levels) {
-        candle.createPriceLine({ price: l.price, color: l.kind === 'resistance' ? '#ee7c8999' : '#58d7b099', lineStyle: LineStyle.Dotted, lineWidth: 1, axisLabelVisible: true, title: `${l.kind === 'resistance' ? 'R' : 'S'}×${l.touches}` });
+        candle.createPriceLine({ price: l.price, color: l.kind === 'resistance' ? '#ff547099' : '#2fd27a99', lineStyle: LineStyle.Dotted, lineWidth: 1, axisLabelVisible: true, title: `${l.kind === 'resistance' ? 'R' : 'S'}×${l.touches}` });
       }
     }
 
@@ -137,7 +137,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
       };
       if (show.has('fvg')) {
         const recent = analysis.fvg.filter((g) => g.filledIndex === null).slice(-8);
-        for (const g of recent) rect(g.index, null, g.top, g.bottom, g.direction === 'bull' ? '#58d7b01c' : '#ee7c891c', g.provisional ? C.provisional : g.direction === 'bull' ? '#58d7b0aa' : '#ee7c89aa', g.provisional ? 'FVG?' : 'FVG');
+        for (const g of recent) rect(g.index, null, g.top, g.bottom, g.direction === 'bull' ? '#2fd27a1c' : '#ff54701c', g.provisional ? C.provisional : g.direction === 'bull' ? '#2fd27aaa' : '#ff5470aa', g.provisional ? 'FVG?' : 'FVG');
       }
       if (show.has('ob')) {
         const live = analysis.orderBlocks.filter((o) => o.mitigatedIndex === null).slice(-4);
@@ -151,7 +151,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
           if (y0 === null || y1 === null) continue;
           const bw = (b.volume / max) * w * 0.2;
           const inVa = analysis.profile.valueAreaLow !== null && analysis.profile.valueAreaHigh !== null && b.low >= analysis.profile.valueAreaLow - 1e-9 && b.high <= analysis.profile.valueAreaHigh + 1e-9;
-          parts.push(`<rect x="${w - bw}" y="${y0 + 0.5}" width="${bw}" height="${Math.max(1, y1 - y0 - 1)}" fill="${inVa ? '#5bc0eb33' : '#7f99a522'}"/>`);
+          parts.push(`<rect x="${w - bw}" y="${y0 + 0.5}" width="${bw}" height="${Math.max(1, y1 - y0 - 1)}" fill="${inVa ? '#5bc0eb33' : '#8a8fbf22'}"/>`);
         }
         if (analysis.profile.poc !== null) {
           const py = y(analysis.profile.poc);

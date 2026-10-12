@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BellRing, Trophy, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
+import { Activity, BarChart3, BellRing, Trophy, ChevronsLeft, ChevronsRight, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
 import { useTerminal, type Page } from '../lib/store';
+import { load, save } from '../lib/storage';
 import type { TickerHit } from '../lib/types';
 
 export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNode }> = [
@@ -28,8 +29,10 @@ function marketStatus(now = new Date()) {
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { page, setPage, mode, modeReason, health, universe, watchlist } = useTerminal();
+  const [rail, setRail] = useState(() => load('alpha:rail', true));
+  const toggleRail = () => { setRail(!rail); save('alpha:rail', !rail); };
   return (
-    <aside className={`sidebar ${open ? 'mobile-show' : ''}`}>
+    <aside className={`sidebar ${rail ? 'rail' : ''} ${open ? 'mobile-show' : ''}`}>
       <div className="brand">
         <div className="brand-logo">Λ</div>
         <div><strong>ALPHA<span>TERMINAL</span></strong><small>QUANT INTELLIGENCE</small></div>
@@ -38,7 +41,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       <div className="workspace-label">WORKSPACE <span>01</span></div>
       <nav className="main-nav">
         {PAGES.map((p) => (
-          <button key={p.id} className={page === p.id ? 'active' : ''} onClick={() => { setPage(p.id); onClose(); }}>
+          <button key={p.id} className={page === p.id ? 'active' : ''} title={p.label} aria-label={p.label} onClick={() => { setPage(p.id); onClose(); }}>
             {p.icon}<span>{p.label}</span>
             {p.id === 'discover' && <em className="nav-count">{universe.length}</em>}
             {p.id === 'dashboard' && watchlist.length > 0 && <em className="nav-count">★{watchlist.length}</em>}
@@ -50,7 +53,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <span className={`status-circle ${mode === 'live' ? '' : 'amber'}`} />
           <div><b>{mode === 'live' ? '실데이터 모드' : '가상 데이터 모드'}</b><small>{modeReason}</small>{health && <small>API v{health.version}</small>}</div>
         </div>
-        <div className="sidebar-version">ALPHA TERMINAL <span>V0.4</span></div>
+        <div className="sidebar-version">ALPHA TERMINAL <span>V0.6</span></div>
+        <button className="rail-toggle" onClick={toggleRail} title={rail ? '메뉴 펼치기' : '메뉴 접기'} aria-label={rail ? '메뉴 펼치기' : '메뉴 접기'}>{rail ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}</button>
       </div>
     </aside>
   );

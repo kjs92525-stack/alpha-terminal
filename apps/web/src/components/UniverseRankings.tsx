@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { useTerminal } from '../lib/store';
 import { fetchLatest, NoSnapshotError, FACTOR_KO, SECTOR_KO, DATA_HISTORY_URL, type Horizon, type Latest } from '../lib/snapshot';
-import { fmtEt, fmtPct, fmtPrice, fmtUsd, scoreClass } from '../lib/format';
+import { fmtEt, fmtPct, fmtPrice, fmtUsd, heatColor, signClass } from '../lib/format';
 import { ErrorBox, Loading, PanelHead } from './ui';
 
 const H_LABEL: Record<Horizon, string> = { mid: '중장기 (20–60일) · 1순위', short: '단기 (1–5일) · 2순위' };
@@ -55,6 +55,7 @@ export function UniverseRankings() {
               {sectors.map((s) => <option key={s} value={s}>{SECTOR_KO[s] ?? s}</option>)}
             </select>
             <input className="mini-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="티커/이름" />
+            <span className="legend-heat">낮음 <i /> 높음</span>
           </div>
           <div className="table-wrap">
             <table className="data-table screener">
@@ -72,10 +73,10 @@ export function UniverseRankings() {
                     <td><b>{r.symbol}</b><small>{r.name}</small></td>
                     <td>{SECTOR_KO[r.sector] ?? r.sector}</td>
                     <td>${fmtPrice(r.price)}</td>
-                    <td className={scoreClass(r.score)}><b>{r.score.toFixed(1)}</b></td>
+                    <td className="heat"><span style={{ background: heatColor(r.score) }}>{r.score.toFixed(1)}</span></td>
                     <td>{Math.max(1, Math.ceil((r.rank / data.ranked[h]) * 100))}%</td>
-                    {factorKeys.map((k) => <td key={k} className={scoreClass(r.factors[k])}>{r.factors[k] ?? 'N/A'}</td>)}
-                    <td>{fmtPct((h === 'mid' ? r.f.mom_12_1 : r.f.ret_5) as number | null)}</td>
+                    {factorKeys.map((k) => <td key={k} className="heat"><span style={{ background: heatColor(r.factors[k]) }}>{r.factors[k] ?? 'N/A'}</span></td>)}
+                    <td className={signClass((h === 'mid' ? r.f.mom_12_1 : r.f.ret_5) as number | null)}>{fmtPct((h === 'mid' ? r.f.mom_12_1 : r.f.ret_5) as number | null)}</td>
                     <td>{fmtUsd(r.mcap)}</td>
                     <td className="muted">{r.excluded.length ? `제외: ${r.excluded.join(', ')}` : (r.f.recent_events as string[] | undefined)?.length ? `최근 이벤트: ${(r.f.recent_events as string[]).join(', ')}` : ''}</td>
                   </tr>

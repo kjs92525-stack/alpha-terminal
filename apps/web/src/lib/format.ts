@@ -52,3 +52,19 @@ export const CATEGORY_LABEL: Record<string, string> = {
   RISK: '리스크', GOVERNANCE: '지배구조', DISCLOSURE: '수시공시', PERIODIC: '정기보고', OWNERSHIP: '대량보유', INSIDER: '내부자',
   EXHIBIT: '첨부', OTHER: '기타', FDA: 'FDA',
 };
+
+// Heat-map background for 0–100 values: salmon (low) -> slate -> blue -> teal (high).
+const HEAT_STOPS: Array<[number, [number, number, number]]> = [[0, [179, 106, 110]], [40, [58, 63, 107]], [70, [47, 111, 184]], [100, [31, 155, 176]]];
+export function heatColor(v: Num | undefined): string {
+  if (!isNum(v)) return '#1a1d40';
+  const x = Math.max(0, Math.min(100, v));
+  for (let i = 1; i < HEAT_STOPS.length; i++) {
+    const [x1, c1] = HEAT_STOPS[i];
+    const [x0, c0] = HEAT_STOPS[i - 1];
+    if (x <= x1) {
+      const t = (x - x0) / (x1 - x0);
+      return `rgb(${c0.map((c, k) => Math.round(c + (c1[k] - c) * t)).join(',')})`;
+    }
+  }
+  return 'rgb(31,155,176)';
+}

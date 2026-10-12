@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, RefreshCw, RotateCcw, X } from 'lucide-react';
 import { DEFAULT_LIVE_UNIVERSE, useTerminal } from '../lib/store';
 import { filterRows } from '../components/Scanner';
-import { fmtPct, fmtPrice, fmtUsd, RISK_LABEL, scoreClass, signClass, SIZE_LABEL, STYLE_LABEL } from '../lib/format';
+import { fmtPct, fmtPrice, fmtUsd, heatColor, RISK_LABEL, signClass, SIZE_LABEL, STYLE_LABEL } from '../lib/format';
 import { ModeBadge, PanelHead } from '../components/ui';
 import type { ScreenRow } from '../lib/types';
 import { UniverseRankings } from '../components/UniverseRankings';
@@ -90,8 +90,8 @@ export function Discover() {
                   <td>{r.rank ?? '—'}</td>
                   <td><b>{r.symbol}</b><small>{r.name ?? r.error}</small></td>
                   <td>{r.lastClose ? `$${fmtPrice(r.lastClose.close)}` : '—'}</td>
-                  <td className={scoreClass(r.score)}><b>{r.score ?? '—'}</b></td>
-                  {(['momentum', 'trend', 'quality', 'valuation', 'liquidity'] as const).map((k) => <td key={k} className={scoreClass(r.factors?.[k])}>{r.factors?.[k] == null ? 'N/A' : Math.round(r.factors[k] as number)}</td>)}
+                  <td className="heat"><span style={{ background: heatColor(r.score) }}>{r.score ?? '—'}</span></td>
+                  {(['momentum', 'trend', 'quality', 'valuation', 'liquidity'] as const).map((k) => <td key={k} className="heat"><span style={{ background: heatColor(r.factors?.[k]) }}>{r.factors?.[k] == null ? 'N/A' : Math.round(r.factors[k] as number)}</span></td>)}
                   <td className={r.riskLevel === 'HIGH' ? 'down' : r.riskLevel === 'MODERATE' ? 'neutral' : 'up'}>{r.riskLevel ? RISK_LABEL[r.riskLevel] : '—'}</td>
                   <td className={signClass(r.metrics?.ret3m)}>{fmtPct(r.metrics?.ret3m)}</td>
                   <td>{fmtUsd(r.metrics?.marketCap)}</td>
