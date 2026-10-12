@@ -1,0 +1,14 @@
+import type { Bar, Fundamentals, Filing, Metrics, Factors, StockScore, Evidence, Scenarios, Num } from './types';
+export function ramp(x: Num | undefined, lo: number, hi: number): Num;
+export function computeMetrics(bars: Bar[], fundamentals?: Fundamentals | null, filings?: Filing[], asOf?: string | null): Metrics;
+export function sizeBucket(marketCap: Num): StockScore['size'];
+export function styleBucket(m: Metrics): StockScore['style'];
+export const FACTOR_WEIGHTS: Record<'momentum' | 'trend' | 'quality' | 'valuation' | 'liquidity' | 'stability', number>;
+export function factorScores(m: Metrics): Factors;
+export function compositeScore(f: Factors): { score: Num; coverage: number };
+export function riskLevel(risk: Num): StockScore['riskLevel'];
+export function ratingLabel(score: Num): string;
+export function evidence(m: Metrics): Evidence[];
+export function scenarios(bars: Bar[], m: Metrics): Scenarios | null;
+export function scoreStock(bars: Bar[], fundamentals?: Fundamentals | null, filings?: Filing[], asOf?: string | null): StockScore;
+export function rankUniverse<T extends { score: Num; rank?: number; percentile?: number }>(results: T[]): T[];
