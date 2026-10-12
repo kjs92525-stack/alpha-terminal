@@ -1,0 +1,12 @@
+# Cloudflare Pages project (web app + /api/* Pages Functions).
+name = "alpha-terminal"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "*"
+PRICE_PROVIDERS = "stooq,yahoo"
+SCREEN_MAX = "25"
+
+# Secret (Pages > Settings > Variables and Secrets, or `wrangler pages secret put SEC_USER_AGENT`):
+#   SEC_USER_AGENT = "AlphaTerminal/0.3 you@example.com"

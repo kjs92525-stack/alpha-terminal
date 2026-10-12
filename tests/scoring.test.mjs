@@ -56,3 +56,11 @@ test('size buckets', () => {
   assert.equal(sizeBucket(1e8), 'micro');
   assert.equal(sizeBucket(null), 'unknown');
 });
+
+test('filings dated after the as-of bar are ignored (no look-ahead)', () => {
+  const bars = makeBars(300, { seed: 4 });
+  const asOf = new Date(bars.at(-1).time * 1000);
+  const future = new Date(asOf.getTime() + 30 * 86400000).toISOString().slice(0, 10);
+  const m = computeMetrics(bars, null, [{ category: 'DILUTION', importance: 'high', filingDate: future }]);
+  assert.equal(m.dilutionFilings365d, 0);
+});

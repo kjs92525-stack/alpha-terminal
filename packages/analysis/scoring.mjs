@@ -61,8 +61,13 @@ export function computeMetrics(bars, fundamentals = null, filings = [], asOf = n
   const revenue = fundamentals?.revenue?.value ?? null;
   const ni = fundamentals?.netIncome?.value ?? null;
   const ref = asOf ?? (n ? new Date(bars[n - 1].time * 1000).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
-  const cutoff = new Date(ref).getTime() - 365 * 86400000;
-  const dilutionFilings = (filings || []).filter((f) => f.category === 'DILUTION' && f.importance !== 'low' && new Date(f.filingDate).getTime() >= cutoff);
+  const refMs = new Date(ref).getTime();
+  const cutoff = refMs - 365 * 86400000;
+  // Only filings public on or before the as-of date (no look-ahead when scoring historical bars).
+  const dilutionFilings = (filings || []).filter((f) => {
+    const t = new Date(f.filingDate).getTime();
+    return f.category === 'DILUTION' && f.importance !== 'low' && t >= cutoff && t <= refMs + 86400000;
+  });
 
   return {
     asOf: ref,
