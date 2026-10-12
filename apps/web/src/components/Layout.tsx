@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BellRing, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
+import { Activity, BarChart3, BellRing, Trophy, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
 import { useTerminal, type Page } from '../lib/store';
 import type { TickerHit } from '../lib/types';
 
@@ -9,6 +9,7 @@ export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNo
   { id: 'charts', label: '차트 연구실', code: 'CHART LAB', icon: <CandlestickChart size={16} /> },
   { id: 'events', label: '이벤트 레이더', code: 'EVENT RADAR', icon: <Radar size={16} /> },
   { id: 'research', label: '기업 정밀분석', code: 'RESEARCH', icon: <FileSearch size={16} /> },
+  { id: 'performance', label: '성과 검증', code: 'TRACK RECORD', icon: <Trophy size={16} /> },
   { id: 'alerts', label: 'TradingView 연동', code: 'TRADINGVIEW', icon: <BellRing size={16} /> },
   { id: 'settings', label: '데이터 연결', code: 'CONNECTIONS', icon: <Settings size={16} /> },
 ];
@@ -109,7 +110,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         </div>
       </header>
       {mode === 'mock' ? (
-        <div className="announcement">⚠ <b>SIMULATED DATA</b> · API가 연결되지 않아 가상 종목(SIM01–06)과 합성 시세로 동작합니다. 투자 판단에 사용하지 마세요.<span className="announcement-right">데이터 연결 메뉴 참고</span></div>
+        <div className="announcement">⚠ <b>SIMULATED DATA</b> · API 미연결 — 대시보드·차트·개별 분석은 가상 종목(SIM01–06)과 합성 시세입니다. (AI 종목발굴의 야간 랭킹·성과 검증은 실데이터 스냅샷이 있을 때 실데이터)<span className="announcement-right">데이터 연결 메뉴 참고</span></div>
       ) : (
         <div className="announcement live">● <b>LIVE</b> · SEC EDGAR 공식 공시·재무 + 무료 지연 시세(EOD/비공식). 실시간 체결가가 아니며 투자 자문이 아닙니다.<span className="announcement-right">모든 수치에 출처·갱신 시각 표시</span></div>
       )}

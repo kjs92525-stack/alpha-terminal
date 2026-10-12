@@ -5,7 +5,7 @@ import { load, save } from './storage';
 import { fetchWatchlist, setWatch, supabase, type Session } from './supabase';
 import type { AnalyzeResponse, DataMode, Health, ScreenRow } from './types';
 
-export type Page = 'dashboard' | 'discover' | 'charts' | 'events' | 'research' | 'alerts' | 'settings';
+export type Page = 'dashboard' | 'discover' | 'charts' | 'events' | 'research' | 'performance' | 'alerts' | 'settings';
 
 // Default live universe: a mix of mega/large caps and smaller, higher-volatility names.
 export const DEFAULT_LIVE_UNIVERSE = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'AVGO', 'TSLA', 'AMD', 'JPM', 'LLY', 'XOM', 'PLTR', 'SOFI', 'RKLB', 'HIMS', 'IONQ', 'CELH', 'UPST', 'OKLO'];

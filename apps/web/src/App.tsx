@@ -9,13 +9,15 @@ import { EventRadar } from './pages/EventRadar';
 import { Research } from './pages/Research';
 import { Settings } from './pages/Settings';
 import { Alerts } from './pages/Alerts';
+import { Performance } from './pages/Performance';
 
 const TITLES: Record<string, [string, string]> = {
   dashboard: ['Market Intelligence', 'Discover signals. Validate evidence. Manage risk.'],
-  discover: ['AI 종목발굴', '모멘텀·추세·재무·밸류·유동성·위험 6개 팩터 기반 랭킹'],
+  discover: ['AI 종목발굴', '미국 전 종목 야간 랭킹 — 중장기 1순위, 단기 2순위'],
   charts: ['차트 연구실', '지표·시장구조·ICT 신호와 확정 여부'],
   events: ['이벤트 레이더', 'SEC 공시·FDA·희석·런웨이 — 공식 출처와 접수 시각'],
   research: ['기업 정밀분석', '점수 근거, 시나리오, 재무, 공시'],
+  performance: ['성과 검증', '매일의 추천을 변경 불가 원장에 기록하고 SPY 대비 성과를 공개'],
   alerts: ['TradingView 연동', '알림 웹훅 + 공시·위험 맥락 + Pine Script'],
   settings: ['데이터 연결', '데이터 출처, 연결 상태, 계정'],
 };
@@ -45,6 +47,7 @@ function Shell() {
               {page === 'charts' && <ChartLab />}
               {page === 'events' && <EventRadar />}
               {page === 'research' && <Research />}
+              {page === 'performance' && <Performance />}
               {page === 'alerts' && <Alerts />}
               {page === 'settings' && <Settings />}
             </>
