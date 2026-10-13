@@ -11,7 +11,7 @@ const STAGE: Record<SetupStage, { ko: string; cls: string; tip: string }> = {
   POST_BREAKOUT: { ko: '돌파 후 눌림', cls: 'up', tip: '최근 10거래일 내 돌파, 아직 많이 오르지 않음 — 진입 가능 구간' },
   NEAR_PIVOT: { ko: '돌파 임박', cls: 'neutral', tip: '바닥 상단 6% 이내 — 돌파 시 진입 대기' },
   EXTENDED: { ko: '추격 금지', cls: 'down', tip: '돌파가 대비 12% 이상 상승 — 눌림 대기' },
-  IN_BASE: { ko: '바닥 형성 중', cls: '', tip: '' },
+  IN_BASE: { ko: '바닥 다지는 중', cls: 'neutral', tip: '긴 바닥 박스 안 — 아래쪽이면 분할매수, 위쪽이면 상단 돌파 대기' },
   FAILED: { ko: '돌파 실패', cls: 'down', tip: '' },
   NONE: { ko: '—', cls: '', tip: '' },
   BOUNCE: { ko: '지지 반등', cls: 'up', tip: '지지선에서 반등 캔들 확인 — 오늘 고가 돌파 시 매수' },
@@ -23,6 +23,7 @@ const STAGE: Record<SetupStage, { ko: string; cls: string; tip: string }> = {
 
 const TYPES: Array<{ key: SetupType; ko: string; desc: string; stages: SetupStage[] }> = [
   { key: 'breakout', ko: '바닥 돌파', desc: '6–18개월 바닥을 다진 뒤 상단을 거래량 실어 뚫는 자리', stages: ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT'] },
+  { key: 'base', ko: '바닥 다지기', desc: '크게 빠진 뒤 6–18개월째 바닥에서 옆으로 기는 종목 (아직 돌파 전). 박스 아래쪽이면 분할매수, 위쪽이면 돌파 대기', stages: ['IN_BASE'] },
   { key: 'pullback', ko: '눌림목', desc: '상승 추세 종목이 5–25% 쉬면서 20일 EMA·50일선·이전 고점·오더블록 지지에 닿은 자리', stages: ['BOUNCE', 'AT_SUPPORT', 'APPROACHING'] },
   { key: 'weekly_bottom', ko: '주봉 바닥', desc: '2년 고점 대비 35% 이상 빠진 뒤 신저가를 멈추고 바닥 20% 이내에 있는 종목', stages: ['TURNING', 'AT_BOTTOM'] },
   { key: 'monthly_bottom', ko: '월봉 바닥', desc: '5년 고점 대비 50% 이상 빠진 뒤 신저가를 멈추고 바닥 25% 이내에 있는 종목', stages: ['TURNING', 'AT_BOTTOM'] },
@@ -34,6 +35,8 @@ function structure(x: SetupRow): [string, string] {
   switch (typeOf(x)) {
     case 'breakout':
       return [x.base ? `바닥 ${x.base.months}개월` : '—', x.pivot != null ? `돌파가 $${fmtPrice(x.pivot)} ${x.extension != null ? fmtPct(x.extension) : x.distanceToPivot != null ? `-${(x.distanceToPivot * 100).toFixed(1)}%` : ''}` : ''];
+    case 'base':
+      return [x.base ? `바닥 ${x.base.months}개월 · 폭 ${((x.base.depth ?? 0) * 100).toFixed(0)}%` : '—', x.posInBase != null ? `박스 ${x.posInBase <= 0.35 ? '아래쪽' : x.posInBase >= 0.65 ? '위쪽' : '중간'} (${(x.posInBase * 100).toFixed(0)}%) · 상단 $${fmtPrice(x.pivot ?? 0)}` : ''];
     case 'pullback':
       return [`조정 -${((x.depth ?? 0) * 100).toFixed(0)}%`, x.support ? `${x.support.kind} $${fmtPrice(x.support.price)}` : ''];
     default:

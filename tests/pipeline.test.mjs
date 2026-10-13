@@ -244,7 +244,7 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.ok(Array.isArray(setups.candidates) && setups.stats && setups.caveat);
   const sectors = JSON.parse(fs.readFileSync(path.join(outDir, 'sectors.json'), 'utf8'));
   assert.ok(Array.isArray(sectors.groups) && sectors.method);
-  assert.deepEqual(Object.keys(setups.stats.byType).sort(), ['breakout', 'monthly_bottom', 'pullback', 'weekly_bottom']);
+  assert.deepEqual(Object.keys(setups.stats.byType).sort(), ['base', 'breakout', 'monthly_bottom', 'pullback', 'weekly_bottom']);
   for (const c of setups.candidates) assert.ok(c.type && c.stage && (!c.plan || typeof c.plan.how === 'string'), JSON.stringify(c).slice(0, 200));
   assert.ok(state.monthlyCalls >= 1, 'long monthly history fetched');
   assert.ok(fs.existsSync(path.join(cacheDir, 'monthly', 'SPY.json')));
