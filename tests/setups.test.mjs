@@ -144,3 +144,10 @@ test('story narrative: loss narrowing + accelerating revenue reads as a turnarou
   const none = storySignals({ fundamentals: null, filings: [], news: [], asOf: '2026-10-12' }).narrative;
   assert.match(none.takeaway, /실적 데이터가 없어/);
 });
+
+test('narrative does not claim losses are shrinking when there is no year-ago figure', () => {
+  const q = (end, value) => ({ end, value, filed: end, form: '10-Q' });
+  const fundamentals = { revenueQuarterly: [q('2025-01-31', 100), q('2025-04-30', 100), q('2025-07-31', 100), q('2026-01-31', 116), q('2026-04-30', 120), q('2026-07-31', 140)], netIncomeQuarterly: [q('2026-04-30', 5), q('2026-07-31', -10)] };
+  const { narrative } = storySignals({ fundamentals, filings: [], news: [], asOf: '2026-10-12' });
+  assert.match(narrative.takeaway, /적자가 줄어드는지는 아직 확인되지 않았습니다/);
+});

@@ -18,23 +18,29 @@ export function storyPicks(data: Setups | null, limit = 8): StoryPick[] {
   const best = new Map<string, StoryPick>();
   for (const row of data.candidates) {
     if (!BUY_AREA.has(row.stage) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
+    if (row.plan.rMultiple == null || row.plan.rMultiple < 1.5) continue; // target too close to be worth the risk
     const text = row.reasons.map((r) => r.text).join(' ');
+    const lines = row.narrative?.lines.join(' ') ?? '';
     const why: string[] = [];
     let bonus = 0;
-    const loss = /아직 적자|적자 상태/.test(row.narrative?.lines.join(' ') ?? '');
+    const narrowing = /적자가 \d+% 줄었/.test(lines) || /적자 폭 절반/.test(text);
+    const widening = /적자가 \d+% 늘었/.test(lines);
     const accel = /가속/.test(text);
-    const turned = /흑자 전환/.test(text);
-    const narrowing = /축소/.test(text) || /적자가 \d+% 줄었/.test(row.narrative?.lines.join(' ') ?? '');
+    const turned = /흑자 전환/.test(text) || /흑자로 돌아섰/.test(lines);
     const doubted = /의심/.test(text);
     const surge = /관심 급증/.test(text);
-    if (loss && (narrowing || accel)) { why.push('적자지만 개선 중'); bonus += 15; }
+    if (narrowing) { why.push('적자지만 개선 중'); bonus += 15; }
     if (turned) { why.push('흑자 전환'); bonus += 12; }
     if (accel) { why.push('매출 성장 가속'); bonus += 8; }
     if (doubted) { why.push('시장은 의심 중'); bonus += 10; }
     if (surge) { why.push('뉴스 관심 급증'); bonus += 5; }
     if (row.themes.length) { why.push(`테마: ${row.themes.join('·')}`); bonus += 4; }
+    if (widening) { why.push('⚠ 적자 확대'); bonus -= 20; }
+    // the point is to find stories the market has not priced: tilt away from mega caps
+    if (row.mcap != null && row.mcap > 300e9) bonus -= 12;
+    else if (row.mcap != null && row.mcap < 20e9) bonus += 5;
     const penalty = row.reasons.filter((r) => r.kind === 'minus').reduce((s, r) => s + Math.abs(r.pts), 0) * 0.5;
-    if (!why.length) continue; // nothing story-like: chart only
+    if (!why.some((w) => !w.startsWith('⚠'))) continue; // nothing story-like: chart only
     const priority = Math.round(row.chartScore * 0.4 + row.storyScore * 0.6 + bonus - penalty);
     const hook = `${TYPE_KO[row.type ?? 'breakout']} · ${STAGE_KO[row.stage] ?? row.stage}`;
     const prev = best.get(row.symbol);

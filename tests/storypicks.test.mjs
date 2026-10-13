@@ -5,6 +5,7 @@ import { storyPicks, buildStoryPrompt } from '../apps/web/src/lib/storyPicks.ts'
 const row = (o) => ({
   type: 'pullback', symbol: 'X', name: 'X Corp', sector: 'Information Technology', price: 10, mcap: 1e9, adv20: 5e6, stage: 'BOUNCE',
   plan: { entry: 10.2, stop: 9.5, stopKind: '눌림 저점 아래', target: 12, riskPct: 0.07, rMultiple: 2.6, note: null, how: '다음 거래일 오늘 고가 $10.20 위에서 매수 · 손절 $9.50' },
+  mcap: 2e9,
   chartScore: 70, storyScore: 40, score: 57, reasons: [], themes: [], revenueYoY: [], news: [], newsChecked: true, ...o,
 });
 
@@ -16,10 +17,15 @@ test('story picks: chart buy area + story signals, turnaround ranked first, char
     row({ symbol: 'CHART', chartScore: 95 }), // no story signal
     row({ symbol: 'RISKY', stage: 'BOUNCE', plan: { ...row({}).plan, riskPct: 0.3 }, reasons: [{ kind: 'plus', text: '흑자 전환', pts: 25 }] }),
     row({ symbol: 'EXT', stage: 'EXTENDED', reasons: [{ kind: 'plus', text: '흑자 전환', pts: 25 }] }),
+    row({ symbol: 'LOWR', plan: { ...row({}).plan, rMultiple: 0.4 }, reasons: [{ kind: 'plus', text: '흑자 전환', pts: 25 }] }),
+    row({ symbol: 'WIDE', reasons: [{ kind: 'plus', text: '매출 성장 가속: 30% → 36% (3개 분기)', pts: 20 }],
+      narrative: { lines: ['2026-06 분기 순손실 -$170.0M로 아직 적자지만, 1년 전(-$50.4M)보다 적자가 237% 늘었습니다.'], takeaway: 't', method: 'm' } }),
   ] };
   const picks = storyPicks(data);
-  assert.deepEqual(picks.map((p) => p.symbol ?? p.row.symbol), ['TURN', 'THEME']);
+  assert.deepEqual(picks.map((p) => p.row.symbol), ['TURN', 'THEME', 'WIDE']);
   assert.ok(picks[0].why.includes('적자지만 개선 중') && picks[0].why.includes('시장은 의심 중'));
+  const wide = picks.find((p) => p.row.symbol === 'WIDE');
+  assert.ok(wide.why.includes('⚠ 적자 확대') && !wide.why.includes('적자지만 개선 중'), 'growing losses are flagged, not praised');
 });
 
 test('story prompt carries the setup, buy point, numbers, headlines and the analysis checklist', () => {
