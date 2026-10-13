@@ -1,6 +1,6 @@
 // Finnhub (free plan: 60 calls/min) as the fundamentals source when SEC refuses the runner.
-// Two calls per company: /stock/profile2 (industry, shares, market cap) and
-// /stock/financials-reported?freq=quarterly (numbers as filed with the SEC in 10-Q/10-K).
+// Three calls per company: /stock/profile2 (industry, shares, market cap) and
+// /stock/financials-reported?freq=quarterly and freq=annual (numbers as filed in 10-Q / 10-K).
 // Output uses the same shape as sec.mjs summarizeFacts(), so features, rankings and story
 // signals work unchanged. Docs: https://finnhub.io/docs/api
 
@@ -56,7 +56,9 @@ const CASH = ['CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsRestr
 
 const bare = (concept) => String(concept ?? '').replace(/^[a-z-]+_/i, '');
 function pick(section, names) {
-  const byName = new Map((section ?? []).map((x) => [bare(x.concept), x.value]));
+  // usually [{ concept, value }]; some filings come as { concept: value }
+  const list = Array.isArray(section) ? section : section && typeof section === 'object' ? Object.entries(section).map(([concept, value]) => ({ concept, value })) : [];
+  const byName = new Map(list.map((x) => [bare(x.concept), x.value]));
   for (const n of names) { const v = byName.get(n); if (typeof v === 'number' && Number.isFinite(v)) return v; }
   return null;
 }
@@ -64,8 +66,10 @@ const isoDay = (s) => String(s ?? '').slice(0, 10);
 const days = (a, b) => (Date.parse(b) - Date.parse(a)) / DAY;
 
 /** Keep only what we use from a financials-reported response (small enough to cache). */
-export function compactReported(reported) {
-  return (reported?.data ?? [])
+export function compactReported(reported, annual = null) {
+  const seen = new Set();
+  return [...(reported?.data ?? []), ...(annual?.data ?? [])]
+    .filter((d) => { const k = `${d.form}|${d.endDate}`; if (seen.has(k)) return false; seen.add(k); return true; })
     .filter((d) => /^(10-Q|10-K|20-F|40-F)/.test(d.form ?? '') && d.endDate)
     .map((d) => ({
       form: d.form, year: d.year ?? null, start: isoDay(d.startDate) || null, end: isoDay(d.endDate), filed: isoDay(d.filedDate) || null,
@@ -166,24 +170,27 @@ export function fundamentalsFromCompact(rows, profile) {
 /** Finnhub financials-reported (quarterly) + profile2 → Fundamentals. */
 export const toFundamentals = (reported, profile) => fundamentalsFromCompact(compactReported(reported), profile);
 
-/** One company: profile + quarterly reported financials. Symbol in vendor form (BRK.B). */
+/** One company: profile + quarterly and annual reported financials (3 calls). Symbol in vendor form (BRK.B). */
 export async function fetchCompany(client, symbol, now = Date.now()) {
   const sym = encodeURIComponent(symbol);
   const profile = await client.json(`/stock/profile2?symbol=${sym}`);
   const reported = await client.json(`/stock/financials-reported?symbol=${sym}&freq=quarterly`);
+  // the quarterly feed has 10-Qs only; fiscal Q4 needs the annual report (10-K)
+  const annual = await client.json(`/stock/financials-reported?symbol=${sym}&freq=annual`);
   return {
     symbol, source: 'Finnhub', fetchedAt: new Date(now).toISOString(),
     name: profile?.name ?? null, industry: profile?.finnhubIndustry ?? null, sector: industryToSector(profile?.finnhubIndustry),
     marketCap: typeof profile?.marketCapitalization === 'number' ? profile.marketCapitalization * 1e6 : null,
     cik: reported?.cik ? String(reported.cik).padStart(10, '0') : null,
     profile: { name: profile?.name ?? null, finnhubIndustry: profile?.finnhubIndustry ?? null, shareOutstanding: profile?.shareOutstanding ?? null, marketCapitalization: profile?.marketCapitalization ?? null },
-    reported: compactReported(reported),
+    format: 2,
+    reported: compactReported(reported, annual),
     filings: [],
   };
 }
 
 /** Cached record → record with facts recomputed from the compact filings (null if too old a format). */
 export function withFacts(rec) {
-  if (!rec?.reported) return null;
+  if (!rec?.reported || rec.format !== 2) return null; // older records lack the annual reports
   return { ...rec, facts: fundamentalsFromCompact(rec.reported, rec.profile) };
 }

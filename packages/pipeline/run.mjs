@@ -205,7 +205,7 @@ export async function runNightly({
   }
 
   // 4c. Finnhub fundamentals for companies without SEC data (SEC refuses cloud runners).
-  //     Free plan = 60 calls/min, 2 calls per company: most liquid missing companies first,
+  //     Free plan = 60 calls/min, 3 calls per company: most liquid missing companies first,
   //     then the stalest (quarterly numbers change about every 90 days). Cached per symbol.
   const fhDir = path.join(cacheDir, 'finnhub');
   const fhRec = new Map();
@@ -213,8 +213,8 @@ export async function runNightly({
   // facts are recomputed from cached compact filings every run; records in an older format are refetched
   for (const u of universe) { const r = withFacts(readJson(path.join(fhDir, `${safeName(u.symbol)}.json`), null)); if (r) fhRec.set(u.symbol, r); }
   if (env.FINNHUB_API_KEY) {
-    const fh = makeFinnhubClient({ apiKey: env.FINNHUB_API_KEY, fetchImpl, wait });
-    const maxCompanies = Math.floor(Number(env.FINNHUB_MAX_CALLS || 1500) / 2);
+    const fh = makeFinnhubClient({ apiKey: env.FINNHUB_API_KEY, fetchImpl, wait, minIntervalMs: Number(env.FINNHUB_MIN_INTERVAL_MS ?? 1100) });
+    const maxCompanies = Math.floor(Number(env.FINNHUB_MAX_CALLS || 1500) / 3);
     const adv = (s) => { const b = (cached.get(s) ?? []).slice(-20); return b.length ? b.reduce((a, x) => a + x.close * x.volume, 0) / b.length : 0; };
     const need = universe.filter((u) => !secFacts(u));
     const missing = need.filter((u) => !fhRec.has(u.symbol)).sort((a, b) => adv(b.symbol) - adv(a.symbol));
@@ -320,7 +320,7 @@ export async function runNightly({
         items.push({ type: 'breakout', r, stage: st.stage, setupScore: chart.chartScore, plan: planOut(chart.plan), detail: {
           pivot: r4(st.pivot), distanceToPivot: r4(st.distanceToPivot ?? null), extension: r4(st.extension ?? null),
           barsSinceBreakout: st.barsSinceBreakout ?? null, breakoutVolMult: r4(st.breakoutVolMult ?? null),
-          base: st.base ? { months: Math.round(st.base.window / 21), depth: r4(st.base.depth), high: r4(st.base.high), low: r4(st.base.low), priorPeak: r4(st.base.priorPeak ?? null), higherLows: st.base.higherLows, contraction: st.base.contraction, volumeDryUp: st.base.volumeDryUp } : null,
+          base: st.base ? { months: Math.round(st.base.window / 21), depth: r4(st.base.depth), high: r4(st.base.high), low: r4(st.base.low), priorPeak: r4(st.base.priorPeak ?? null), multiYearLow: r4(st.base.multiYearLow ?? null), higherLows: st.base.higherLows, contraction: st.base.contraction, volumeDryUp: st.base.volumeDryUp } : null,
           trend: { passed: chart.trend.passed, total: chart.trend.total }, rs: { newHigh: chart.rs.rsNewHigh, rs3m: r4(chart.rs.rs3m), rs12m: r4(chart.rs.rs12m) },
         } });
       }

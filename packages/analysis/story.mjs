@@ -55,7 +55,8 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf })
     const lastQ = ni[ni.length - 1];
     const yearAgo = ni.find((p) => Math.abs(Date.parse(p.end) - (Date.parse(lastQ.end) - 365 * DAY)) <= 20 * DAY);
     const prevQ = ni[ni.length - 2];
-    if (lastQ.value > 0 && ((yearAgo && yearAgo.value <= 0) || prevQ.value <= 0)) add(25, `흑자 전환 (분기 순이익 ${fmtUsd(lastQ.value)}, ${lastQ.end})`);
+    // turned profitable vs the same quarter a year ago (or, without one, vs the previous quarter)
+    if (lastQ.value > 0 && (yearAgo ? yearAgo.value <= 0 : prevQ.value <= 0)) add(25, `흑자 전환 (분기 순이익 ${fmtUsd(lastQ.value)}, ${lastQ.end})`);
     else if (lastQ.value > 0 && yearAgo && yearAgo.value > 0 && lastQ.value > yearAgo.value * 1.5) add(12, `분기 순이익 전년 대비 +${((lastQ.value / yearAgo.value - 1) * 100).toFixed(0)}%`);
     else if (lastQ.value < 0 && yearAgo && yearAgo.value < 0 && lastQ.value > yearAgo.value * 0.5) add(8, '적자 폭 절반 이하로 축소 — 흑자 전환 접근');
   }
@@ -123,7 +124,7 @@ export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }
       profit = 'turned';
       lines.push(`${q} 순이익 ${fmtUsd(lastQ.value)}로 1년 전 적자(${fmtUsd(yearAgo.value)})에서 흑자로 돌아섰습니다.`);
     } else if (yearAgo && yearAgo.value > 0) {
-      profit = lastQ.value > yearAgo.value * 1.2 ? 'profit-growing' : 'profit';
+      profit = lastQ.value > yearAgo.value * 1.2 ? 'profit-growing' : lastQ.value < yearAgo.value * 0.7 ? 'profit-falling' : 'profit';
       lines.push(`${q} 순이익 ${fmtUsd(lastQ.value)} (1년 전 ${fmtUsd(yearAgo.value)}, ${pct(lastQ.value / yearAgo.value - 1)}).`);
     } else {
       profit = 'profit';
@@ -165,6 +166,7 @@ export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }
   else if (profit === 'loss-narrowing') takeaway = '아직 적자지만 개선 중입니다 — 다음 분기에 적자가 더 줄어드는지가 관건입니다.';
   else if (profit === 'turned') takeaway = '흑자 전환 초기입니다 — 이익이 다음 분기에도 이어지는지 확인이 필요합니다.';
   else if ((profit === 'profit-growing' || profit === 'profit') && growth === 'accel') takeaway = '이미 흑자에 성장도 빨라지는 실적 모멘텀형입니다.';
+  else if (profit === 'profit-falling') takeaway = growth === 'accel' ? '매출은 빨라지지만 이익은 1년 전보다 크게 줄었습니다 — 성장이 이익으로 이어지는지 확인이 필요합니다.' : '이익이 1년 전보다 크게 줄었습니다 — 실적 뒷받침이 약합니다.';
   else if (growth === 'decel') takeaway = '성장이 느려지는 중이라, 차트가 좋아도 실적 뒷받침은 약합니다.';
   else if (profit === 'loss-widening') takeaway = '적자가 커지는 중이라, 스토리보다 위험이 큽니다.';
   else takeaway = improving ? '실적이 개선되는 흐름입니다.' : '실적에 뚜렷한 변화는 아직 보이지 않습니다.';

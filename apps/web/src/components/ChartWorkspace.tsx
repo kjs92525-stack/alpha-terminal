@@ -48,6 +48,13 @@ export function ChartWorkspace({ symbol, full = false, height }: { symbol: strin
     save(full ? 'alpha:overlays:full:v2' : 'alpha:overlays:v2', [...next]);
   };
   const pickTf = (t: Timeframe) => { setTf(t); save('alpha:tf', t); };
+  // chart size: 보통 / 크게 / 최대, scaled to the screen height and remembered
+  const [size, setSize] = useState<'M' | 'L' | 'XL'>(() => load('alpha:chartsize', 'L'));
+  const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 900 : window.innerHeight));
+  useEffect(() => { const on = () => setVh(window.innerHeight); window.addEventListener('resize', on); return () => window.removeEventListener('resize', on); }, []);
+  const pickSize = (z: 'M' | 'L' | 'XL') => { setSize(z); save('alpha:chartsize', z); };
+  const autoH = Math.round(Math.max(full ? 520 : 400, vh * { M: full ? 0.6 : 0.45, L: full ? 0.75 : 0.62, XL: 0.88 }[size]));
+  const chartH = height ?? autoH;
 
   const bars = data?.bars ?? [];
   const last = bars[bars.length - 1];
@@ -75,6 +82,10 @@ export function ChartWorkspace({ symbol, full = false, height }: { symbol: strin
           <span className="tf-sep" />
           <button className={engine === 'alpha' ? 'selected' : ''} onClick={() => pickEngine('alpha')} title="ALPHA 분석 엔진 (신호·확정 여부)">ALPHA</button>
           <button className={engine === 'tv' ? 'selected' : ''} onClick={() => pickEngine('tv')} title="TradingView 공식 위젯">TradingView</button>
+          {height === undefined && <>
+            <span className="tf-sep" />
+            {([['M', '보통'], ['L', '크게'], ['XL', '최대']] as const).map(([z, l]) => <button key={z} className={size === z ? 'selected' : ''} onClick={() => pickSize(z)} title="차트 높이">{l}</button>)}
+          </>}
         </div>
         {engine === 'alpha' && <div className="chart-options">
           {OVERLAYS.filter(([o]) => full || !['rsi', 'macd', 'profile', 'sma200'].includes(o)).map(([o, label]) => (
@@ -82,11 +93,11 @@ export function ChartWorkspace({ symbol, full = false, height }: { symbol: strin
           ))}
         </div>}
       </div>
-      {engine === 'tv' && (symbol.startsWith('SIM') ? <div className="pad-box muted">가상 종목(SIM)은 TradingView에 없습니다. 실데이터 모드에서 사용하세요.</div> : <TradingViewWidget symbol={symbol} tf={tf} height={height ?? (full ? 560 : 400)} />)}
+      {engine === 'tv' && (symbol.startsWith('SIM') ? <div className="pad-box muted">가상 종목(SIM)은 TradingView에 없습니다. 실데이터 모드에서 사용하세요.</div> : <TradingViewWidget symbol={symbol} tf={tf} height={chartH} />)}
       {engine === 'tv' && <p className="footnote pad">TradingView 위젯은 TradingView 자체 데이터로 그려지며 ALPHA 신호·확정 표시는 포함되지 않습니다. 같은 신호를 TradingView에서 보려면 “TradingView 연동” 메뉴의 Pine Script를 추가하세요.</p>}
       {engine === 'alpha' && error && <ErrorBox error={error} hint={intraday ? '분봉/시간봉은 Yahoo 공급자가 활성화되어야 합니다.' : undefined} />}
-      {engine === 'alpha' && !error && !analysis && <div className="chart-placeholder" style={{ height: height ?? (full ? 560 : 400) }}><Loading label="시세 로딩" /></div>}
-      {engine === 'alpha' && analysis && <PriceChart bars={bars} analysis={analysis} show={show} intraday={intraday} height={height ?? (full ? 560 : 400)} watermark={`${symbol} · ${tf}`} />}
+      {engine === 'alpha' && !error && !analysis && <div className="chart-placeholder" style={{ height: chartH }}><Loading label="시세 로딩" /></div>}
+      {engine === 'alpha' && analysis && <PriceChart bars={bars} analysis={analysis} show={show} intraday={intraday} height={chartH} watermark={`${symbol} · ${tf}`} />}
       {engine === 'alpha' && full && analysis && data && (
         <div className="lab-grid">
           <section className="panel inner">
