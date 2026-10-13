@@ -58,7 +58,7 @@ export function NewsFeed() {
         <button className="text-link" onClick={load} disabled={busy}><RefreshCw size={11} className={busy ? 'spin' : ''} /></button>
         <span className="feed-src">{tab === 'news' && news && <SourceBadge name={news.source} fetchedAt={news.fetchedAt} note={news.note} />}{tab === 'sec' && sec && <SourceBadge name={sec.source} fetchedAt={sec.fetchedAt} />}</span>
       </div>
-      {err && <ErrorBox error={err} hint={/ALPACA/.test(err) ? 'Cloudflare Pages 시크릿에 ALPACA_KEY_ID / ALPACA_SECRET_KEY를 등록하세요.' : undefined} />}
+      {err && <ErrorBox error={err} hint={/401/.test(err) ? 'Alpaca 키가 거부됐습니다(401). 키를 새로 만들었다면 Cloudflare → alpha-terminal → Settings → Variables and Secrets의 ALPACA_KEY_ID / ALPACA_SECRET_KEY도 새 키로 바꿔야 합니다.' : /ALPACA/.test(err) ? 'Cloudflare Pages 시크릿에 ALPACA_KEY_ID / ALPACA_SECRET_KEY를 등록하세요.' : undefined} />}
       {busy && !(tab === 'news' ? news : sec) && <Loading />}
       <div className="table-wrap feed-scroll">
         {tab === 'news' && news && (

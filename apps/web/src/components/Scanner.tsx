@@ -24,7 +24,7 @@ export function ScannerPanel() {
   const list = filterRows(rows, f, watchlist);
   return (
     <section className="panel scanner-panel">
-      <PanelHead kicker="01 / DISCOVERY" title="Alpha Scanner" right={<ModeBadge />} />
+      <PanelHead kicker="WATCHLIST · ON-DEMAND" title="관심 종목 실시간 점수" right={<ModeBadge />} />
       <div className="scanner-tabs">{FILTERS.map(([k, l]) => <button key={k} className={f === k ? 'active' : ''} onClick={() => setF(k)}>{l}</button>)}</div>
       <div className="scanner-heading"><span>RANK / TICKER</span><span>QUANT SCORE</span></div>
       <div className="scanner-list">

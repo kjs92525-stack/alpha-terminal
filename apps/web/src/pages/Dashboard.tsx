@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Activity, Gauge, Radar, Sparkles } from 'lucide-react';
+import { fetchLatest, fetchSetups, type Latest, type Setups } from '../lib/snapshot';
+import { storyPicks, TYPE_KO } from '../lib/storyPicks';
+import { StoryPicks } from '../components/StoryPicks';
 import { useTerminal, useAnalysis } from '../lib/store';
 import { ScannerPanel } from '../components/Scanner';
 import { ResearchDesk } from '../components/ResearchDesk';
@@ -11,21 +15,26 @@ import { TopMovers } from '../components/TopMovers';
 const RANK = { critical: 4, high: 3, medium: 2, low: 1 } as const;
 
 export function Dashboard() {
-  const { rows, universe, selected, mode, screening, setPage, health } = useTerminal();
+  const { selected, mode, setPage, health } = useTerminal();
   const { data } = useAnalysis(selected);
-  const scored = rows.filter((r) => r.score !== null);
-  const avg = scored.length ? Math.round(scored.reduce((s, r) => s + (r.score ?? 0), 0) / scored.length) : null;
-  const top = scored[0];
+  const [setups, setSetups] = useState<Setups | null>(null);
+  const [latest, setLatest] = useState<Latest | null>(null);
+  useEffect(() => { fetchSetups().then(setSetups).catch(() => {}); fetchLatest().then(setLatest).catch(() => {}); }, []);
+  const top = storyPicks(setups, 1)[0];
+  const byType = setups?.stats.byType;
+  const buyCount = (t: keyof NonNullable<typeof byType>, stages: string[]) => stages.reduce((s, k) => s + (byType?.[t]?.[k] ?? 0), 0);
+  const fundSrc = latest?.sources.fundamentals ? (/Finnhub/.test(latest.sources.fundamentals) ? 'Finnhub' : 'SEC') : '—';
   const events = (data?.filings ?? []).filter((f) => f.category !== 'INSIDER' && f.category !== 'EXHIBIT')
     .sort((a, b) => RANK[b.importance] - RANK[a.importance] || String(b.acceptedAt).localeCompare(String(a.acceptedAt))).slice(0, 4);
   return (
     <>
       <div className="kpi-grid">
-        <div className="kpi-card"><div className="kpi-top">ANALYSIS UNIVERSE <Activity size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{String(universe.length).padStart(2, '0')}</strong><span>{mode === 'live' ? '실제 상장 종목' : '가상 종목'}</span></div><div className="kpi-foot">● {screening.running ? `스크리닝 ${screening.done}/${screening.total}` : screening.at ? `계산 ${fmtEt(screening.at)}` : '대기'}</div></div>
-        <div className="kpi-card"><div className="kpi-top">TOP CANDIDATE <Sparkles size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{top?.symbol ?? '—'}</strong><span>{top ? `${top.score}/100 · ${top.rating}` : ''}</span></div><div className="kpi-foot">● 평균 점수 {avg ?? '—'} · 규칙 기반</div></div>
-        <div className="kpi-card"><div className="kpi-top">EVENT SIGNALS <Radar size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{String(data?.filings.length ?? 0).padStart(2, '0')}</strong><span>{selected} 최근 공시</span></div><div className="kpi-foot">● {mode === 'live' ? 'SEC EDGAR 공식' : '가상 이벤트'}</div></div>
-        <div className="kpi-card"><div className="kpi-top">SYSTEM STATUS <Gauge size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{mode === 'live' ? 'LIVE' : 'SIM'}</strong><span>{mode === 'live' ? (health?.secConfigured ? 'SEC 연결' : 'SEC 미설정') : 'API 미연결'}</span></div><div className="kpi-foot">● 시세: {health?.priceProviders.join(' → ') ?? '합성 OHLCV'}</div></div>
+        <div className="kpi-card"><div className="kpi-top">NIGHTLY SCAN <Activity size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{setups ? setups.stats.scanned.toLocaleString() : '—'}</strong><span>종목 검사</span></div><div className="kpi-foot">● {setups ? `기준일 ${setups.asOf} · 장 마감 후 자동` : '야간 수집 전'}</div></div>
+        <div className="kpi-card"><div className="kpi-top">STORY PICK <Sparkles size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{top?.row.symbol ?? '—'}</strong><span>{top ? top.hook : ''}</span></div><div className="kpi-foot">● {top ? top.why.slice(0, 2).join(' · ') : '스토리 신호 종목 없음'}</div></div>
+        <div className="kpi-card"><div className="kpi-top">BUY SETUPS <Radar size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{byType ? String(buyCount('breakout', ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT']) + buyCount('pullback', ['BOUNCE', 'AT_SUPPORT']) + buyCount('weekly_bottom', ['TURNING']) + buyCount('monthly_bottom', ['TURNING'])) : '—'}</strong><span>매수 자리</span></div><div className="kpi-foot">● {byType ? `${TYPE_KO.breakout} ${buyCount('breakout', ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT'])} · ${TYPE_KO.pullback} ${buyCount('pullback', ['BOUNCE', 'AT_SUPPORT'])} · 바닥 전환 ${buyCount('weekly_bottom', ['TURNING']) + buyCount('monthly_bottom', ['TURNING'])}` : '—'}</div></div>
+        <div className="kpi-card"><div className="kpi-top">DATA <Gauge size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{mode === 'live' ? 'LIVE' : 'SIM'}</strong><span>재무 {fundSrc}</span></div><div className="kpi-foot">● 시세: {health?.priceProviders.join(' → ') ?? '합성 OHLCV'}</div></div>
       </div>
+      <StoryPicks limit={6} />
       <div className="feed-row">
         <NewsFeed />
         <TopMovers />
