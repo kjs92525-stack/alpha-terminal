@@ -6,6 +6,11 @@ name = "alpha-terminal"
 main = "apps/api/src/worker.ts"
 compatibility_date = "2025-09-01"
 
+# Wrangler runs this before every deploy/versions upload, so dist/ exists even if the
+# dashboard build command is left empty (it is harmless if both are set).
+[build]
+command = "npm run build"
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
