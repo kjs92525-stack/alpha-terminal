@@ -1,12 +1,12 @@
 {
- "startedAt": "2026-10-13T06:53:25.568Z",
+ "startedAt": "2026-10-13T07:13:48.618Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
- "universe": 5260,
- "alpacaRequests": 1324,
- "fullFetches": 5060,
- "monthlyFetched": 5060,
+ "universe": 5261,
+ "alpacaRequests": 213,
+ "fullFetches": 1,
+ "monthlyFetched": 1,
  "asOf": "2026-10-12",
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
  "sec": {
@@ -15,16 +15,18 @@
   "requests": 2
  },
  "finnhub": {
-  "needed": 5260,
-  "cached": 200,
+  "needed": 5261,
+  "cached": 450,
   "attempted": 250,
-  "fetched": 250,
-  "withRevenue": 212,
-  "errors": [],
+  "fetched": 249,
+  "withRevenue": 204,
+  "errors": [
+   "ECHO: (section ?? []).map is not a function"
+  ],
   "calls": 500
  },
  "secPublished": {
-  "companyFilesWritten": 250,
+  "companyFilesWritten": 249,
   "recentFilings": 0
  },
  "withFeatures": 5257,
@@ -37,14 +39,14 @@
   "candidates": 1218,
   "newsRequests": 200,
   "byStage": {
-   "POST_BREAKOUT": 5,
    "NEAR_PIVOT": 45,
+   "POST_BREAKOUT": 5,
    "BREAKOUT": 1
   },
   "byType": {
    "breakout": {
-    "POST_BREAKOUT": 5,
     "NEAR_PIVOT": 45,
+    "POST_BREAKOUT": 5,
     "BREAKOUT": 1
    },
    "pullback": {
@@ -63,5 +65,5 @@
   }
  },
  "ledgerWritten": false,
- "seconds": 1204
+ "seconds": 781
 }
