@@ -66,6 +66,7 @@ export interface SetupRow {
   plan: SetupPlan | null;
   chartScore: number; storyScore: number; score: number;
   reasons: SetupReason[]; themes: string[]; revenueYoY: Array<{ end: string; yoy: number }>;
+  narrative?: { lines: string[]; takeaway: string; method: string };
   news: Array<{ time: string; headline: string; url?: string; sentiment?: string; tags?: string[] }>;
   newsChecked: boolean;
 }

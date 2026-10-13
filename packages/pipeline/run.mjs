@@ -375,6 +375,7 @@ export async function runNightly({
       stage: x.stage, ...x.detail, plan: x.plan,
       chartScore: x.setupScore, storyScore: story.storyScore, score: Math.round(x.setupScore * 0.55 + story.storyScore * 0.45),
       reasons: story.reasons, themes: story.themes, revenueYoY: story.revenueYoY.map((q) => ({ end: q.end, yoy: r4(q.yoy) })),
+      narrative: story.narrative,
       news: news.slice(0, 5).map((n) => ({ time: n.time, headline: n.headline, url: n.url, sentiment: n.sentiment, tags: n.tags })),
       newsChecked: newsBy.has(r.symbol),
     });
