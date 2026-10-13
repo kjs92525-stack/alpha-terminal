@@ -16,14 +16,18 @@ const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 export const SETUP_RULES = {
   baseWindows: [126, 189, 252, 378], // ~6, 9, 12, 18 months
   maxDepth: 0.5, // base high-to-low depth
-  maxDepthLong: 0.7, // 12m+ bases of volatile small caps run deeper (RGTI 2024: ~0.66–2.0)
+  maxDepthLong: 0.7, // 12m+ bases run deeper
+  highVol: 0.8, // annualized volatility above which a stock's bases are naturally deeper
+  maxDepthVolatile: 0.65, // RGTI 2024 (6m 0.66–1.45 = 54%), QUBT 2024 (0.35–0.90 = 61%)
+  maxDepthLongVolatile: 0.8,
+  deepPeakRatio: 0.6, // or: base top at least 40% under the 3-year peak (IONQ 2024: 10.1 vs 21.6)
   minDepth: 0.12, // shallower than this is a flag/tight range, not a base
   breakoutVolMult: 1.4, // breakout bar volume vs 50-day average
   lookbackBreakout: 10, // bars after a breakout still treated as actionable
   maxExtension: 0.12, // above pivot beyond this = extended, do not chase
   nearPivot: 0.06, // within 6% below pivot = setting up
   minBelowPeak: 0.2, // base ceiling must sit >= 20% under the earlier peak — a bottom, not a high
-  peakLookbackDays: 365 * 5,
+  peakLookbackDays: 365 * 3, // 3y, so a long-gone bubble high (ROKU 2021) does not make a rally look like a bottom
   maxAboveLow: 0.3, // base low within 30% of the multi-year low — the actual bottom, not a pause after a rally
   lowLookbackDays: 365 * 3,
 };
@@ -73,6 +77,13 @@ export function relativeStrength(bars, bench) {
   };
 }
 
+/** Max depth allowed for a window, wider for long windows and for very volatile stocks. */
+function allowedDepth(W, vol, rules) {
+  const volatile = vol !== null && vol >= (rules.highVol ?? Infinity);
+  if (W >= 252) return volatile ? rules.maxDepthLongVolatile ?? rules.maxDepthLong : rules.maxDepthLong ?? rules.maxDepth;
+  return volatile ? rules.maxDepthVolatile ?? rules.maxDepth : rules.maxDepth;
+}
+
 function baseStats(bars, endIdx, W) {
   const start = endIdx - W + 1;
   if (start < 0) return null;
@@ -88,8 +99,13 @@ function baseStats(bars, endIdx, W) {
   const range = (arr) => mean(arr.map((b) => (b.high - b.low) / b.close));
   const volFirst = mean(seg.slice(0, third).map((b) => b.volume));
   const volLast = mean(seg.slice(-Math.min(20, third)).map((b) => b.volume));
+  let sum = 0;
+  let sq = 0;
+  let k = 0;
+  for (let i = 1; i < seg.length; i++) { const r = Math.log(seg[i].close / seg[i - 1].close); if (Number.isFinite(r)) { sum += r; sq += r * r; k++; } }
+  const vol = k > 20 ? Math.sqrt(Math.max(0, sq / k - (sum / k) ** 2) * 252) : null;
   return {
-    window: W, start, end: endIdx, high: hi, low: lo, depth: 1 - lo / hi,
+    window: W, start, end: endIdx, high: hi, low: lo, depth: 1 - lo / hi, vol,
     highAgeBars: W - 1 - hiIdx, lowAgeBars: W - 1 - loIdx,
     higherLows: lowLast > lowFirst * 1.03,
     contraction: range(seg.slice(-20)) < range(seg.slice(0, third)) * 0.8,
@@ -132,12 +148,15 @@ export function findBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
   for (const W of rules.baseWindows) {
     const s = baseStats(bars, endIdx, W);
     if (!s) continue;
-    if (s.depth > (W >= 252 ? rules.maxDepthLong ?? rules.maxDepth : rules.maxDepth) || s.depth < rules.minDepth) continue;
+    if (s.depth > allowedDepth(W, s.vol, rules) || s.depth < rules.minDepth) continue;
     const peak = priorPeak(bars, s.start, monthly, rules.peakLookbackDays);
     if (peak !== null && s.high > peak * (1 - rules.minBelowPeak)) continue;
     // e.g. ROKU Oct-2026: 104–160 range after tripling from ~50 is a pause in an advance, not a bottom
+    // a bottom: near the multi-year low, or far under the recent peak
     const floor = priorLow(bars, s.start, monthly, rules.lowLookbackDays);
-    if (floor !== null && s.low > Math.min(floor, s.low) * (1 + rules.maxAboveLow)) continue;
+    const nearLow = floor === null || s.low <= Math.min(floor, s.low) * (1 + rules.maxAboveLow);
+    const deepUnderPeak = peak !== null && s.high <= peak * (rules.deepPeakRatio ?? 0);
+    if (!nearLow && !deepUnderPeak) continue;
     s.priorPeak = peak;
     s.multiYearLow = floor === null ? s.low : Math.min(floor, s.low);
     // a window that starts in the middle of the prior decline would take a point on the way
@@ -159,13 +178,15 @@ export function explainBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
   return rules.baseWindows.map((W) => {
     const s = baseStats(bars, endIdx, W);
     if (!s) return { window: W, reason: '데이터 부족' };
-    const maxD = W >= 252 ? rules.maxDepthLong ?? rules.maxDepth : rules.maxDepth;
-    if (s.depth > maxD) return { window: W, reason: `깊이 ${(s.depth * 100).toFixed(0)}% > ${(maxD * 100).toFixed(0)}%` };
+    const maxD = allowedDepth(W, s.vol, rules);
+    if (s.depth > maxD) return { window: W, reason: `깊이 ${(s.depth * 100).toFixed(0)}% > ${(maxD * 100).toFixed(0)}% (변동성 ${s.vol === null ? '?' : Math.round(s.vol * 100)}%)` };
     if (s.depth < rules.minDepth) return { window: W, reason: `깊이 ${(s.depth * 100).toFixed(0)}% < ${(rules.minDepth * 100).toFixed(0)}%` };
     const peak = priorPeak(bars, s.start, monthly, rules.peakLookbackDays);
     if (peak !== null && s.high > peak * (1 - rules.minBelowPeak)) return { window: W, reason: `상단 ${s.high.toFixed(2)}가 이전 고점 ${peak.toFixed(2)}에 너무 가까움` };
     const floor = priorLow(bars, s.start, monthly, rules.lowLookbackDays);
-    if (floor !== null && s.low > Math.min(floor, s.low) * (1 + rules.maxAboveLow)) return { window: W, reason: `저점 ${s.low.toFixed(2)}가 3년 최저 ${floor.toFixed(2)}보다 30% 넘게 위` };
+    const nearLow = floor === null || s.low <= Math.min(floor, s.low) * (1 + rules.maxAboveLow);
+    const deepUnderPeak = peak !== null && s.high <= peak * (rules.deepPeakRatio ?? 0);
+    if (!nearLow && !deepUnderPeak) return { window: W, reason: `저점 ${s.low.toFixed(2)}가 3년 최저 ${floor.toFixed(2)}보다 30% 넘게 위이고, 상단도 3년 고점보다 40% 이상 아래가 아님` };
     const pre = bars.slice(Math.max(0, s.start - 20), s.start);
     if (pre.length && Math.max(...pre.map((x) => x.high)) > s.high * 1.03) return { window: W, reason: '구간 시작이 하락 도중' };
     if (s.lowAgeBars < 15) return { window: W, reason: '저점이 너무 최근' };

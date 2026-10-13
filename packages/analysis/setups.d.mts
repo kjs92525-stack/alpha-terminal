@@ -1,11 +1,11 @@
 import type { Bar } from './types';
-export interface Base { window: number; start: number; end: number; high: number; low: number; depth: number; highAgeBars: number; lowAgeBars: number; higherLows: boolean; contraction: boolean; volumeDryUp: boolean; quality: number; priorPeak?: number | null; multiYearLow?: number | null }
+export interface Base { window: number; start: number; end: number; high: number; low: number; depth: number; highAgeBars: number; lowAgeBars: number; vol?: number | null; higherLows: boolean; contraction: boolean; volumeDryUp: boolean; quality: number; priorPeak?: number | null; multiYearLow?: number | null }
 export type Stage = 'BREAKOUT' | 'POST_BREAKOUT' | 'EXTENDED' | 'FAILED' | 'NEAR_PIVOT' | 'IN_BASE' | 'NONE';
 export interface Setup { stage: Stage; base?: Base; pivot?: number; breakoutIndex?: number; barsSinceBreakout?: number; breakoutVolMult?: number; extension?: number; distanceToPivot?: number; reason?: string }
 export interface TrendTemplate { passed: number; total: number; checks: Record<string, boolean>; ok: boolean }
 export interface RelStrength { rsNewHigh: boolean; rs3m: number | null; rs12m: number | null }
 export interface TradePlan { entry: number; stop: number; stopKind: string; target: number; riskPct: number; rMultiple: number | null; orderBlock: { top: number; bottom: number } | null; note: string | null; how: string; entryType: 'buy-stop' | 'limit' }
-export const SETUP_RULES: { baseWindows: number[]; maxDepth: number; maxDepthLong: number; minDepth: number; breakoutVolMult: number; lookbackBreakout: number; maxExtension: number; nearPivot: number; minBelowPeak: number; peakLookbackDays: number; maxAboveLow: number; lowLookbackDays: number };
+export const SETUP_RULES: { baseWindows: number[]; maxDepth: number; maxDepthLong: number; highVol: number; maxDepthVolatile: number; maxDepthLongVolatile: number; deepPeakRatio: number; minDepth: number; breakoutVolMult: number; lookbackBreakout: number; maxExtension: number; nearPivot: number; minBelowPeak: number; peakLookbackDays: number; maxAboveLow: number; lowLookbackDays: number };
 export function priorLow(bars: Bar[], startIdx: number, monthly?: Bar[] | null, lookbackDays?: number): number | null;
 export function priorPeak(bars: Bar[], startIdx: number, monthly?: Bar[] | null, lookbackDays?: number): number | null;
 export function trendTemplate(bars: Bar[]): TrendTemplate;

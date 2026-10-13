@@ -156,13 +156,13 @@ test('a range after a big rally off the lows is not a base (ROKU Oct-2026 case)'
   let t = Date.UTC(2022, 0, 3) / 1000;
   const bars = [];
   const push = (c, v = 4e6) => { bars.push({ time: t, open: c, high: c * 1.015, low: c * 0.985, close: c, volume: v }); t += 86400; };
-  for (let i = 0; i < 250; i++) push(490 * Math.pow(50 / 490, i / 249)); // 490 -> 50 (old bubble peak far above)
-  for (let i = 0; i < 200; i++) push(50 + 8 * Math.sin(i / 10)); // the real bottom around 50
+  for (let i = 0; i < 250; i++) push(490 * Math.pow(50 / 490, i / 249)); // 490 -> 50 (old bubble peak, 4+ years back)
+  for (let i = 0; i < 520; i++) push(i < 260 ? 50 + 50 * Math.sin((i / 260) * Math.PI) : 50 + 8 * Math.sin(i / 10)); // two years of bottoming, a bump to ~100
   for (let i = 0; i < 120; i++) push(50 + i * 0.5); // rally to ~110
   for (let i = 0; i < 130; i++) push(130 + 25 * Math.sin(i / 9) + i * 0.05, 3e6); // 104–160 consolidation
   assert.equal(findBase(bars, bars.length - 1), null, 'not a bottom: base low is 2x the multi-year low');
   // the same chart cut at the end of the real bottom does find a base near the lows
-  const atBottom = findBase(bars, 449);
+  const atBottom = findBase(bars, 769);
   assert.ok(!atBottom || atBottom.low < 50 * 1.3);
 });
 
@@ -193,4 +193,28 @@ test('a deep 12-month small-cap base (RGTI 2024-like, ~$0.66–$1.95) breaking o
   const s = detectSetup(bars);
   assert.equal(s.stage, 'BREAKOUT', JSON.stringify(explainBase(bars, bars.length - 2)));
   assert.ok(s.base.depth > 0.5 && s.base.window >= 252, 'deep long base accepted');
+});
+
+test('volatile small caps: QUBT-like 6-month bottom 61% deep and IONQ-like higher-low base far under its peak are bases', () => {
+  const mk = (closes, vols, swing = 0.05) => {
+    let t = Date.UTC(2021, 0, 4) / 1000;
+    return closes.map((c, i) => { const b = { time: t, open: c, high: c * (1 + swing), low: c * (1 - swing), close: c, volume: vols(i) }; t += 86400; return b; });
+  };
+  // QUBT-like: big earlier peak, 6-month bottom ~0.35–0.90 with violent daily moves, then an 8x volume breakout
+  const q = [];
+  for (let i = 0; i < 400; i++) q.push(8 * Math.pow(0.6 / 8, i / 399) * (1 + 0.08 * Math.sin(i)));
+  for (let i = 0; i < 140; i++) q.push((0.45 + 0.25 * (0.5 + 0.5 * Math.sin(i / 7))) * (1 + 0.07 * Math.sin(i * 1.7)));
+  q.push(1.0);
+  const qb = mk(q, (i) => (i === q.length - 1 ? 8e7 : 1e7), 0.07);
+  const sq = detectSetup(qb);
+  assert.equal(sq.stage, 'BREAKOUT', JSON.stringify(sq));
+  // IONQ-like: peak ~21.6, 2022 low ~3, 2024 base 6.2–10.1 (2x the old low but 50%+ under the peak)
+  const o = [];
+  for (let i = 0; i < 250; i++) o.push(3.2 + 0.4 * Math.sin(i / 9)); // 2022 lows
+  for (let i = 0; i < 200; i++) o.push(3.2 + 18 * Math.sin((i / 200) * Math.PI) * (i < 100 ? 1 : 1)); // 2023 rally to ~21 and back
+  for (let i = 0; i < 160; i++) o.push(6.6 + 1.6 * (0.5 + 0.5 * Math.sin(i / 8))); // 2024 base 6.6–8.2
+  o.push(10.4);
+  const ob = mk(o, (i) => (i === o.length - 1 ? 2e7 : 8e6), 0.04);
+  const so = detectSetup(ob);
+  assert.equal(so.stage, 'BREAKOUT', JSON.stringify(so));
 });
