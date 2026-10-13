@@ -176,3 +176,21 @@ test('profit down a lot is not called momentum; a quarter-to-quarter swing is no
   assert.doesNotMatch(s.reasons.map((r) => r.text).join(' '), /흑자 전환/);
   assert.match(s.narrative.takeaway, /이익은 1년 전보다 크게 줄었습니다/);
 });
+
+test('a deep 12-month small-cap base (RGTI 2024-like, ~$0.66–$1.95) breaking out on volume is found', async () => {
+  const { explainBase } = await import('../packages/analysis/setups.mjs');
+  let t = Date.UTC(2021, 0, 4) / 1000;
+  const bars = [];
+  const push = (c, v = 3e6) => { bars.push({ time: t, open: c, high: c * 1.04, low: c * 0.96, close: c, volume: v }); t += 86400; };
+  for (let i = 0; i < 300; i++) push(12 * Math.pow(0.9 / 12, i / 299)); // SPAC-era peak ~12 → 0.9
+  for (let i = 0; i < 120; i++) push(0.9 + 0.25 * Math.sin(i / 8)); // early bottom
+  // 12-month base: spike to ~1.9 early, slide to ~0.68 three months before the end, then a rising low
+  for (let i = 0; i < 252; i++) {
+    const c = i < 60 ? 1.1 + 0.8 * Math.sin((i / 60) * Math.PI) : i < 190 ? 1.3 - (i - 60) * 0.0048 : 0.68 + (i - 190) * 0.007;
+    push(c, i < 190 ? 2.5e6 : 1.8e6);
+  }
+  push(2.1, 12e6); // breakout through the base high on ~6x volume
+  const s = detectSetup(bars);
+  assert.equal(s.stage, 'BREAKOUT', JSON.stringify(explainBase(bars, bars.length - 2)));
+  assert.ok(s.base.depth > 0.5 && s.base.window >= 252, 'deep long base accepted');
+});

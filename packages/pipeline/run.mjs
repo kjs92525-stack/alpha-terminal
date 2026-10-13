@@ -308,7 +308,8 @@ export async function runNightly({
     entryType: p.entryType ?? null, how: p.how ?? null, riskPct: r4(p.riskPct), rMultiple: r4(p.rMultiple), note: p.note ?? null,
   } : null);
   for (const r of rows) {
-    if (r.features.price < 3 || (r.features.adv20 ?? 0) < 2e6 || r.sector === 'Blank Check') continue;
+    // $1+: long-base breakouts often start as low-priced small caps (RGTI was ~$1 in 2024); liquidity still required
+    if (r.features.price < Number(env.SETUP_MIN_PRICE || 1) || (r.features.adv20 ?? 0) < 2e6 || r.sector === 'Blank Check') continue;
     const bars = (cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec);
     if (bars.length < 220) continue;
     const htf = { weekly: resampleWeekly(bars), monthly: mergeMonthly((monthly.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec), bars) };

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fetchDailyBars } from '../packages/pipeline/alpaca.mjs';
 import { parseExchangeTickers, buildUniverse } from '../packages/pipeline/universe.mjs';
 import { makeSecClient } from '../packages/pipeline/secdata.mjs';
+import { fetchAssets } from '../packages/pipeline/alpaca.mjs';
 import { runBreakoutBacktest, loadBarsDir } from '../packages/pipeline/backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
@@ -16,11 +17,19 @@ const limit = Number(arg('limit', 0));
 const start = arg('start', '2016-01-01');
 const log = (m) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}`);
 
-const sec = makeSecClient({ userAgent: process.env.SEC_USER_AGENT });
-let universe = buildUniverse(parseExchangeTickers(await sec.json('https://www.sec.gov/files/company_tickers_exchange.json'))).map((u) => u.symbol);
+const CASES = ['PLTR', 'RGTI', 'QUBT', 'IONQ'];
+// SEC refuses GitHub runners; fall back to Alpaca's active US equities
+let listed;
+try {
+  listed = parseExchangeTickers(await makeSecClient({ userAgent: process.env.SEC_USER_AGENT }).json('https://www.sec.gov/files/company_tickers_exchange.json'));
+} catch (e) {
+  log(`SEC unavailable (${e.message}) — universe from Alpaca`);
+  listed = await fetchAssets({ keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY });
+}
+let universe = buildUniverse(listed).map((u) => u.symbol);
+if (limit > 0) universe = universe.slice(0, limit);
 // always include case studies
-for (const s of ['PLTR']) if (!universe.includes(s)) universe.push(s);
-if (limit > 0) universe = [...new Set(['PLTR', ...universe.slice(0, limit)])];
+universe = [...new Set([...CASES, ...universe])];
 fs.mkdirSync(cacheDir, { recursive: true });
 const have = new Set(fs.readdirSync(cacheDir).map((f) => f.replace(/\.json$/, '')));
 const need = ['SPY', ...universe].filter((s) => !have.has(s.replace(/[^A-Z0-9.\-]/gi, '_')));
@@ -40,4 +49,4 @@ const report = runBreakoutBacktest(all, spy);
 fs.mkdirSync(path.join(outDir, 'backtest'), { recursive: true });
 fs.writeFileSync(path.join(outDir, 'backtest', 'breakouts.json'), JSON.stringify(report, null, 1));
 log(`done: ${report.trades} trades`);
-console.log(JSON.stringify({ all: report.report.all, pltr: report.caseStudies.PLTR }, null, 1));
+console.log(JSON.stringify({ all: report.report.all, caseStudies: report.caseStudies, nearMisses: report.caseNearMisses }, null, 1));

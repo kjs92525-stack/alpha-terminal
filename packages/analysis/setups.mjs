@@ -16,6 +16,7 @@ const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
 export const SETUP_RULES = {
   baseWindows: [126, 189, 252, 378], // ~6, 9, 12, 18 months
   maxDepth: 0.5, // base high-to-low depth
+  maxDepthLong: 0.7, // 12m+ bases of volatile small caps run deeper (RGTI 2024: ~0.66–2.0)
   minDepth: 0.12, // shallower than this is a flag/tight range, not a base
   breakoutVolMult: 1.4, // breakout bar volume vs 50-day average
   lookbackBreakout: 10, // bars after a breakout still treated as actionable
@@ -131,7 +132,7 @@ export function findBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
   for (const W of rules.baseWindows) {
     const s = baseStats(bars, endIdx, W);
     if (!s) continue;
-    if (s.depth > rules.maxDepth || s.depth < rules.minDepth) continue;
+    if (s.depth > (W >= 252 ? rules.maxDepthLong ?? rules.maxDepth : rules.maxDepth) || s.depth < rules.minDepth) continue;
     const peak = priorPeak(bars, s.start, monthly, rules.peakLookbackDays);
     if (peak !== null && s.high > peak * (1 - rules.minBelowPeak)) continue;
     // e.g. ROKU Oct-2026: 104–160 range after tripling from ~50 is a pause in an advance, not a bottom
@@ -151,6 +152,26 @@ export function findBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
     if (!best || W > best.window || quality > best.quality) best = { ...s, quality };
   }
   return best;
+}
+
+/** Why no base qualifies at endIdx — one reason per window (for case studies / debugging). */
+export function explainBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
+  return rules.baseWindows.map((W) => {
+    const s = baseStats(bars, endIdx, W);
+    if (!s) return { window: W, reason: '데이터 부족' };
+    const maxD = W >= 252 ? rules.maxDepthLong ?? rules.maxDepth : rules.maxDepth;
+    if (s.depth > maxD) return { window: W, reason: `깊이 ${(s.depth * 100).toFixed(0)}% > ${(maxD * 100).toFixed(0)}%` };
+    if (s.depth < rules.minDepth) return { window: W, reason: `깊이 ${(s.depth * 100).toFixed(0)}% < ${(rules.minDepth * 100).toFixed(0)}%` };
+    const peak = priorPeak(bars, s.start, monthly, rules.peakLookbackDays);
+    if (peak !== null && s.high > peak * (1 - rules.minBelowPeak)) return { window: W, reason: `상단 ${s.high.toFixed(2)}가 이전 고점 ${peak.toFixed(2)}에 너무 가까움` };
+    const floor = priorLow(bars, s.start, monthly, rules.lowLookbackDays);
+    if (floor !== null && s.low > Math.min(floor, s.low) * (1 + rules.maxAboveLow)) return { window: W, reason: `저점 ${s.low.toFixed(2)}가 3년 최저 ${floor.toFixed(2)}보다 30% 넘게 위` };
+    const pre = bars.slice(Math.max(0, s.start - 20), s.start);
+    if (pre.length && Math.max(...pre.map((x) => x.high)) > s.high * 1.03) return { window: W, reason: '구간 시작이 하락 도중' };
+    if (s.lowAgeBars < 15) return { window: W, reason: '저점이 너무 최근' };
+    if (s.highAgeBars < 10) return { window: W, reason: '상단이 너무 최근' };
+    return { window: W, reason: 'OK', base: { low: s.low, high: s.high, depth: s.depth } };
+  });
 }
 
 /**
