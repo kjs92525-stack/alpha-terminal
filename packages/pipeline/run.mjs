@@ -8,6 +8,7 @@ import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
 import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
 import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
+import { makeFinnhubClient, fetchCompany } from './finnhub.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
@@ -203,6 +204,49 @@ export async function runNightly({
     stats.sec = { skipped: true, reason: stats.secDataError ?? stats.secError, requests: sec.requests };
   }
 
+  // 4c. Finnhub fundamentals for companies without SEC data (SEC refuses cloud runners).
+  //     Free plan = 60 calls/min, 2 calls per company: most liquid missing companies first,
+  //     then the stalest (quarterly numbers change about every 90 days). Cached per symbol.
+  const fhDir = path.join(cacheDir, 'finnhub');
+  const fhRec = new Map();
+  const secFacts = (u) => (u.cik ? cache.get(u.cik)?.facts : null);
+  for (const u of universe) { const r = readJson(path.join(fhDir, `${safeName(u.symbol)}.json`), null); if (r) fhRec.set(u.symbol, r); }
+  if (env.FINNHUB_API_KEY) {
+    const fh = makeFinnhubClient({ apiKey: env.FINNHUB_API_KEY, fetchImpl, wait });
+    const maxCompanies = Math.floor(Number(env.FINNHUB_MAX_CALLS || 500) / 2);
+    const adv = (s) => { const b = (cached.get(s) ?? []).slice(-20); return b.length ? b.reduce((a, x) => a + x.close * x.volume, 0) / b.length : 0; };
+    const need = universe.filter((u) => !secFacts(u));
+    const missing = need.filter((u) => !fhRec.has(u.symbol)).sort((a, b) => adv(b.symbol) - adv(a.symbol));
+    const stale = need.filter((u) => fhRec.has(u.symbol) && now - Date.parse(fhRec.get(u.symbol).fetchedAt) > 45 * 86400000)
+      .sort((a, b) => fhRec.get(a.symbol).fetchedAt.localeCompare(fhRec.get(b.symbol).fetchedAt));
+    const todo = [...missing, ...stale].slice(0, maxCompanies);
+    const fstats = { needed: need.length, cached: fhRec.size, attempted: todo.length, fetched: 0, withRevenue: 0, errors: [] };
+    for (let i = 0; i < todo.length; i++) {
+      const u = todo[i];
+      try {
+        const rec = await fetchCompany(fh, u.symbol, now);
+        fhRec.set(u.symbol, rec);
+        writeJson(path.join(fhDir, `${safeName(u.symbol)}.json`), rec);
+        fstats.fetched++;
+        if (rec.facts?.revenueQuarterly?.length) fstats.withRevenue++;
+      } catch (e) {
+        fstats.errors.push(`${u.symbol}: ${e.message}`);
+        if (e.fatal || fstats.errors.length >= 25) { fstats.aborted = e.message; break; }
+      }
+      if ((i + 1) % 50 === 0 || i + 1 === todo.length) log(`finnhub ${i + 1}/${todo.length}`);
+    }
+    fstats.errors = fstats.errors.slice(0, 10);
+    fstats.calls = fh.calls;
+    stats.finnhub = fstats;
+  }
+  /** Company record for features/story: SEC when it has facts, else Finnhub. */
+  const companyFor = (u) => {
+    const secRec = u.cik ? cache.get(u.cik) : null;
+    if (secRec?.facts) return secRec;
+    const f = fhRec.get(u.symbol);
+    return f ? { ...f, filings: secRec?.filings ?? [], sic: secRec?.sic ?? null } : secRec;
+  };
+
   // 4b. publish SEC data for the API (SEC refuses requests from Cloudflare Workers; the API
   //     falls back to these files). Company files are only rewritten when their content changes.
   const allListed = secOk ? buildUniverse(listed) : universe.filter((u) => u.cik);
@@ -211,9 +255,9 @@ export async function runNightly({
   const recent = [];
   const recentCutoff = Date.parse(asOf) - 5 * 86400000;
   for (const u of universe) {
-    const rec = u.cik ? cache.get(u.cik) : null;
+    const rec = companyFor(u);
     if (!rec) continue;
-    const body = { symbol: u.ticker, cik: u.cik, name: rec.name ?? u.name, sic: rec.sic ?? null, sicDescription: rec.sicDescription ?? null, fetchedAt: rec.fetchedAt, filings: (rec.filings ?? []).slice(0, 40), facts: rec.facts ?? null };
+    const body = { symbol: u.ticker, cik: u.cik ?? rec.cik ?? null, name: rec.name ?? u.name, sic: rec.sic ?? null, sicDescription: rec.sicDescription ?? rec.industry ?? null, source: rec.source ?? 'SEC', fetchedAt: rec.fetchedAt, filings: (rec.filings ?? []).slice(0, 40), facts: rec.facts ?? null };
     const file = path.join(outDir, 'companies', `${u.ticker}.json`);
     const next = JSON.stringify(body);
     let prev = null;
@@ -231,13 +275,16 @@ export async function runNightly({
   // 5. features
   const staleCutoff = Date.parse(asOf) - 7 * 86400000;
   const rows = [];
+  const companyBy = new Map();
   for (const u of universe) {
     const bars = cached.get(u.symbol);
     if (!bars?.length) continue;
-    const company = u.cik ? cache.get(u.cik) : null;
+    const company = companyFor(u);
     const features = computeFeatures(bars, company, asOf);
     if (!features || Date.parse(features.lastDate) < staleCutoff) continue;
-    rows.push({ symbol: u.symbol, ticker: fromVendorSymbol(u.symbol), cik: u.cik, name: company?.name ?? u.name, exchange: u.exchange, sector: sicToSector(company?.sic), features });
+    if (features.mcap === null && company?.marketCap) features.mcap = company.marketCap;
+    companyBy.set(u.symbol, company);
+    rows.push({ symbol: u.symbol, ticker: fromVendorSymbol(u.symbol), cik: u.cik, name: company?.name ?? u.name, exchange: u.exchange, sector: company?.sic ? sicToSector(company.sic) : company?.sector ?? 'Unknown', features });
   }
   stats.withFeatures = rows.length;
 
@@ -318,7 +365,7 @@ export async function runNightly({
   for (const x of items) {
     const { r } = x;
     if (!storyBy.has(r.symbol)) {
-      const company = r.cik ? cache.get(r.cik) : null;
+      const company = companyBy.get(r.symbol) ?? null;
       storyBy.set(r.symbol, storySignals({ fundamentals: company?.facts ?? null, filings: company?.filings ?? [], news: newsBy.get(r.symbol) ?? [], asOf }));
     }
     const story = storyBy.get(r.symbol);
@@ -369,7 +416,7 @@ export async function runNightly({
   const sources = {
     prices: `Alpaca Market Data v2 (${env.ALPACA_FEED || 'sip'}, adjustment=all, daily)`,
     filings: 'SEC EDGAR submissions + daily form index',
-    fundamentals: 'SEC XBRL companyfacts (latest annual)',
+    fundamentals: stats.finnhub ? `SEC XBRL companyfacts, 없으면 Finnhub financials-reported (SEC 10-Q/10-K 수치, 분기·TTM) — Finnhub ${fhRec.size}개 종목` : 'SEC XBRL companyfacts (latest annual)',
     universe: stats.universeSource === 'sec' ? 'SEC company_tickers_exchange.json'
       : secDataOk ? `${stats.universeSource === 'sec-cache' ? 'SEC 종목 목록(이전 수집본)' : 'Alpaca 종목 목록'} + SEC 재무·공시(data.sec.gov${stats.cikMap ? `, ${stats.cikMap.confirmed}개 종목 SEC 티커로 확인` : ''})`
         : `${stats.universeSource === 'sec-cache' ? 'SEC 종목 목록(이전 수집본)' : 'Alpaca 종목 목록'} — SEC 접속 실패로 섹터·재무·공시 없음`,
