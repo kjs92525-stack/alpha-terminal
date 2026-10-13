@@ -1,0 +1,349 @@
+{
+ "asOf": "2026-10-12",
+ "model": "xs-v1-prior",
+ "createdAt": "2026-10-13T05:43:54.770Z",
+ "rule": "신호일 종가 후 생성 → 다음 거래일 시가 진입 가정, h거래일 후 종가 청산, 같은 기간 SPY와 비교. 수수료·슬리피지 미반영.",
+ "mid": [],
+ "short": [
+  {
+   "rank": 1,
+   "symbol": "ABSI",
+   "name": "Absci Corporation Common Stock",
+   "sector": "Unknown",
+   "score": 82.7,
+   "factors": {
+    "trend": 98,
+    "pullback": 73,
+    "flow": 97,
+    "breakout": 55
+   },
+   "signalClose": 9.67
+  },
+  {
+   "rank": 2,
+   "symbol": "ALAB",
+   "name": "Astera Labs, Inc. Common Stock",
+   "sector": "Unknown",
+   "score": 78.9,
+   "factors": {
+    "trend": 93,
+    "pullback": 81,
+    "flow": 89,
+    "breakout": 42
+   },
+   "signalClose": 324.11
+  },
+  {
+   "rank": 3,
+   "symbol": "ADPT",
+   "name": "Adaptive Biotechnologies Corporation Common Stock",
+   "sector": "Unknown",
+   "score": 78.6,
+   "factors": {
+    "trend": 93,
+    "pullback": 84,
+    "flow": 68,
+    "breakout": 57
+   },
+   "signalClose": 25.57
+  },
+  {
+   "rank": 5,
+   "symbol": "ABCL",
+   "name": "AbCellera Biologics Inc. Common Shares",
+   "sector": "Unknown",
+   "score": 75.8,
+   "factors": {
+    "trend": 99,
+    "pullback": 64,
+    "flow": 67,
+    "breakout": 59
+   },
+   "signalClose": 12.635
+  },
+  {
+   "rank": 6,
+   "symbol": "AEHR",
+   "name": "Aehr Test Systems Common Stock",
+   "sector": "Unknown",
+   "score": 74.9,
+   "factors": {
+    "trend": 76,
+    "pullback": 98,
+    "flow": 85,
+    "breakout": 33
+   },
+   "signalClose": 78.18
+  }
+ ],
+ "setups": [],
+ "pullback": [
+  {
+   "rank": 1,
+   "symbol": "ACNB",
+   "name": "ACNB Corporation Common Stock",
+   "sector": "Unknown",
+   "score": 44,
+   "factors": {
+    "chart": 80,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 62.71
+  },
+  {
+   "rank": 2,
+   "symbol": "ADP",
+   "name": "Automatic Data Processing, Inc. Common Stock",
+   "sector": "Unknown",
+   "score": 43,
+   "factors": {
+    "chart": 70,
+    "story": 10,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 273.81
+  },
+  {
+   "rank": 3,
+   "symbol": "ALAB",
+   "name": "Astera Labs, Inc. Common Stock",
+   "sector": "Unknown",
+   "score": 40,
+   "factors": {
+    "chart": 60,
+    "story": 15,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 324.11
+  },
+  {
+   "rank": 4,
+   "symbol": "ADI",
+   "name": "Analog Devices, Inc. Common Stock",
+   "sector": "Unknown",
+   "score": 39,
+   "factors": {
+    "chart": 63,
+    "story": 10,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 406.245
+  },
+  {
+   "rank": 5,
+   "symbol": "ADM",
+   "name": "Archer Daniels Midland Company",
+   "sector": "Unknown",
+   "score": 39,
+   "factors": {
+    "chart": 70,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 80.42
+  },
+  {
+   "rank": 6,
+   "symbol": "AER",
+   "name": "Aercap Holdings N.V.",
+   "sector": "Unknown",
+   "score": 39,
+   "factors": {
+    "chart": 66,
+    "story": 5,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 146.2
+  },
+  {
+   "rank": 7,
+   "symbol": "AIZ",
+   "name": "Assurant, Inc.",
+   "sector": "Unknown",
+   "score": 39,
+   "factors": {
+    "chart": 70,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 268.63
+  },
+  {
+   "rank": 8,
+   "symbol": "AAT",
+   "name": "AMERICAN ASSETS TRUST, INC.",
+   "sector": "Unknown",
+   "score": 38,
+   "factors": {
+    "chart": 69,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 21.61
+  },
+  {
+   "rank": 9,
+   "symbol": "AAMI",
+   "name": "Acadian Asset Management Inc.",
+   "sector": "Unknown",
+   "score": 37,
+   "factors": {
+    "chart": 68,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 92.63
+  },
+  {
+   "rank": 10,
+   "symbol": "ABNB",
+   "name": "Airbnb, Inc. Class A Common Stock",
+   "sector": "Unknown",
+   "score": 37,
+   "factors": {
+    "chart": 50,
+    "story": 20,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 163.5
+  },
+  {
+   "rank": 11,
+   "symbol": "ACU",
+   "name": "Acme United Corporation",
+   "sector": "Unknown",
+   "score": 37,
+   "factors": {
+    "chart": 68,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 62.5
+  },
+  {
+   "rank": 12,
+   "symbol": "AHR",
+   "name": "American Healthcare REIT, Inc.",
+   "sector": "Unknown",
+   "score": 37,
+   "factors": {
+    "chart": 67,
+    "story": 0,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 52.52
+  },
+  {
+   "rank": 13,
+   "symbol": "ACIW",
+   "name": "ACI Worldwide, Inc. Common Stock",
+   "sector": "Unknown",
+   "score": 36,
+   "factors": {
+    "chart": 65,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 51.06
+  },
+  {
+   "rank": 14,
+   "symbol": "AIT",
+   "name": "Applied Industrial Technologies, Inc.",
+   "sector": "Unknown",
+   "score": 36,
+   "factors": {
+    "chart": 65,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 333.81
+  },
+  {
+   "rank": 15,
+   "symbol": "AGPU",
+   "name": "Axe Compute Inc. Common Stock",
+   "sector": "Unknown",
+   "score": 35,
+   "factors": {
+    "chart": 60,
+    "story": 5,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 10.75
+  },
+  {
+   "rank": 16,
+   "symbol": "ADPT",
+   "name": "Adaptive Biotechnologies Corporation Common Stock",
+   "sector": "Unknown",
+   "score": 33,
+   "factors": {
+    "chart": 60,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 25.57
+  },
+  {
+   "rank": 17,
+   "symbol": "ABCL",
+   "name": "AbCellera Biologics Inc. Common Shares",
+   "sector": "Unknown",
+   "score": 32,
+   "factors": {
+    "chart": 58,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 12.635
+  },
+  {
+   "rank": 18,
+   "symbol": "A",
+   "name": "Agilent Technologies Inc.",
+   "sector": "Unknown",
+   "score": 29,
+   "factors": {
+    "chart": 53,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 171.33
+  },
+  {
+   "rank": 19,
+   "symbol": "ACHV",
+   "name": "Achieve Life Sciences, Inc. Common Shares",
+   "sector": "Unknown",
+   "score": 28,
+   "factors": {
+    "chart": 50,
+    "story": 0,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 7.06
+  }
+ ],
+ "bottom": []
+}

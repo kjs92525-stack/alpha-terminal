@@ -1,0 +1,51 @@
+{
+ "startedAt": "2026-10-13T05:43:19.961Z",
+ "secUserAgentIssues": [],
+ "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
+ "universeSource": "alpaca-assets",
+ "universe": 200,
+ "alpacaRequests": 53,
+ "fullFetches": 201,
+ "monthlyFetched": 201,
+ "asOf": "2026-10-12",
+ "sec": {
+  "skipped": true,
+  "reason": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
+  "requests": 1
+ },
+ "secPublished": {
+  "companyFilesWritten": 0,
+  "recentFilings": 0
+ },
+ "withFeatures": 200,
+ "ranked": {
+  "mid": 0,
+  "short": 125
+ },
+ "setups": {
+  "scanned": 200,
+  "candidates": 42,
+  "newsRequests": 38,
+  "byStage": {
+   "NEAR_PIVOT": 5
+  },
+  "byType": {
+   "breakout": {
+    "NEAR_PIVOT": 5
+   },
+   "pullback": {
+    "AT_SUPPORT": 16,
+    "BOUNCE": 3
+   },
+   "weekly_bottom": {
+    "TURNING": 3,
+    "AT_BOTTOM": 9
+   },
+   "monthly_bottom": {
+    "AT_BOTTOM": 6
+   }
+  }
+ },
+ "ledgerWritten": true,
+ "seconds": 35
+}
