@@ -1,12 +1,12 @@
 {
- "startedAt": "2026-10-13T08:44:15.297Z",
+ "startedAt": "2026-10-13T10:35:46.995Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
- "universe": 5262,
- "alpacaRequests": 265,
- "fullFetches": 1,
- "monthlyFetched": 1,
+ "universe": 5283,
+ "alpacaRequests": 280,
+ "fullFetches": 64,
+ "monthlyFetched": 64,
  "asOf": "2026-10-12",
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
  "sec": {
@@ -15,51 +15,62 @@
   "requests": 2
  },
  "finnhub": {
-  "needed": 5262,
-  "cached": 0,
+  "needed": 5283,
+  "cached": 500,
   "attempted": 500,
   "fetched": 500,
-  "withRevenue": 422,
+  "withRevenue": 376,
   "errors": [],
   "calls": 1500
  },
  "secPublished": {
-  "companyFilesWritten": 461,
+  "companyFilesWritten": 464,
   "recentFilings": 0
  },
- "withFeatures": 5257,
+ "withFeatures": 5277,
  "ranked": {
-  "mid": 445,
-  "short": 3546
+  "mid": 847,
+  "short": 3543
  },
  "setups": {
-  "scanned": 5257,
-  "candidates": 1204,
+  "scanned": 5277,
+  "candidates": 1240,
   "newsRequests": 200,
   "byStage": {
-   "POST_BREAKOUT": 2,
-   "NEAR_PIVOT": 35
+   "POST_BREAKOUT": 5,
+   "NEAR_PIVOT": 32,
+   "BREAKOUT": 1
   },
   "byType": {
    "breakout": {
-    "POST_BREAKOUT": 2,
-    "NEAR_PIVOT": 35
+    "POST_BREAKOUT": 5,
+    "NEAR_PIVOT": 32,
+    "BREAKOUT": 1
    },
    "pullback": {
-    "BOUNCE": 232,
-    "AT_SUPPORT": 477,
+    "BOUNCE": 234,
+    "AT_SUPPORT": 480,
     "APPROACHING": 9
    },
    "weekly_bottom": {
     "TURNING": 31,
-    "AT_BOTTOM": 258
+    "AT_BOTTOM": 276
    },
    "monthly_bottom": {
-    "TURNING": 6,
-    "AT_BOTTOM": 154
+    "AT_BOTTOM": 166,
+    "TURNING": 6
    }
   }
  },
+ "sectors": {
+  "groups": 37,
+  "byPhase": {
+   "BASING": 17,
+   "LEADING": 13,
+   "DOWN": 7
+  },
+  "grouped": 630
+ },
  "ledgerWritten": false,
- "seconds": 1910
+ "seconds": 1989
 }
