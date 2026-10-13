@@ -22,6 +22,7 @@ export interface Env extends TvEnv, FeedEnv {
   ALLOWED_ORIGIN?: string;
   PRICE_PROVIDERS?: string;
   SCREEN_MAX?: string;
+  SNAPSHOT_BASE_URL?: string;
 }
 
 const VERSION = '0.6.0';
@@ -83,7 +84,7 @@ async function cachedFetch(url: string, init: RequestInit, ttl: number): Promise
 function secHeaders(env: Env): HeadersInit {
   const ua = env.SEC_USER_AGENT?.trim();
   if (!ua) throw new HttpError(503, 'SEC_USER_AGENT is not configured', 'Set a truthful "AppName contact@email" User-Agent as a secret (SEC fair-access policy).');
-  return { 'User-Agent': ua, Accept: 'application/json' };
+  return { 'User-Agent': ua, Accept: 'application/json', 'Accept-Encoding': 'gzip, deflate' };
 }
 
 async function secJson<T>(env: Env, url: string, ttl: number): Promise<{ data: T; fetchedAt: string }> {
@@ -106,6 +107,28 @@ function normCik(raw: string): string {
   return padCik(digits);
 }
 
+// ---------- nightly snapshot (fallback when SEC refuses requests from Cloudflare) ----------
+// The nightly GitHub Actions pipeline collects SEC data and publishes it to the repo's
+// public `data` branch. SEC has been observed to answer 403 to Cloudflare Workers, so
+// every SEC read below falls back to that copy and labels the source accordingly.
+
+const DEFAULT_SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
+const snapshotBase = (env: Env) => (env.SNAPSHOT_BASE_URL || DEFAULT_SNAPSHOT).replace(/\/+$/, '');
+
+async function snapshotJson<T>(env: Env, path: string, ttl = 600): Promise<T | null> {
+  const res = await cachedFetch(`${snapshotBase(env)}/${path}`, { headers: { Accept: 'application/json' } }, ttl);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new HttpError(502, `Snapshot HTTP ${res.status}`, path);
+  return (await res.json()) as T;
+}
+
+interface SnapshotCompany {
+  symbol: string; cik: string; name: string | null; sic: string | null; sicDescription: string | null; fetchedAt: string;
+  filings: Filing[]; facts: Fundamentals | null;
+}
+const SNAPSHOT_SOURCE = 'SEC EDGAR (야간 수집본 · GitHub data 브랜치)';
+const companySnapshot = (env: Env, symbol: string) => snapshotJson<SnapshotCompany>(env, `companies/${symbol.replace('.', '-')}.json`, 1800);
+
 // ---------- SEC ----------
 
 type TickerMap = Record<string, { cik_str: number; ticker: string; title: string }>;
@@ -113,7 +136,14 @@ let tickerMemo: { at: number; data: TickerMap } | null = null;
 
 async function tickerMap(env: Env): Promise<TickerMap> {
   if (tickerMemo && Date.now() - tickerMemo.at < TICKERS_TTL * 1000) return tickerMemo.data;
-  const { data } = await secJson<TickerMap>(env, 'https://www.sec.gov/files/company_tickers.json', TICKERS_TTL);
+  let data: TickerMap;
+  try {
+    data = (await secJson<TickerMap>(env, 'https://www.sec.gov/files/company_tickers.json', TICKERS_TTL)).data;
+  } catch (e) {
+    const snap = await snapshotJson<{ rows: Record<string, [string, string]> }>(env, 'sec/tickers.json', 3600).catch(() => null);
+    if (!snap) throw e;
+    data = Object.fromEntries(Object.entries(snap.rows).map(([t, [cik, title]], i) => [String(i), { cik_str: Number(cik), ticker: t, title }]));
+  }
   tickerMemo = { at: Date.now(), data };
   return data;
 }
@@ -127,7 +157,18 @@ async function resolveTicker(env: Env, symbol: string): Promise<{ ticker: string
   return null;
 }
 
-async function getFilings(env: Env, cik: string, limit = 40, forms?: string[]) {
+async function getFilings(env: Env, cik: string, limit = 40, forms?: string[], symbol?: string) {
+  try {
+    return await getFilingsLive(env, cik, limit, forms);
+  } catch (e) {
+    const snap = symbol ? await companySnapshot(env, symbol).catch(() => null) : null;
+    if (!snap) throw e;
+    const filings = (forms ? snap.filings.filter((f) => forms.includes(f.form)) : snap.filings).slice(0, limit);
+    return { cik: snap.cik, name: snap.name, tickers: [symbol!], sicDescription: snap.sicDescription, filings, source: SNAPSHOT_SOURCE, sourceUrl: `${snapshotBase(env)}/companies/${symbol!.replace('.', '-')}.json`, fetchedAt: snap.fetchedAt, liveError: (e as Error).message };
+  }
+}
+
+async function getFilingsLive(env: Env, cik: string, limit = 40, forms?: string[]) {
   const { data, fetchedAt } = await secJson<{ name?: string; tickers?: string[]; sicDescription?: string; cik: string }>(env, `https://data.sec.gov/submissions/CIK${cik}.json`, SEC_TTL);
   return {
     cik,
@@ -141,12 +182,14 @@ async function getFilings(env: Env, cik: string, limit = 40, forms?: string[]) {
   };
 }
 
-async function getFacts(env: Env, cik: string): Promise<{ fundamentals: Fundamentals; fetchedAt: string } | null> {
+async function getFacts(env: Env, cik: string, symbol?: string): Promise<{ fundamentals: Fundamentals; fetchedAt: string; source?: string } | null> {
   try {
     const { data, fetchedAt } = await secJson<unknown>(env, `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, FACTS_TTL);
     return { fundamentals: summarizeFacts(data) as Fundamentals, fetchedAt };
   } catch (e) {
     if (e instanceof HttpError && e.status === 404) return null; // some issuers have no XBRL facts
+    const snap = symbol ? await companySnapshot(env, symbol).catch(() => null) : null;
+    if (snap?.facts) return { fundamentals: snap.facts, fetchedAt: snap.fetchedAt, source: SNAPSHOT_SOURCE };
     throw e;
   }
 }
@@ -247,11 +290,13 @@ async function getBars(env: Env, symbol: string, tf: Timeframe): Promise<BarsRes
 // ---------- analysis ----------
 
 async function analyze(env: Env, symbol: string) {
-  const ref = await resolveTicker(env, symbol);
+  // SEC problems must never take down price-based analysis.
+  let refError: string | null = null;
+  const ref = await resolveTicker(env, symbol).catch((e) => { refError = (e as Error).message; return null; });
   const [barsRes, filingsRes, factsRes] = await Promise.allSettled([
     getBars(env, symbol, '1D'),
-    ref ? getFilings(env, ref.cik, 60) : Promise.resolve(null),
-    ref ? getFacts(env, ref.cik) : Promise.resolve(null),
+    ref ? getFilings(env, ref.cik, 60, undefined, symbol) : Promise.resolve(null),
+    ref ? getFacts(env, ref.cik, symbol) : Promise.resolve(null),
   ]);
   if (barsRes.status === 'rejected') throw barsRes.reason;
   const bars = barsRes.value;
@@ -271,10 +316,11 @@ async function analyze(env: Env, symbol: string) {
     sources: {
       prices: { name: bars.source, url: bars.sourceUrl, fetchedAt: bars.fetchedAt, note: '점수는 마감된 일봉만 사용' },
       filings: filings ? { name: filings.source, url: filings.sourceUrl, fetchedAt: filings.fetchedAt } : null,
-      fundamentals: facts ? { name: 'SEC XBRL companyfacts', url: `https://data.sec.gov/api/xbrl/companyfacts/CIK${ref?.cik}.json`, fetchedAt: facts.fetchedAt } : null,
+      fundamentals: facts ? { name: facts.source ?? 'SEC XBRL companyfacts', url: `https://data.sec.gov/api/xbrl/companyfacts/CIK${ref?.cik}.json`, fetchedAt: facts.fetchedAt } : null,
     },
     warnings: [
-      ...(ref ? [] : ['SEC 티커 매핑 없음 — 재무·공시 데이터 제외']),
+      ...(ref ? [] : [refError ? `SEC 연결 실패(${refError}) — 재무·공시 제외, 가격 기반 분석만 표시` : 'SEC 티커 매핑 없음 — 재무·공시 데이터 제외']),
+      ...(filings && 'liveError' in filings ? [`SEC 실시간 조회 실패 → 야간 수집본 사용 (${filings.fetchedAt.slice(0, 10)} 기준)`] : []),
       ...(filingsRes.status === 'rejected' ? [`공시 조회 실패: ${(filingsRes.reason as Error).message}`] : []),
       ...(factsRes.status === 'rejected' ? [`재무 조회 실패: ${(factsRes.reason as Error).message}`] : []),
     ],
@@ -377,9 +423,10 @@ export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Res
       const forms = url.searchParams.get('forms')?.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
       const id = decodeURIComponent(r[1]);
       let cik: string;
+      let sym: string | undefined;
       if (/^\d+$/.test(id)) cik = normCik(id);
-      else { const t = await resolveTicker(env, normSymbol(id)); if (!t) throw new HttpError(404, 'Ticker not found in SEC map'); cik = t.cik; }
-      return json(await getFilings(env, cik, limit, forms), 200, cors, 120);
+      else { sym = normSymbol(id); const t = await resolveTicker(env, sym); if (!t) throw new HttpError(404, 'Ticker not found in SEC map'); cik = t.cik; }
+      return json(await getFilings(env, cik, limit, forms, sym), 200, cors, 120);
     }
     if ((r = m(/^\/api\/v1\/sec\/submissions\/([^/]+)$/))) {
       const { data, fetchedAt } = await secJson<unknown>(env, `https://data.sec.gov/submissions/CIK${normCik(r[1])}.json`, SEC_TTL);
@@ -413,10 +460,10 @@ export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Res
         if (path === '/api/v1/movers') {
           return json(await movers(env, Math.min(25, Number(url.searchParams.get('top') || 10)), Number(url.searchParams.get('minPrice') || 1)), 200, cors, 60);
         }
-        const map = await tickerMap(env);
+        const map = await tickerMap(env).catch(() => ({} as TickerMap));
         const byCik = new Map<string, string>();
         for (const t of Object.values(map)) { const k = padCik(t.cik_str); if (!byCik.has(k)) byCik.set(k, t.ticker); }
-        return json(await secLatest(env, (cik) => byCik.get(cik) ?? null, limit), 200, cors, 60);
+        return json(await secLatest(env, (cik) => byCik.get(cik) ?? null, limit, () => snapshotJson(env, 'sec/recent-filings.json', 600)), 200, cors, 60);
       } catch (e) {
         if (e instanceof FeedError) return json({ error: e.message }, e.status, cors);
         throw e;

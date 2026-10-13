@@ -226,6 +226,13 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.ok(latest.recommendations.mid.length > 0);
   assert.ok(fs.existsSync(path.join(outDir, 'ledger', `${r1.asOf}.json`)));
   assert.ok(fs.existsSync(path.join(outDir, 'rankings', `${r1.asOf}.json`)));
+  // SEC fallback files for the API
+  const tick = JSON.parse(fs.readFileSync(path.join(outDir, 'sec', 'tickers.json'), 'utf8'));
+  assert.ok(Object.keys(tick.rows).length >= 24);
+  const comp = JSON.parse(fs.readFileSync(path.join(outDir, 'companies', `${f1.syms[0]}.json`), 'utf8'));
+  assert.equal(comp.cik, '0000001000');
+  assert.ok(comp.facts && comp.filings.length >= 1);
+  assert.ok(fs.existsSync(path.join(outDir, 'sec', 'recent-filings.json')));
   const perf = JSON.parse(fs.readFileSync(path.join(outDir, 'performance.json'), 'utf8'));
   assert.equal(perf.ledgers, 1);
   // dilution filer (cik 1005) is flagged
@@ -239,6 +246,7 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.equal(r1b.stats.ledgerWritten, false);
   assert.equal(fs.readFileSync(ledgerPath, 'utf8'), before);
   assert.equal(r1b.stats.fullFetches, 0, 'second run is incremental');
+  assert.equal(r1b.stats.secPublished.companyFilesWritten, 0, 'unchanged company files are not rewritten');
 
   // 30 sessions later: new ledger, first ledger's 20d outcome is evaluated
   state.days = 600;

@@ -578,3 +578,4 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .range-labels{display:flex;justify-content:space-between;font-size:9px;font-family:var(--mono);color:#8a8fbf;margin-top:3px}
 @media(max-width:1100px){.feed-row{grid-template-columns:1fr}}
 @media(max-width:740px){.feed-search{width:100%;margin-left:0}.feed-table td.summary{display:none}.feed-table th:nth-child(6){display:none}}
+.sent,.imp,.tag-pill,.chg-pill{white-space:nowrap}

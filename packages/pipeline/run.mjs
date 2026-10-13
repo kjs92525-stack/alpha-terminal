@@ -103,6 +103,31 @@ export async function runNightly({
   const sr = await refreshCompanies({ ciks, cache, client: sec, changed, now, maxRefresh: Number(env.SEC_MAX_REFRESH || 6000), onProgress: (d, t) => { if (d % 250 === 0 || d === t) log(`sec ${d}/${t}`); } });
   stats.sec = { ...sr, errors: sr.errors.slice(0, 20), changedFilers: changed.size, requests: sec.requests };
 
+  // 4b. publish SEC data for the API (SEC refuses requests from Cloudflare Workers; the API
+  //     falls back to these files). Company files are only rewritten when their content changes.
+  const allListed = buildUniverse(parseExchangeTickers(tickers));
+  writeJson(path.join(outDir, 'sec', 'tickers.json'), { generatedAt: new Date(now).toISOString(), source: 'SEC company_tickers_exchange.json', rows: Object.fromEntries(allListed.map((u) => [u.ticker, [u.cik, u.name]])) });
+  let companyFilesWritten = 0;
+  const recent = [];
+  const recentCutoff = Date.parse(asOf) - 5 * 86400000;
+  for (const u of universe) {
+    const rec = cache.get(u.cik);
+    if (!rec) continue;
+    const body = { symbol: u.ticker, cik: u.cik, name: rec.name ?? u.name, sic: rec.sic ?? null, sicDescription: rec.sicDescription ?? null, fetchedAt: rec.fetchedAt, filings: (rec.filings ?? []).slice(0, 40), facts: rec.facts ?? null };
+    const file = path.join(outDir, 'companies', `${u.ticker}.json`);
+    const next = JSON.stringify(body);
+    let prev = null;
+    try { prev = fs.readFileSync(file, 'utf8'); } catch { /* new file */ }
+    const strip = (txt) => txt && txt.replace(/"fetchedAt":"[^"]*",/, '');
+    if (strip(prev) !== strip(next)) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, next); companyFilesWritten++; }
+    for (const f of rec.filings ?? []) {
+      if (f.filingDate && Date.parse(f.filingDate) >= recentCutoff && f.category !== 'INSIDER' && f.category !== 'EXHIBIT') recent.push({ ...f, company: rec.name ?? u.name, cik: u.cik, ticker: u.ticker });
+    }
+  }
+  recent.sort((x, y) => String(y.acceptedAt ?? y.filingDate).localeCompare(String(x.acceptedAt ?? x.filingDate)));
+  writeJson(path.join(outDir, 'sec', 'recent-filings.json'), { generatedAt: new Date(now).toISOString(), note: '야간 배치 수집본 — 실시간 아님', items: recent.slice(0, 300) });
+  stats.secPublished = { companyFilesWritten, recentFilings: recent.length };
+
   // 5. features
   const staleCutoff = Date.parse(asOf) - 7 * 86400000;
   const rows = [];
