@@ -29,10 +29,12 @@ export function buildBrief({ setups, sectors, perTab = 12, siteUrl = null }) {
     for (const [k, v] of Object.entries(by)) L.push(`- **${k}**: ${v.join(', ')}`);
   }
   for (const [type, ko, stages] of TABS) {
-    const rows = (setups.candidates ?? []).filter((x) => (x.type ?? 'breakout') === type && stages.includes(x.stage)).slice(0, perTab);
+    // 바닥 다지기: only floors you can actually buy (at the floor, or a limit order within 15%)
+    const nearFloor = (x) => x.plan?.entryType === 'zone' || (x.plan?.entryType === 'limit' && x.plan.zone && x.price <= x.plan.zone[1] * 1.15);
+    const rows = (setups.candidates ?? []).filter((x) => (x.type ?? 'breakout') === type && stages.includes(x.stage) && (type !== 'base' || nearFloor(x))).slice(0, perTab);
     if (!rows.length) continue;
     const total = Object.values(setups.stats?.byType?.[type] ?? {}).reduce((a, b) => a + b, 0);
-    L.push('', `## ${ko} — 상위 ${rows.length}개${total ? ` (전체 ${total}개 중)` : ''}`, '');
+    L.push('', `## ${ko}${type === 'base' ? ' (바닥 근처 매수 가능한 종목만)' : ''} — 상위 ${rows.length}개${total ? ` (전체 ${total}개 중)` : ''}`, '');
     L.push('| 종목 | 현재가 | 상태 | 매수 방법 | 손절폭 | R | 점수(차트/스토리) | 스토리 요약 |');
     L.push('|---|---|---|---|---|---|---|---|');
     for (const x of rows) {

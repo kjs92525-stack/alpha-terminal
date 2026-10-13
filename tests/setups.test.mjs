@@ -238,6 +238,12 @@ test('바닥 다지기: inside the base near its floor → scale-in zone, stop u
   const pm = tradePlan(midBars, { ...s, stage: 'IN_BASE' });
   assert.equal(pm.entryType, 'limit');
   assert.ok(pm.entry < mid && pm.entry === pm.zone[1]);
+  // lower half but far above the floor zone: not a floor buy
+  const far = s.base.low * 1.4;
+  if (far < s.base.low + range * 0.5) {
+    const farBars = [...bars.slice(0, -1), { ...bars.at(-1), open: far, high: far * 1.01, low: far * 0.99, close: far }];
+    assert.equal(tradePlan(farBars, { ...s, stage: 'IN_BASE' }).entryType, 'buy-stop');
+  }
   // upper part of the base: wait for the breakout instead
   const hi = s.base.low + range * 0.8;
   const upper = [...bars.slice(0, -1), { ...bars.at(-1), open: hi, high: hi * 1.01, low: hi * 0.99, close: hi }];
