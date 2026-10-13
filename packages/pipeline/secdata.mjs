@@ -43,10 +43,28 @@ export function businessDaysBetween(fromIso, toIso, max = 10) {
   return out;
 }
 
+/**
+ * Clean up a User-Agent pasted into a secret (quotes, "SEC_USER_AGENT =" prefix, whitespace)
+ * and list problems SEC is known to reject. Never returns or logs the value itself.
+ */
+export function normalizeUserAgent(raw) {
+  const issues = [];
+  let ua = String(raw ?? '').trim();
+  for (let k = 0; k < 2; k++) {
+    if (/^["'`].*["'`]$/s.test(ua)) { ua = ua.slice(1, -1).trim(); issues.push('따옴표로 감싸져 있어 제거함'); }
+    if (/^SEC_USER_AGENT\s*[=:]/i.test(ua)) { ua = ua.replace(/^SEC_USER_AGENT\s*[=:]\s*/i, ''); issues.push('값 앞에 "SEC_USER_AGENT =" 가 붙어 있어 제거함'); }
+  }
+  if (/[\r\n]/.test(ua)) { ua = ua.split(/[\r\n]/)[0].trim(); issues.push('줄바꿈이 있어 첫 줄만 사용'); }
+  if (!/[^\s@]+@[^\s@]+\.[^\s@]+/.test(ua)) issues.push('이메일 주소가 없음 — SEC는 "이름 이메일" 형식을 요구');
+  if (!/\S+\s+\S+/.test(ua)) issues.push('이름과 이메일 사이 공백이 없음');
+  if (/[^\x20-\x7e]/.test(ua)) issues.push('영문이 아닌 문자가 있음');
+  return { ua, issues };
+}
+
 export function makeSecClient({ userAgent, fetchImpl = fetch, minIntervalMs = 125, wait } = {}) {
   if (!userAgent) throw new Error('SEC_USER_AGENT missing');
   const gate = throttle(minIntervalMs);
-  const headers = { 'User-Agent': userAgent, Accept: 'application/json, text/plain, */*' };
+  const headers = { 'User-Agent': userAgent, Accept: 'application/json, text/plain, */*', 'Accept-Encoding': 'gzip, deflate' };
   const get = async (url) => {
     await gate();
     return fetchRetry(url, { headers }, { fetchImpl, wait });

@@ -6,3 +6,4 @@ export function fetchDailyBars(opts: {
   fetchImpl?: typeof fetch; minIntervalMs?: number; onBatch?: (done: number, total: number) => void; wait?: (ms: number) => Promise<void>;
 }): Promise<{ bars: Record<string, Bar[]>; requests: number; feed: string }>;
 export function mergeBars(cached: Bar[], fresh: Bar[], tol?: number): { bars: Bar[]; needsFull: boolean };
+export function fetchAssets(opts: { keyId?: string; secretKey?: string; fetchImpl?: typeof fetch; wait?: (ms: number) => Promise<void> }): Promise<Array<{ cik: null; name: string; ticker: string; exchange: string }>>;

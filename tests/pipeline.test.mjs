@@ -276,3 +276,46 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.ok(perf2.summary.mid_20d.cohorts >= 1);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test('SEC blocked (403 everywhere): universe from Alpaca assets, scans still published', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pipe-sec403-'));
+  const cacheDir = path.join(tmp, 'cache');
+  const outDir = path.join(tmp, 'out');
+  const state = { days: 560, calls: [] };
+  const f = e2eFetch(state);
+  let secCalls = 0;
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    if (u.hostname.endsWith('sec.gov')) { secCalls++; return new Response('Forbidden', { status: 403 }); }
+    if (u.hostname === 'paper-api.alpaca.markets' && u.pathname === '/v2/assets') {
+      return Response.json([
+        ...f.syms.map((s) => ({ symbol: s, name: `${s} Inc`, exchange: 'NASDAQ', tradable: true, status: 'active' })),
+        { symbol: 'SPYX', name: 'Some ETF', exchange: 'ARCA', tradable: true },
+        { symbol: 'QQQX', name: 'Nasdaq 100 ETF', exchange: 'NASDAQ', tradable: true },
+      ]);
+    }
+    return f.fetch(url);
+  };
+  const env = { ALPACA_KEY_ID: 'k', ALPACA_SECRET_KEY: 's', SEC_USER_AGENT: '"SEC_USER_AGENT = AlphaTerminal/0.6 test@example.com"' };
+  const now = f.series.SPY.at(-1).time * 1000 + 26 * 3600000;
+  const r = await runNightly({ env, cacheDir, outDir, fetchImpl, now, historyDays: 900, wait: noWait });
+  assert.equal(r.stats.universeSource, 'alpaca-assets');
+  assert.equal(r.stats.universe, 24, 'ETFs and non-listed venues excluded');
+  assert.equal(r.stats.sec.skipped, true);
+  assert.equal(secCalls, 1, 'no SEC requests after the first refusal');
+  assert.ok(r.stats.secUserAgentIssues.length >= 1, 'pasted prefix/quotes reported');
+  assert.ok(fs.existsSync(path.join(outDir, 'setups.json')));
+  const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
+  assert.ok(latest.short.length > 0, 'price-based short-term ranking still produced');
+  const setups = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
+  assert.ok(setups.candidates.length > 0, 'chart scans run without SEC');
+  assert.match(latest.sources.universe, /Alpaca/);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('normalizeUserAgent cleans pasted values and flags missing email', async () => {
+  const { normalizeUserAgent } = await import('../packages/pipeline/secdata.mjs');
+  assert.equal(normalizeUserAgent('  "SEC_USER_AGENT = AlphaTerminal/0.6 a@b.com"\n').ua, 'AlphaTerminal/0.6 a@b.com');
+  assert.deepEqual(normalizeUserAgent('AlphaTerminal/0.6 a@b.com').issues, []);
+  assert.ok(normalizeUserAgent('AlphaTerminal').issues.some((i) => i.includes('이메일')));
+});
