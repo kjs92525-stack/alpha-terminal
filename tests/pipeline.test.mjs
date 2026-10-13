@@ -372,3 +372,54 @@ test('www.sec.gov blocked but data.sec.gov open: CIKs matched by name and confir
   assert.ok(state.calls.slice(before).every((c) => !c.includes('/frames/')));
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come from Finnhub', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pipe-fh-'));
+  const cacheDir = path.join(tmp, 'cache');
+  const outDir = path.join(tmp, 'out');
+  const state = { days: 560, calls: [] };
+  const f = e2eFetch(state);
+  let fhCalls = 0;
+  const reported = (i) => ({ cik: 1000 + i, data: Array.from({ length: 8 }, (_, k) => {
+    const end = new Date(Date.UTC(2024, 3 * k + 3, 0)).toISOString().slice(0, 10);
+    const start = new Date(Date.parse(end) - 90 * 86400000).toISOString().slice(0, 10);
+    return { form: '10-Q', year: 2024 + Math.floor(k / 4), startDate: start, endDate: end, filedDate: end, report: {
+      ic: [{ concept: 'us-gaap_Revenues', value: 1e8 * (1 + k * (i % 5) / 10) }, { concept: 'us-gaap_NetIncomeLoss', value: 1e7 * ((i % 3) - 1 + k / 4) }],
+      bs: [{ concept: 'us-gaap_CashAndCashEquivalentsAtCarryingValue', value: 5e8 }],
+      cf: [{ concept: 'us-gaap_NetCashProvidedByUsedInOperatingActivities', value: 2e7 }] } };
+  }) });
+  const fetchImpl = async (url, init) => {
+    const u = new URL(url);
+    if (u.hostname.endsWith('sec.gov')) return new Response('Forbidden', { status: 403 });
+    if (u.hostname === 'paper-api.alpaca.markets') return Response.json(f.syms.map((s) => ({ symbol: s, name: `${s} Inc`, exchange: 'NASDAQ', tradable: true })));
+    if (u.hostname === 'finnhub.io') {
+      fhCalls++;
+      assert.equal(init.headers['X-Finnhub-Token'], 'fh');
+      const i = f.syms.indexOf(u.searchParams.get('symbol'));
+      if (u.pathname.endsWith('/profile2')) return Response.json({ name: `${u.searchParams.get('symbol')} Corp`, finnhubIndustry: ['Semiconductors', 'Biotechnology', 'Banking', 'Software'][i % 4], shareOutstanding: 100, marketCapitalization: 5000 });
+      return Response.json(reported(i));
+    }
+    return f.fetch(url);
+  };
+  const env = { ALPACA_KEY_ID: 'k', ALPACA_SECRET_KEY: 's', SEC_USER_AGENT: 'AlphaTerminal/0.6 test@example.com', FINNHUB_API_KEY: 'fh', FINNHUB_MAX_CALLS: '30' };
+  const now = f.series.SPY.at(-1).time * 1000 + 26 * 3600000;
+  const r = await runNightly({ env, cacheDir, outDir, fetchImpl, now, historyDays: 900, wait: noWait });
+  assert.equal(r.stats.finnhub.attempted, 15, 'call budget respected (2 calls per company)');
+  assert.equal(fhCalls, 30);
+  assert.equal(r.stats.finnhub.withRevenue, 15);
+  const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
+  assert.ok(latest.mid.length > 0, 'mid-term ranking restored');
+  assert.ok(latest.mid.some((x) => x.sector === 'Information Technology'));
+  assert.match(latest.sources.fundamentals, /Finnhub/);
+  const fetched = f.syms.filter((s) => fs.existsSync(path.join(outDir, 'companies', `${s}.json`)));
+  assert.equal(fetched.length, 15);
+  const comp = JSON.parse(fs.readFileSync(path.join(outDir, 'companies', `${fetched[0]}.json`), 'utf8'));
+  assert.equal(comp.source, 'Finnhub');
+  assert.equal(comp.facts.revenueQuarterly.length, 8);
+  // next night: the other 9 companies, cached ones not refetched
+  fhCalls = 0;
+  const r2 = await runNightly({ env, cacheDir, outDir, fetchImpl, now: now + 3600000, historyDays: 900, wait: noWait });
+  assert.equal(r2.stats.finnhub.attempted, 9);
+  assert.equal(fhCalls, 18);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
