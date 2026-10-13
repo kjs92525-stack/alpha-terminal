@@ -24,7 +24,7 @@ export interface Env extends TvEnv, FeedEnv {
   SCREEN_MAX?: string;
 }
 
-const VERSION = '0.4.0';
+const VERSION = '0.6.0';
 const SEC_TTL = 600;
 const FACTS_TTL = 6 * 3600;
 const TICKERS_TTL = 24 * 3600;

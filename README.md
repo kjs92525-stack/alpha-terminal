@@ -89,17 +89,20 @@ echo 'SEC_USER_AGENT="AlphaTerminal/0.3 you@example.com"' > .dev.vars
 npm run dev:pages   # wrangler pages dev — UI + /api 를 함께 서비스
 ```
 
-## Cloudflare Pages 배포
+## Cloudflare 배포 (Workers — 웹앱 + API 한 주소)
 
-**방법 A — Git 연동 (토큰 불필요, 권장)**
-1. Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to Git → `kjs92525-stack/alpha-terminal`
-2. Build command `npm run build`, Output `dist`, 환경변수 `NODE_VERSION=22`
-3. Settings → Variables and Secrets: `SEC_USER_AGENT`(Secret) = `AlphaTerminal/0.3 your@email` (나머지 vars는 `wrangler.toml`에 있음)
-4. `functions/` 폴더가 자동으로 `/api/*`로 배포됩니다.
+`wrangler.toml`은 Worker 하나가 `dist/`(빌드된 웹앱)를 정적 파일로 서비스하고 `/api/*`는 API 코드가 처리하도록 설정되어 있습니다.
 
-**방법 B — GitHub Actions**: 저장소 Secrets에 `CLOUDFLARE_API_TOKEN`(Pages 편집 권한), `CLOUDFLARE_ACCOUNT_ID`를 넣으면 `main` 푸시 시 `.github/workflows/deploy-pages.yml`이 배포합니다(없으면 건너뜀). 이후 `wrangler pages secret put SEC_USER_AGENT --project-name alpha-terminal`.
+1. **GitHub 권한**: GitHub → Settings → Applications → Installed GitHub Apps → *Cloudflare Workers and Pages* → Configure → Repository access에 `alpha-terminal` 추가
+2. Cloudflare → Workers & Pages → Create → **Import a repository** → `alpha-terminal`
+   - Project name: `alpha-terminal` · Build command: `npm run build` · Deploy command: `npx wrangler deploy`
+   - (Advanced) Build variable `NODE_VERSION=22`
+3. 배포 후 Worker → Settings → Variables and Secrets (Secret): `SEC_USER_AGENT`, `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` (+ 선택 `TV_WEBHOOK_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`)
+4. 주소: `https://alpha-terminal.<계정 서브도메인>.workers.dev` — `main`에 푸시할 때마다 자동 재배포
 
-Cloudflare 무료 플랜은 요청당 서브요청 50개 제한이 있어 스크리너는 4종목씩 나눠 호출합니다(`SCREEN_MAX=5`).
+`functions/api/[[path]].ts`는 Cloudflare Pages로 배포하는 경우를 위해 남겨 두었습니다(같은 API 코드).
+
+로컬에서 Cloudflare 런타임으로 실행: `npm run build && npx wrangler dev` (`.dev.vars`에 시크릿).
 
 ## Supabase (선택)
 
