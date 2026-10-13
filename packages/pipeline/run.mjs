@@ -417,7 +417,7 @@ export async function runNightly({
       .map((x) => ({ symbol: x.symbol, name: x.name, price: x.price, type: x.type, stage: x.stage, score: x.score, corr: x.group.corr, how: x.plan.how, takeaway: x.narrative?.takeaway ?? null }));
     groups.push({ etf, name, price: r4(bars.at(-1).close), phase: cp.phase, phaseKo: cp.phaseKo, earlyScore: cp.earlyScore, metrics: Object.fromEntries(Object.entries(cp.metrics).map(([k, v]) => [k, r4(v)])), members });
   }
-  const PHASE_ORDER = { EARLY: 0, BASING: 1, LEADING: 2, LATE: 3, DOWN: 4 };
+  const PHASE_ORDER = { EARLY: 0, BASING: 1, LEADING: 2, NEUTRAL: 3, LATE: 4, DOWN: 5 };
   groups.sort((a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || b.earlyScore - a.earlyScore);
   writeJson(path.join(outDir, 'sectors.json'), {
     asOf, generatedAt: new Date().toISOString(),

@@ -7,7 +7,8 @@
 //   BASING 바닥 다지기   — well off the highs, moving sideways around the 200-day
 //   LEADING 상승 주도    — established uptrend, outperforming
 //   LATE   과열·후반     — far above the 200-day / near highs after a big run
-//   DOWN   하락          — below a falling 200-day and lagging
+//   NEUTRAL 숨고르기     — a modest pullback or sideways drift without a clear direction
+//   DOWN   하락          — clearly below the 200-day with the 50-day under it
 
 import { sma, rsi } from './indicators.mjs';
 
@@ -23,7 +24,7 @@ export const SECTOR_ETFS = [
   ['UFO', '우주'], ['QTUM', '양자·차세대 컴퓨팅'], ['BOTZ', '로봇·AI'], ['BLOK', '블록체인'], ['ARKK', '혁신 성장'],
 ];
 
-export const PHASE_KO = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', LATE: '과열·후반', DOWN: '하락' };
+export const PHASE_KO = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', LATE: '과열·후반', NEUTRAL: '숨고르기', DOWN: '하락' };
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const ret = (c, n) => (c.length > n && c[c.length - 1 - n] > 0 ? c[c.length - 1] / c[c.length - 1 - n] - 1 : null);
@@ -56,13 +57,13 @@ export function cyclePhase(bars, spy) {
 
   let phase;
   if (vs200 > 0.3 || (isNum(rsiW) && rsiW > 75 && ddFromHigh < 0.05)) phase = 'LATE';
-  // recovering from a slide with plenty of room to the old high counts as early even once the
-  // 50-day has pulled clearly above the 200-day
-  else if (vs200 > 0 && ma50Slope > 0 && ma50vs200 > -0.04 && (ma50vs200 < 0.06 || (ddFromHigh > 0.2 && ma50vs200 < 0.12)) && (ddFromHigh > 0.15 || (ret12m ?? 0) < 0.1)) phase = 'EARLY';
-  else if (vs200 > 0 && ma50vs200 > 0.05 && isNum(ret12m) && ret12m > 0.15 && (rs12m ?? 0) > 0) phase = 'LEADING';
-  else if (Math.abs(vs200) < 0.08 && ddFromHigh > 0.15 && Math.abs(ma200Slope) < 0.03) phase = 'BASING';
-  else if (vs200 < 0 && ma200Slope < 0 && (rs3m ?? 0) < 0) phase = 'DOWN';
-  else phase = vs200 > 0 ? (ma50vs200 > 0 ? 'LEADING' : 'EARLY') : 'BASING';
+  // turning up after a weak year (or a deep drop), now outperforming the market
+  else if (vs200 > 0 && ma50Slope > 0 && (rs3m ?? 0) > 0 && ((ret12m ?? 0) < 0.1 || ddFromHigh > 0.2) && ma50vs200 < 0.15) phase = 'EARLY';
+  else if (vs200 > 0 && ma50vs200 > 0.03 && (ret12m ?? 0) > 0.15) phase = 'LEADING';
+  // well off the highs and moving sideways around the 200-day
+  else if (ddFromHigh >= 0.2 && Math.abs(vs200) < 0.1) phase = 'BASING';
+  else if (vs200 < -0.05 && ma50vs200 < -0.02) phase = 'DOWN';
+  else phase = 'NEUTRAL';
 
   // early-cycle score: how much room (off the highs) and how fresh the turn is
   const early = (phase === 'EARLY' ? 50 : phase === 'BASING' ? 30 : 0)

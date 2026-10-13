@@ -84,7 +84,7 @@ export interface Backtest {
 export const fetchSetups = () => get<Setups>('setups.json');
 export const fetchBacktest = () => get<Backtest>('backtest/breakouts.json');
 
-export type CyclePhase = 'EARLY' | 'BASING' | 'LEADING' | 'LATE' | 'DOWN';
+export type CyclePhase = 'EARLY' | 'BASING' | 'LEADING' | 'LATE' | 'NEUTRAL' | 'DOWN';
 export interface SectorGroup {
   etf: string; name: string; price: number; phase: CyclePhase; phaseKo: string; earlyScore: number;
   metrics: { vs200: number | null; ma50vs200: number | null; ma50Slope: number | null; ddFromHigh: number | null; offLow: number | null; ret3m: number | null; ret12m: number | null; rs3m: number | null; rs12m: number | null; rsiW: number | null };
