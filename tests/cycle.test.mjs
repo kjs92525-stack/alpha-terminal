@@ -49,3 +49,14 @@ test('modest pullback near highs is a pause, not a bottom; weak-year turnaround 
   const turn = Array.from({ length: 460 }, (_, i) => 100 - i * 0.05).concat(Array.from({ length: 140 }, (_, i) => 77 + i * 0.06 + 1.5 * Math.sin(i / 6)));
   assert.equal(cyclePhase(series(turn), spyUp).phase, 'EARLY');
 });
+
+test('a group that doubled and then pulled back 25% is not a bottom (gold miners 2026-like)', () => {
+  const spyUp = series(Array.from({ length: 600 }, (_, i) => 400 + i * 0.1));
+  // 50 -> ~130 over ~16 months, then a choppy slide to ~98 around the 200-day
+  const run = Array.from({ length: 340 }, (_, i) => 50 * Math.pow(1.0028, i) * (1 + 0.03 * Math.sin(i / 9)));
+  const top = run.at(-1);
+  const pull = Array.from({ length: 260 }, (_, i) => top * (1 - 0.25 * Math.min(1, i / 120)) * (1 + 0.04 * Math.sin(i / 7)));
+  const g = cyclePhase(series(run.concat(pull)), spyUp);
+  assert.ok(!['BASING', 'EARLY'].includes(g.phase), `${g.phase} ${JSON.stringify(g.metrics)}`);
+  assert.ok(g.earlyScore < 50, String(g.earlyScore));
+});
