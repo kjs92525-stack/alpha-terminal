@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sma } from '../analysis/indicators.mjs';
-import { findBase, tradePlan, trendTemplate, relativeStrength, SETUP_RULES } from '../analysis/setups.mjs';
+import { findBase, explainBase, tradePlan, trendTemplate, relativeStrength, SETUP_RULES } from '../analysis/setups.mjs';
 
 const HORIZONS = [20, 60, 120];
 
@@ -103,7 +103,21 @@ export function summarize(trades, h) {
  * barsBySymbol: { SYMBOL: Bar[] } (adjusted daily), spy: Bar[].
  * Returns the report object (also usable in tests).
  */
-export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR'] } = {}) {
+/** Volume breakouts above the 6-month high where no base qualified, with the reason per window. */
+export function nearMisses(bars, rules = SETUP_RULES, limit = 8) {
+  const highs = bars.map((b) => b.high);
+  const max126 = rollingMax(highs, 126);
+  const vol50 = sma(bars.map((b) => b.volume), 50);
+  const out = [];
+  for (let i = 300; i < bars.length; i++) {
+    if (max126[i - 1] === null || bars[i].close <= max126[i - 1] || !(vol50[i - 1] > 0) || bars[i].volume / vol50[i - 1] < rules.breakoutVolMult) continue;
+    if (findBase(bars, i - 1, rules)) continue;
+    out.push({ date: new Date(bars[i].time * 1000).toISOString().slice(0, 10), close: bars[i].close, why: explainBase(bars, i - 1, rules).map((e) => `${Math.round(e.window / 21)}개월: ${e.reason}`) });
+  }
+  return out.slice(-limit);
+}
+
+export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 'RGTI', 'QUBT', 'IONQ'] } = {}) {
   const spyByTime = new Map(spy.map((b) => [b.time, b]));
   const trades = [];
   for (const [symbol, bars] of Object.entries(barsBySymbol)) {
@@ -133,6 +147,7 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR'] 
     symbols: Object.keys(barsBySymbol).length,
     report,
     caseStudies: Object.fromEntries(caseStudies.map((s) => [s, trades.filter((t) => t.symbol === s).map((t) => ({ date: fmtDate(t.time), entry: t.entry, stop: t.stop, baseMonths: t.baseMonths, results: t.results }))])),
+    caseNearMisses: Object.fromEntries(caseStudies.filter((s) => barsBySymbol[s]?.length).map((s) => [s, nearMisses(barsBySymbol[s])])),
     recent: trades.slice(-50).map((t) => ({ symbol: t.symbol, date: fmtDate(t.time), baseMonths: t.baseMonths, r60: t.results[60]?.r ?? null })),
   };
 }
