@@ -123,7 +123,7 @@ export async function refreshCompanies({ ciks, cache, client, changed = new Set(
         factsFetched++;
       }
       cache.set(cik, {
-        cik, fetchedAt: new Date(now).toISOString(), name: subs.name ?? null, sic: subs.sic ?? null, sicDescription: subs.sicDescription ?? null,
+        cik, fetchedAt: new Date(now).toISOString(), name: subs.name ?? null, tickers: Array.isArray(subs.tickers) ? subs.tickers : null, sic: subs.sic ?? null, sicDescription: subs.sicDescription ?? null,
         filings: filings.map(compactFiling), facts, factsPeriodic,
       });
     } catch (e) {
