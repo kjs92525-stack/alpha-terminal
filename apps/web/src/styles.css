@@ -605,3 +605,5 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .pick-take { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; }
 .pick-how { margin: 0; font-size: 11px; color: var(--muted, #8a8fbf); line-height: 1.5; }
 .pick-actions { display: flex; gap: 6px; margin-top: auto; flex-wrap: wrap; }
+.sector-members { list-style: none; margin: 0; padding: 4px 0; display: grid; gap: 8px; white-space: normal; font-size: 12px; }
+.sector-members li { border-left: 2px solid var(--line, #23264d); padding-left: 8px; line-height: 1.55; }

@@ -189,7 +189,7 @@ function e2eFetch(state) {
         const monthly = u.searchParams.get('timeframe') === '1Month';
         if (monthly) state.monthlyCalls = (state.monthlyCalls ?? 0) + 1;
         for (const s of u.searchParams.get('symbols').split(',')) {
-          const src = (series[s] ?? []).filter((b) => b.time >= start);
+          const src = (series[s] ?? series.SPY.map((b) => ({ ...b, close: b.close * 0.5, open: b.open * 0.5, high: b.high * 0.5, low: b.low * 0.5 }))).filter((b) => b.time >= start); // ETFs: market-like series
           bars[s] = (monthly ? resampleMonthly(src) : src).map(toAlpaca);
         }
         return Response.json({ bars, next_page_token: null });
@@ -242,6 +242,8 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   const setups = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
   assert.equal(setups.asOf, r1.asOf);
   assert.ok(Array.isArray(setups.candidates) && setups.stats && setups.caveat);
+  const sectors = JSON.parse(fs.readFileSync(path.join(outDir, 'sectors.json'), 'utf8'));
+  assert.ok(Array.isArray(sectors.groups) && sectors.method);
   assert.deepEqual(Object.keys(setups.stats.byType).sort(), ['breakout', 'monthly_bottom', 'pullback', 'weekly_bottom']);
   for (const c of setups.candidates) assert.ok(c.type && c.stage && (!c.plan || typeof c.plan.how === 'string'), JSON.stringify(c).slice(0, 200));
   assert.ok(state.monthlyCalls >= 1, 'long monthly history fetched');

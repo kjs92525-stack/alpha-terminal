@@ -3,6 +3,7 @@ import { Activity, Gauge, Radar, Sparkles } from 'lucide-react';
 import { fetchLatest, fetchSetups, type Latest, type Setups } from '../lib/snapshot';
 import { storyPicks, TYPE_KO } from '../lib/storyPicks';
 import { StoryPicks } from '../components/StoryPicks';
+import { SectorCycle } from '../components/SectorCycle';
 import { useTerminal, useAnalysis } from '../lib/store';
 import { ScannerPanel } from '../components/Scanner';
 import { ResearchDesk } from '../components/ResearchDesk';
@@ -35,6 +36,7 @@ export function Dashboard() {
         <div className="kpi-card"><div className="kpi-top">DATA <Gauge size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{mode === 'live' ? 'LIVE' : 'SIM'}</strong><span>재무 {fundSrc}</span></div><div className="kpi-foot">● 시세: {health?.priceProviders.join(' → ') ?? '합성 OHLCV'}</div></div>
       </div>
       <StoryPicks limit={6} />
+      <div style={{ marginTop: 12 }}><SectorCycle compact /></div>
       <div className="feed-row">
         <NewsFeed />
         <TopMovers />
