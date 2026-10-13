@@ -13,9 +13,9 @@ import { TradingViewWidget } from './TradingViewWidget';
 const TFS: Timeframe[] = ['5m', '1H', '1D', '1W'];
 const OVERLAYS: Array<[Overlay, string]> = [
   ['volume', 'VOL'], ['ema20', 'EMA20'], ['sma50', 'SMA50'], ['sma200', 'SMA200'], ['vwap', 'VWAP'], ['rsi', 'RSI'], ['macd', 'MACD'],
-  ['structure', 'BOS/CHoCH'], ['fvg', 'FVG'], ['ob', 'OB'], ['levels', 'S/R'], ['profile', 'VPVR'],
+  ['ob', '오더블록'], ['structure', 'BOS/CHoCH'], ['fvg', 'FVG'], ['levels', 'S/R'], ['profile', 'VPVR'],
 ];
-const DEFAULT_OVERLAYS: Overlay[] = ['volume', 'ema20', 'sma50', 'structure', 'levels'];
+const DEFAULT_OVERLAYS: Overlay[] = ['volume', 'ema20', 'sma50', 'ob'];
 
 export function useBars(symbol: string, tf: Timeframe) {
   const { source } = useTerminal();
@@ -34,7 +34,7 @@ export function useBars(symbol: string, tf: Timeframe) {
 
 export function ChartWorkspace({ symbol, full = false, height }: { symbol: string; full?: boolean; height?: number }) {
   const [tf, setTf] = useState<Timeframe>(() => load('alpha:tf', '1D'));
-  const [show, setShow] = useState<Set<Overlay>>(() => new Set(load<Overlay[]>(full ? 'alpha:overlays:full' : 'alpha:overlays', full ? [...DEFAULT_OVERLAYS, 'rsi', 'macd', 'fvg'] : DEFAULT_OVERLAYS)));
+  const [show, setShow] = useState<Set<Overlay>>(() => new Set(load<Overlay[]>(full ? 'alpha:overlays:full:v2' : 'alpha:overlays:v2', full ? [...DEFAULT_OVERLAYS, 'structure', 'rsi', 'macd'] : DEFAULT_OVERLAYS)));
   const [engine, setEngine] = useState<'alpha' | 'tv'>(() => load('alpha:engine', 'alpha'));
   const pickEngine = (e: 'alpha' | 'tv') => { setEngine(e); save('alpha:engine', e); };
   const { data, error } = useBars(engine === 'alpha' ? symbol : '', tf);
@@ -45,7 +45,7 @@ export function ChartWorkspace({ symbol, full = false, height }: { symbol: strin
     const next = new Set(show);
     if (next.has(o)) next.delete(o); else next.add(o);
     setShow(next);
-    save(full ? 'alpha:overlays:full' : 'alpha:overlays', [...next]);
+    save(full ? 'alpha:overlays:full:v2' : 'alpha:overlays:v2', [...next]);
   };
   const pickTf = (t: Timeframe) => { setTf(t); save('alpha:tf', t); };
 
@@ -77,7 +77,7 @@ export function ChartWorkspace({ symbol, full = false, height }: { symbol: strin
           <button className={engine === 'tv' ? 'selected' : ''} onClick={() => pickEngine('tv')} title="TradingView 공식 위젯">TradingView</button>
         </div>
         {engine === 'alpha' && <div className="chart-options">
-          {OVERLAYS.filter(([o]) => full || !['rsi', 'macd', 'ob', 'profile', 'sma200'].includes(o)).map(([o, label]) => (
+          {OVERLAYS.filter(([o]) => full || !['rsi', 'macd', 'profile', 'sma200'].includes(o)).map(([o, label]) => (
             <button key={o} className={show.has(o) ? 'selected' : ''} onClick={() => toggle(o)}>{label}</button>
           ))}
         </div>}

@@ -10,7 +10,7 @@ export type Overlay = 'volume' | 'ema20' | 'sma50' | 'sma200' | 'vwap' | 'struct
 
 export const C = {
   up: '#2fd27a', down: '#ff5470', ema: '#e5b970', sma50: '#7aa2f7', sma200: '#c58af9', vwap: '#5bc0eb',
-  grid: '#1a1d40', text: '#8a8fbf', bg: '#0b0d22', provisional: '#9aa7ad',
+  grid: '#1a1d40', obBull: '#3d8bff', obBear: '#d65cff', text: '#8a8fbf', bg: '#0b0d22', provisional: '#9aa7ad',
 };
 
 interface Props {
@@ -99,12 +99,13 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
       const markers: SeriesMarker<Time>[] = analysis.structure.events.map((e) => ({
         time: T(bars[e.index].time),
         position: e.direction === 'bull' ? 'belowBar' : 'aboveBar',
-        shape: e.direction === 'bull' ? 'arrowUp' : 'arrowDown',
-        color: e.provisional ? C.provisional : e.direction === 'bull' ? C.up : C.down,
-        text: `${e.kind}${e.provisional ? '?' : ''}`,
-        size: e.kind === 'CHoCH' ? 1.4 : 1,
+        shape: 'circle',
+        color: e.provisional ? '#9aa7ad88' : e.direction === 'bull' ? '#2fd27a99' : '#ff547099',
+        text: `${e.kind === 'CHoCH' ? 'CH' : 'B'}${e.provisional ? '?' : ''}`,
+        size: 0.5,
       }));
-      createSeriesMarkers(candle, markers.slice(-40));
+      // Kept deliberately small: order blocks are the primary structure visual.
+      createSeriesMarkers(candle, markers.slice(-12));
     }
 
     if (show.has('levels')) {
@@ -112,6 +113,43 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
         candle.createPriceLine({ price: l.price, color: l.kind === 'resistance' ? '#ff547099' : '#2fd27a99', lineStyle: LineStyle.Dotted, lineWidth: 1, axisLabelVisible: true, title: `${l.kind === 'resistance' ? 'R' : 'S'}×${l.touches}` });
       }
     }
+
+    // --- order blocks: primary structure visual ---
+    // Active (unmitigated) blocks: solid zone extended to the right edge, accent bar, label with range.
+    // Recently mitigated blocks: faint outline ending where price traded back into them.
+    const drawOrderBlocks = (parts: string[], w: number, x: (i: number) => number | null, y: (p: number) => number | null) => {
+      const last = bars.length - 1;
+      const active = analysis.orderBlocks.filter((o) => o.mitigatedIndex === null).slice(-6);
+      const recent = analysis.orderBlocks.filter((o) => o.mitigatedIndex !== null && last - (o.mitigatedIndex as number) <= 40).slice(-4);
+      const zone = (o: (typeof active)[number], endIdx: number | null, faded: boolean) => {
+        const x0 = x(o.index);
+        const x1 = endIdx === null ? w : x(endIdx);
+        const yt = y(o.top);
+        const yb = y(o.bottom);
+        if (x0 === null || x1 === null || yt === null || yb === null || x1 < 0 || x0 > w) return;
+        const left = Math.max(0, x0);
+        const right = Math.min(w, x1);
+        const top = Math.min(yt, yb);
+        const h = Math.max(2, Math.abs(yb - yt));
+        const bull = o.direction === 'bull';
+        const col = o.provisional ? C.provisional : bull ? C.obBull : C.obBear;
+        if (faded) {
+          parts.push(`<rect x="${left}" y="${top}" width="${Math.max(1, right - left)}" height="${h}" fill="none" stroke="${col}66" stroke-dasharray="2 3"/>`);
+          return;
+        }
+        parts.push(`<rect x="${left}" y="${top}" width="${Math.max(1, right - left)}" height="${h}" fill="${col}2e" stroke="${col}" stroke-width="1"/>`);
+        if (x0 >= 0) parts.push(`<rect x="${x0}" y="${top}" width="3" height="${h}" fill="${col}"/>`);
+        const label = `${bull ? '▲ 매수 OB' : '▼ 매도 OB'} ${fmtPrice(o.bottom)}–${fmtPrice(o.top)}${o.provisional ? ' (미확정)' : ''}`;
+        // Origin off-screen: anchor the label at the right edge so it never sits under the OHLC legend.
+        const onScreen = x0 >= 0;
+        const lx = onScreen ? Math.min(w - 160, x0 + 6) : w - 12;
+        const ly = h >= 14 ? top + 11 : bull ? top + h + 11 : top - 3;
+        parts.push(`<text x="${lx}" y="${ly}" text-anchor="${onScreen ? 'start' : 'end'}" fill="${col}" font-size="10" font-weight="700" paint-order="stroke" stroke="${C.bg}" stroke-width="3">${label}</text>`);
+        parts.push(`<rect x="${w - 6}" y="${top}" width="6" height="${h}" fill="${col}"/>`);
+      };
+      for (const o of recent) zone(o, o.mitigatedIndex, true);
+      for (const o of active) zone(o, null, false);
+    };
 
     // --- SVG overlay: FVG / order-block zones and volume profile ---
     const draw = () => {
@@ -139,10 +177,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
         const recent = analysis.fvg.filter((g) => g.filledIndex === null).slice(-8);
         for (const g of recent) rect(g.index, null, g.top, g.bottom, g.direction === 'bull' ? '#2fd27a1c' : '#ff54701c', g.provisional ? C.provisional : g.direction === 'bull' ? '#2fd27aaa' : '#ff5470aa', g.provisional ? 'FVG?' : 'FVG');
       }
-      if (show.has('ob')) {
-        const live = analysis.orderBlocks.filter((o) => o.mitigatedIndex === null).slice(-4);
-        for (const o of live) rect(o.index, null, o.top, o.bottom, o.direction === 'bull' ? '#7aa2f722' : '#c58af922', o.provisional ? C.provisional : o.direction === 'bull' ? '#7aa2f7' : '#c58af9', `OB ${o.source}${o.provisional ? '?' : ''}`);
-      }
+      if (show.has('ob')) drawOrderBlocks(parts, w, x, y);
       if (show.has('profile') && analysis.profile.bins.length) {
         const max = Math.max(...analysis.profile.bins.map((b) => b.volume));
         for (const b of analysis.profile.bins) {
