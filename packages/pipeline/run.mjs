@@ -13,6 +13,7 @@ import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs'
 import { storySignals } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
 import { resampleWeekly } from '../analysis/indicators.mjs';
+import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
 import { throttle } from './http.mjs';
 import { makeSecClient, normalizeUserAgent, refreshCompanies, dailyIndexUrl, parseDailyIndex, businessDaysBetween } from './secdata.mjs';
@@ -72,7 +73,8 @@ export async function runNightly({
 
   // 2. bars (incremental, split-safe)
   const barsDir = path.join(cacheDir, 'bars');
-  const symbols = [...new Set([BENCH, ...universe.map((u) => u.symbol)])];
+  // sector / theme ETFs are fetched with the stocks: they define the cycle groups
+  const symbols = [...new Set([BENCH, ...SECTOR_ETFS.map(([e]) => e), ...universe.map((u) => u.symbol)])];
   const cached = new Map(symbols.map((s) => [s, unpackBars(readJson(path.join(barsDir, `${safeName(s)}.json`), null))]));
   const end = new Date(now - 20 * 60000).toISOString();
   const fullStart = new Date(now - historyDays * 86400000).toISOString().slice(0, 10);
@@ -390,6 +392,41 @@ export async function runNightly({
     byStage: count(setups.filter((x) => x.type === 'breakout')),
     byType: Object.fromEntries(TYPES.map((t) => [t, count(setups.filter((x) => x.type === t))])),
   };
+  // 6c. sector / theme cycle: each ETF's phase, and every candidate attached to the group it
+  //     tracks best (daily-return correlation over ~6 months, beyond the market's)
+  const etfBars = Object.fromEntries(SECTOR_ETFS.map(([e]) => [e, (cached.get(e) ?? []).filter((b) => b.time <= asOfSec)]).filter(([, b]) => b.length >= 260));
+  const groupOf = new Map();
+  for (const x of setups) {
+    if (groupOf.has(x.symbol)) continue;
+    const bars = (cached.get(x.symbol) ?? []).filter((b) => b.time <= asOfSec);
+    groupOf.set(x.symbol, bars.length >= 130 ? bestGroup(bars, etfBars, spyAsOf) : null);
+  }
+  const ETF_NAME = Object.fromEntries(SECTOR_ETFS);
+  for (const x of setups) { const g = groupOf.get(x.symbol); x.group = g ? { etf: g.etf, name: ETF_NAME[g.etf], corr: r4(g.corr) } : null; }
+  const groups = [];
+  for (const [etf, name] of SECTOR_ETFS) {
+    const bars = etfBars[etf];
+    if (!bars) continue;
+    const cp = cyclePhase(bars, spyAsOf);
+    if (!cp) continue;
+    const BUY = new Set(['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT', 'BOUNCE', 'AT_SUPPORT', 'TURNING', 'AT_BOTTOM']);
+    const members = setups.filter((x) => x.group?.etf === etf && BUY.has(x.stage) && x.plan)
+      .sort((a, b) => b.score - a.score)
+      .filter((x, i, arr) => arr.findIndex((y) => y.symbol === x.symbol) === i)
+      .slice(0, 8)
+      .map((x) => ({ symbol: x.symbol, name: x.name, price: x.price, type: x.type, stage: x.stage, score: x.score, corr: x.group.corr, how: x.plan.how, takeaway: x.narrative?.takeaway ?? null }));
+    groups.push({ etf, name, price: r4(bars.at(-1).close), phase: cp.phase, phaseKo: cp.phaseKo, earlyScore: cp.earlyScore, metrics: Object.fromEntries(Object.entries(cp.metrics).map(([k, v]) => [k, r4(v)])), members });
+  }
+  const PHASE_ORDER = { EARLY: 0, BASING: 1, LEADING: 2, LATE: 3, DOWN: 4 };
+  groups.sort((a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || b.earlyScore - a.earlyScore);
+  writeJson(path.join(outDir, 'sectors.json'), {
+    asOf, generatedAt: new Date().toISOString(),
+    method: '업종·테마 ETF 자체 차트로 국면 판정: 200일선 대비 위치, 50일선 방향과 200일선 대비, 3·12개월 수익률, 2년 고점 대비 하락폭, SPY 대비 강도. 종목은 최근 약 6개월 일간 수익률 상관이 가장 높은 ETF(시장 전체 상관보다 높을 때만)에 묶음.',
+    caveat: 'ETF 국면은 업종 전체의 평균이며 개별 종목과 다를 수 있습니다. 사이클 초입 판정은 실패(재하락)도 흔합니다.',
+    groups,
+  });
+  stats.sectors = { groups: groups.length, byPhase: groups.reduce((m, g) => ((m[g.phase] = (m[g.phase] ?? 0) + 1), m), {}), grouped: [...groupOf.values()].filter(Boolean).length };
+
   const PER_TYPE = 150;
   writeJson(path.join(outDir, 'setups.json'), {
     asOf, generatedAt: new Date().toISOString(), model: 'setups-v2', rules: { breakout: SETUP_RULES, pullback: PULLBACK_RULES, bottom: BOTTOM_RULES },
