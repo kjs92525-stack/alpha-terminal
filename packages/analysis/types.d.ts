@@ -36,7 +36,7 @@ export interface Filing {
 export interface FactPoint { end: string; value: number; filed: string; form: string; fy?: number }
 export interface Fundamentals {
   entityName: string | null; revenue: FactPoint | null; revenuePrior: FactPoint | null; revenueGrowth: Num;
-  revenueQuarterly: FactPoint[]; netIncome: FactPoint | null; netMargin: Num; operatingCashFlow: FactPoint | null;
+  revenueQuarterly: FactPoint[]; netIncomeQuarterly?: FactPoint[]; netIncome: FactPoint | null; netMargin: Num; operatingCashFlow: FactPoint | null;
   cash: FactPoint | null; shortTermInvestments: FactPoint | null; liquidAssets: Num; runwayMonths: Num;
   sharesOutstanding: FactPoint | null; sharesYoY: Num; stockholdersEquity: FactPoint | null; longTermDebt: FactPoint | null;
 }

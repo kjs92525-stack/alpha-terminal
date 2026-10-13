@@ -148,6 +148,15 @@ function instants(series) {
 
 const last = (a) => (a.length ? a[a.length - 1] : null);
 
+/** Quarterly values merged across alternative concepts (companies switch revenue tags over time). */
+function mergedQuarterly(facts, concepts) {
+  const byEnd = new Map();
+  for (const c of concepts) {
+    for (const v of quarterly(unitSeries(facts, 'us-gaap', [c], 'USD'))) if (!byEnd.has(v.end)) byEnd.set(v.end, v);
+  }
+  return [...byEnd.values()].sort((a, b) => a.end.localeCompare(b.end));
+}
+
 /**
  * Summarise fundamentals relevant to screening and event risk.
  * All values carry their period end and filing date so the UI can show provenance.
@@ -199,7 +208,8 @@ export function summarizeFacts(facts) {
     revenue: revLast,
     revenuePrior: revPrev,
     revenueGrowth: revLast && revPrev && revPrev.value > 0 ? revLast.value / revPrev.value - 1 : null,
-    revenueQuarterly: quarterly(revenue).slice(-8),
+    revenueQuarterly: mergedQuarterly(facts, ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet']).slice(-12),
+    netIncomeQuarterly: quarterly(netIncome).slice(-12),
     netIncome: niLast,
     netMargin: niLast && revLast && revLast.value > 0 && niLast.end === revLast.end ? niLast.value / revLast.value : null,
     operatingCashFlow: ocfLast,

@@ -6,7 +6,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
-import { fetchDailyBars, mergeBars } from './alpaca.mjs';
+import { fetchDailyBars, mergeBars, fetchNews } from './alpaca.mjs';
+import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
+import { storySignals } from '../analysis/story.mjs';
+import { classifyHeadline } from '../analysis/news.mjs';
+import { throttle } from './http.mjs';
 import { makeSecClient, refreshCompanies, dailyIndexUrl, parseDailyIndex, businessDaysBetween } from './secdata.mjs';
 import { computeFeatures } from './features.mjs';
 import { rankHorizon, selectRecommendations, exclusionReasons, MODEL_VERSION, MID_FACTORS, SHORT_FACTORS, REC_FILTERS } from './ranking.mjs';
@@ -146,6 +150,68 @@ export async function runNightly({
   const short = rankHorizon(rows, 'short');
   stats.ranked = { mid: mid.length, short: short.length };
   const recs = { mid: selectRecommendations(mid, 'mid'), short: selectRecommendations(short, 'short') };
+
+  // 6b. base-breakout scanner (primary product): chart setup on every liquid stock,
+  //     story signals (fundamentals + news) only for the candidates.
+  const asOfSec = Date.parse(`${asOf}T00:00:00Z`) / 1000;
+  const spyAsOf = spy.filter((b) => b.time <= asOfSec);
+  const ACTIONABLE = new Set(['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT']);
+  const pre = [];
+  for (const r of rows) {
+    if (r.features.price < 3 || (r.features.adv20 ?? 0) < 2e6 || r.sector === 'Blank Check') continue;
+    const bars = (cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec);
+    if (bars.length < 260) continue;
+    const quick = detectSetup(bars);
+    if (!ACTIONABLE.has(quick.stage)) continue;
+    pre.push({ r, bars, chart: evaluateChart(bars, spyAsOf) });
+  }
+  pre.sort((a, b) => b.chart.chartScore - a.chart.chartScore);
+  const maxStory = Number(env.SETUP_NEWS_MAX || 150);
+  const newsGate = throttle(320);
+  const newsStart = new Date(Date.parse(asOf) - 60 * 86400000).toISOString();
+  let newsRequests = 0;
+  const setups = [];
+  for (let i = 0; i < pre.length; i++) {
+    const { r, chart } = pre[i];
+    let news = [];
+    if (i < maxStory) {
+      try {
+        await newsGate();
+        news = (await fetchNews({ symbol: r.symbol, start: newsStart, keyId: env.ALPACA_KEY_ID, secretKey: env.ALPACA_SECRET_KEY, fetchImpl, wait }))
+          .filter((n) => Date.parse(n.time) <= asOfSec * 1000 + 86400000)
+          .map((n) => ({ ...n, ...classifyHeadline(n.headline) }));
+        newsRequests++;
+      } catch { /* news is optional evidence */ }
+    }
+    const company = cache.get(r.cik);
+    const story = storySignals({ fundamentals: company?.facts ?? null, filings: company?.filings ?? [], news, asOf });
+    const score = Math.round(chart.chartScore * 0.55 + story.storyScore * 0.45);
+    setups.push({
+      symbol: r.symbol, name: r.name, sector: r.sector, price: r4(r.features.price), mcap: r.features.mcap ? Math.round(r.features.mcap) : null, adv20: r.features.adv20 ? Math.round(r.features.adv20) : null,
+      stage: chart.setup.stage, pivot: r4(chart.setup.pivot), distanceToPivot: r4(chart.setup.distanceToPivot ?? null), extension: r4(chart.setup.extension ?? null),
+      barsSinceBreakout: chart.setup.barsSinceBreakout ?? null, breakoutVolMult: r4(chart.setup.breakoutVolMult ?? null),
+      base: chart.setup.base ? { months: Math.round(chart.setup.base.window / 21), depth: r4(chart.setup.base.depth), high: r4(chart.setup.base.high), low: r4(chart.setup.base.low), higherLows: chart.setup.base.higherLows, contraction: chart.setup.base.contraction, volumeDryUp: chart.setup.base.volumeDryUp } : null,
+      trend: { passed: chart.trend.passed, total: chart.trend.total }, rs: { newHigh: chart.rs.rsNewHigh, rs3m: r4(chart.rs.rs3m), rs12m: r4(chart.rs.rs12m) },
+      plan: chart.plan ? { entry: r4(chart.plan.entry), stop: r4(chart.plan.stop), stopKind: chart.plan.stopKind, target: r4(chart.plan.target), riskPct: r4(chart.plan.riskPct), rMultiple: r4(chart.plan.rMultiple), note: chart.plan.note } : null,
+      chartScore: chart.chartScore, storyScore: story.storyScore, score,
+      reasons: story.reasons, themes: story.themes, revenueYoY: story.revenueYoY.map((q) => ({ end: q.end, yoy: r4(q.yoy) })),
+      news: news.slice(0, 5).map((n) => ({ time: n.time, headline: n.headline, url: n.url, sentiment: n.sentiment, tags: n.tags })),
+      newsChecked: i < maxStory,
+    });
+  }
+  setups.sort((a, b) => b.score - a.score);
+  stats.setups = { scanned: rows.length, candidates: setups.length, newsRequests, byStage: setups.reduce((m, x) => ((m[x.stage] = (m[x.stage] ?? 0) + 1), m), {}) };
+  writeJson(path.join(outDir, 'setups.json'), {
+    asOf, generatedAt: new Date().toISOString(), model: 'base-breakout-v1', rules: SETUP_RULES,
+    weights: { chart: 0.55, story: 0.45 },
+    method: '차트: 6–18개월 바닥(깊이 12–50%, 저점 상승·변동성 수축·거래량 감소) 상단을 평균 거래량 1.4배 이상으로 돌파 + 추세 템플릿 + 시장 대비 강도. 스토리: SEC 분기 매출 가속·흑자 전환·뉴스 관심·테마·의심받는 성장, 희석·런웨이·위험 공시 감점.',
+    caveat: '돌파는 실패가 더 흔합니다. 손절가를 지키는 것을 전제로 한 후보 목록이며 투자 자문이 아닙니다.',
+    stats: stats.setups,
+    candidates: setups.slice(0, 200),
+  });
+  recs.setups = setups.filter((x) => (x.stage === 'BREAKOUT' || x.stage === 'POST_BREAKOUT') && x.plan && x.plan.riskPct <= 0.15).slice(0, 20)
+    .map((x) => ({ rank: 0, symbol: x.symbol, name: x.name, sector: x.sector, score: x.score, factors: { chart: x.chartScore, story: x.storyScore }, features: { price: x.price } }));
+  recs.setups.forEach((x, i) => { x.rank = i + 1; });
 
   const detail = (r) => ({
     rank: r.rank, percentile: r.percentile, symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, coverage: r.coverage, factors: r.factors,

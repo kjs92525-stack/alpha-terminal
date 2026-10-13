@@ -579,3 +579,12 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 @media(max-width:1100px){.feed-row{grid-template-columns:1fr}}
 @media(max-width:740px){.feed-search{width:100%;margin-left:0}.feed-table td.summary{display:none}.feed-table th:nth-child(6){display:none}}
 .sent,.imp,.tag-pill,.chg-pill{white-space:nowrap}
+
+/* base-breakout scanner */
+.reason-cell { max-width: 320px; white-space: normal; font-size: 11px; }
+.detail-row td { background: var(--panel-2, rgba(255,255,255,0.02)); }
+.setup-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 8px 0; white-space: normal; }
+.setup-detail h4 { margin: 0 0 4px; font-size: 12px; }
+.setup-detail ul { margin: 0 0 8px; padding-left: 16px; font-size: 12px; line-height: 1.6; }
+.news-mini li { font-size: 11px; }
+@media (max-width: 760px) { .setup-detail { grid-template-columns: 1fr; position: sticky; left: 0; max-width: calc(100vw - 100px); } }

@@ -233,6 +233,9 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.equal(comp.cik, '0000001000');
   assert.ok(comp.facts && comp.filings.length >= 1);
   assert.ok(fs.existsSync(path.join(outDir, 'sec', 'recent-filings.json')));
+  const setups = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
+  assert.equal(setups.asOf, r1.asOf);
+  assert.ok(Array.isArray(setups.candidates) && setups.stats && setups.caveat);
   const perf = JSON.parse(fs.readFileSync(path.join(outDir, 'performance.json'), 'utf8'));
   assert.equal(perf.ledgers, 1);
   // dilution filer (cik 1005) is flagged

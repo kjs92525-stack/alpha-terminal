@@ -15,7 +15,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: nightly-pipeline
+  group: data-branch-writer
   cancel-in-progress: false
 jobs:
   run:

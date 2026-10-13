@@ -78,3 +78,12 @@ export function mergeBars(cached, fresh, tol = 0.005) {
   for (const f of fresh) byTime.set(f.time, f);
   return { bars: [...byTime.values()].sort((a, b) => a.time - b.time), needsFull: false };
 }
+
+/** Recent news for one symbol (Alpaca News API, Benzinga source). */
+export async function fetchNews({ symbol, start, keyId, secretKey, fetchImpl = fetch, wait, limit = 50 }) {
+  const qs = new URLSearchParams({ symbols: symbol, start, limit: String(limit), sort: 'desc', include_content: 'false' });
+  const res = await fetchRetry(`https://data.alpaca.markets/v1beta1/news?${qs}`, { headers: { 'APCA-API-KEY-ID': keyId, 'APCA-API-SECRET-KEY': secretKey, Accept: 'application/json' } }, { fetchImpl, wait, retries: 1, baseDelayMs: 500 });
+  if (!res.ok) throw new Error(`Alpaca news HTTP ${res.status}`);
+  const json = await res.json();
+  return (json.news ?? []).map((n) => ({ id: String(n.id), time: n.created_at, headline: n.headline ?? '', url: n.url ?? null, source: n.source ?? null }));
+}
