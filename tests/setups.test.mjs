@@ -84,6 +84,8 @@ test('story: acceleration, profit inflection, doubted-while-improving, dilution 
   const news = [
     ...Array.from({ length: 4 }, (_, i) => ({ time: '2023-10-0' + (i + 2) + 'T12:00:00Z', headline: 'Short seller calls it a fraud, shares fall', sentiment: 'negative' })),
     { time: '2023-10-03T12:00:00Z', headline: 'Company launches AI platform for defense', sentiment: 'positive' },
+    { time: '2023-09-20T12:00:00Z', headline: 'New AI inference chips ship to data centers', sentiment: 'positive' },
+    { time: '2023-09-10T12:00:00Z', headline: 'Generative AI demand lifts orders', sentiment: 'positive' },
     { time: '2023-09-01T12:00:00Z', headline: 'Quarterly update', sentiment: 'neutral' },
   ];
   const s = storySignals({ fundamentals, filings: [], news, asOf: '2023-10-06' });
@@ -98,4 +100,24 @@ test('story: acceleration, profit inflection, doubted-while-improving, dilution 
   // nothing after asOf is used
   const early = storySignals({ fundamentals, filings: [], news, asOf: '2023-07-01' });
   assert.doesNotMatch(early.reasons.map((r) => r.text).join('\n'), /흑자 전환/);
+});
+
+test('a range near the highs is not a base (Apple Oct-2026 case): base must sit 20%+ under the earlier peak', () => {
+  // rally 180 -> 345 over 18 months after an earlier peak of ~260: the "range" tops ABOVE the old peak
+  let t = Date.UTC(2023, 0, 2) / 1000;
+  const bars = [];
+  const push = (c, v = 5e7) => { bars.push({ time: t, open: c, high: c * 1.01, low: c * 0.99, close: c, volume: v }); t += 86400; };
+  for (let i = 0; i < 150; i++) push(200 + i * 0.4); // up to ~260
+  for (let i = 0; i < 120; i++) push(260 - i * 0.65); // down to ~182
+  for (let i = 0; i < 260; i++) push(182 + i * 0.62 + 6 * Math.sin(i / 8)); // up to ~343
+  for (let i = 0; i < 25; i++) push(335 + 4 * Math.sin(i)); // just under the high
+  assert.equal(findBase(bars, bars.length - 1), null);
+  assert.equal(detectSetup(bars).stage, 'NONE');
+});
+
+test('news: a capped feed that is all from this week is not a surge; one stray word is not a theme', () => {
+  const news = Array.from({ length: 50 }, (_, i) => ({ time: new Date(Date.UTC(2026, 9, 12) - i * 3600e3).toISOString(), headline: i === 0 ? 'Apple to launch new iPhone; Army contract rumor' : `Apple stock moves ${i}`, sentiment: 'neutral' }));
+  const s = storySignals({ fundamentals: null, filings: [], news, asOf: '2026-10-12' });
+  assert.doesNotMatch(s.reasons.map((r) => r.text).join('\n'), /관심 급증/);
+  assert.deepEqual(s.themes, []);
 });

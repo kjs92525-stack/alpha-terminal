@@ -309,15 +309,16 @@ export async function runNightly({
     if (r.features.price < 3 || (r.features.adv20 ?? 0) < 2e6 || r.sector === 'Blank Check') continue;
     const bars = (cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec);
     if (bars.length < 220) continue;
+    const htf = { weekly: resampleWeekly(bars), monthly: mergeMonthly((monthly.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec), bars) };
     if (bars.length >= 260) {
-      const quick = detectSetup(bars);
+      const quick = detectSetup(bars, SETUP_RULES, htf.monthly);
       if (ACTIONABLE.has(quick.stage)) {
-        const chart = evaluateChart(bars, spyAsOf);
+        const chart = evaluateChart(bars, spyAsOf, htf.monthly);
         const st = chart.setup;
         items.push({ type: 'breakout', r, stage: st.stage, setupScore: chart.chartScore, plan: planOut(chart.plan), detail: {
           pivot: r4(st.pivot), distanceToPivot: r4(st.distanceToPivot ?? null), extension: r4(st.extension ?? null),
           barsSinceBreakout: st.barsSinceBreakout ?? null, breakoutVolMult: r4(st.breakoutVolMult ?? null),
-          base: st.base ? { months: Math.round(st.base.window / 21), depth: r4(st.base.depth), high: r4(st.base.high), low: r4(st.base.low), higherLows: st.base.higherLows, contraction: st.base.contraction, volumeDryUp: st.base.volumeDryUp } : null,
+          base: st.base ? { months: Math.round(st.base.window / 21), depth: r4(st.base.depth), high: r4(st.base.high), low: r4(st.base.low), priorPeak: r4(st.base.priorPeak ?? null), higherLows: st.base.higherLows, contraction: st.base.contraction, volumeDryUp: st.base.volumeDryUp } : null,
           trend: { passed: chart.trend.passed, total: chart.trend.total }, rs: { newHigh: chart.rs.rsNewHigh, rs3m: r4(chart.rs.rs3m), rs12m: r4(chart.rs.rs12m) },
         } });
       }
@@ -329,7 +330,6 @@ export async function runNightly({
         support: { kind: pb.support.kind, price: r4(pb.support.price) }, confluence: pb.confluence, volumeDryUp: pb.volumeDryUp, rsi: r4(pb.rsi), rsiCooled: pb.rsiCooled, trend: pb.trend,
       } });
     }
-    const htf = { weekly: resampleWeekly(bars), monthly: mergeMonthly((monthly.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec), bars) };
     for (const tf of ['weekly', 'monthly']) {
       const hb = detectHtfBottom(htf[tf], tf);
       if (hb.stage === 'NONE') continue;
