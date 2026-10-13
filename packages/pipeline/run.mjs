@@ -7,6 +7,7 @@ import path from 'node:path';
 import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
 import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
+import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
@@ -148,17 +149,63 @@ export async function runNightly({
     get: (cik) => { if (!compCache.has(cik)) compCache.set(cik, readJson(path.join(compDir, `${cik}.json`), null)); return compCache.get(cik); },
     set: (cik, rec) => { compCache.set(cik, rec); writeJson(path.join(compDir, `${cik}.json`), rec); },
   };
+  // 4a. www.sec.gov refused: data.sec.gov (filings + XBRL) is a separate host — probe it, and
+  //     if it answers, map tickers to CIKs by company name (confirmed below via submissions).
+  let secDataOk = secOk;
+  const cikMapFile = path.join(cacheDir, 'sec-cikmap.json');
+  const cikMap = readJson(cikMapFile, {});
+  let tentative = new Set();
+  if (!secOk) {
+    try {
+      secDataOk = !!(await sec.json('https://data.sec.gov/submissions/CIK0000320193.json'));
+    } catch (e) {
+      secDataOk = false;
+      stats.secDataError = String(e.message ?? e).slice(0, 200);
+    }
+    log(`data.sec.gov ${secDataOk ? 'reachable' : `blocked (${stats.secDataError})`}`);
+    if (secDataOk) {
+      for (const u of universe) if (!u.cik && cikMap[u.ticker]) u.cik = cikMap[u.ticker];
+      const missing = universe.filter((u) => !u.cik);
+      if (missing.length) {
+        const frames = [];
+        for (const p of framePeriods(asOf)) {
+          try { const fr = await sec.json(frameUrl(p)); if (fr) frames.push(fr); } catch (e) { log(`frames ${p}: ${e.message}`); }
+        }
+        const idx = buildNameIndex(frames);
+        for (const u of missing) {
+          const cik = idx.get(normalizeCompanyName(u.name));
+          if (cik) { u.cik = cik; tentative.add(u.ticker); }
+        }
+      }
+      stats.cikMap = { cached: universe.filter((u) => u.cik && !tentative.has(u.ticker)).length, matchedByName: tentative.size, unmatched: universe.filter((u) => !u.cik).length };
+    }
+  }
+
   const ciks = [...new Set(universe.map((u) => u.cik).filter(Boolean))];
-  if (secOk) {
+  if (secDataOk) {
     const sr = await refreshCompanies({ ciks, cache, client: sec, changed, now, maxRefresh: Number(env.SEC_MAX_REFRESH || 6000), onProgress: (d, t) => { if (d % 250 === 0 || d === t) log(`sec ${d}/${t}`); } });
     stats.sec = { ...sr, errors: sr.errors.slice(0, 20), changedFilers: changed.size, requests: sec.requests };
+    if (!secOk) {
+      // keep a name match only when SEC's own ticker list for that CIK confirms it
+      let rejected = 0;
+      for (const u of universe) {
+        if (!u.cik) continue;
+        const rec = cache.get(u.cik);
+        const ok = rec?.tickers ? rec.tickers.map((t) => String(t).toUpperCase()).includes(u.ticker) : !tentative.has(u.ticker);
+        if (ok) cikMap[u.ticker] = u.cik;
+        else { if (tentative.has(u.ticker)) rejected++; delete cikMap[u.ticker]; u.cik = null; }
+      }
+      writeJson(cikMapFile, cikMap);
+      stats.cikMap.rejected = rejected;
+      stats.cikMap.confirmed = universe.filter((u) => u.cik).length;
+    }
   } else {
-    stats.sec = { skipped: true, reason: stats.secError, requests: sec.requests };
+    stats.sec = { skipped: true, reason: stats.secDataError ?? stats.secError, requests: sec.requests };
   }
 
   // 4b. publish SEC data for the API (SEC refuses requests from Cloudflare Workers; the API
   //     falls back to these files). Company files are only rewritten when their content changes.
-  const allListed = buildUniverse(listed).filter((u) => u.cik);
+  const allListed = secOk ? buildUniverse(listed) : universe.filter((u) => u.cik);
   if (allListed.length) writeJson(path.join(outDir, 'sec', 'tickers.json'), { generatedAt: new Date(now).toISOString(), source: 'SEC company_tickers_exchange.json', rows: Object.fromEntries(allListed.map((u) => [u.ticker, [u.cik, u.name]])) });
   let companyFilesWritten = 0;
   const recent = [];
@@ -323,7 +370,9 @@ export async function runNightly({
     prices: `Alpaca Market Data v2 (${env.ALPACA_FEED || 'sip'}, adjustment=all, daily)`,
     filings: 'SEC EDGAR submissions + daily form index',
     fundamentals: 'SEC XBRL companyfacts (latest annual)',
-    universe: { sec: 'SEC company_tickers_exchange.json', 'sec-cache': 'SEC 종목 목록(이전 수집본) — 오늘 SEC 접속 실패', 'alpaca-assets': 'Alpaca 종목 목록 — SEC 접속 실패로 섹터·재무·공시 없음' }[stats.universeSource],
+    universe: stats.universeSource === 'sec' ? 'SEC company_tickers_exchange.json'
+      : secDataOk ? `${stats.universeSource === 'sec-cache' ? 'SEC 종목 목록(이전 수집본)' : 'Alpaca 종목 목록'} + SEC 재무·공시(data.sec.gov${stats.cikMap ? `, ${stats.cikMap.confirmed}개 종목 SEC 티커로 확인` : ''})`
+        : `${stats.universeSource === 'sec-cache' ? 'SEC 종목 목록(이전 수집본)' : 'Alpaca 종목 목록'} — SEC 접속 실패로 섹터·재무·공시 없음`,
   };
   const latest = {
     asOf, model: MODEL_VERSION, generatedAt: new Date().toISOString(), universe: universe.length, ranked: stats.ranked, sources,

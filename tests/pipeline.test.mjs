@@ -302,7 +302,7 @@ test('SEC blocked (403 everywhere): universe from Alpaca assets, scans still pub
   assert.equal(r.stats.universeSource, 'alpaca-assets');
   assert.equal(r.stats.universe, 24, 'ETFs and non-listed venues excluded');
   assert.equal(r.stats.sec.skipped, true);
-  assert.equal(secCalls, 1, 'no SEC requests after the first refusal');
+  assert.equal(secCalls, 2, 'www.sec.gov refused once, data.sec.gov probed once, then nothing');
   assert.ok(r.stats.secUserAgentIssues.length >= 1, 'pasted prefix/quotes reported');
   assert.ok(fs.existsSync(path.join(outDir, 'setups.json')));
   const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
@@ -318,4 +318,57 @@ test('normalizeUserAgent cleans pasted values and flags missing email', async ()
   assert.equal(normalizeUserAgent('  "SEC_USER_AGENT = AlphaTerminal/0.6 a@b.com"\n').ua, 'AlphaTerminal/0.6 a@b.com');
   assert.deepEqual(normalizeUserAgent('AlphaTerminal/0.6 a@b.com').issues, []);
   assert.ok(normalizeUserAgent('AlphaTerminal').issues.some((i) => i.includes('이메일')));
+});
+
+test('www.sec.gov blocked but data.sec.gov open: CIKs matched by name and confirmed by SEC tickers', async () => {
+  const { normalizeCompanyName, framePeriods } = await import('../packages/pipeline/cikmap.mjs');
+  assert.equal(normalizeCompanyName('Alphabet Inc. Class A Common Stock'), normalizeCompanyName('ALPHABET INC.'));
+  assert.equal(normalizeCompanyName('Tesla, Inc. /DE/'), 'tesla');
+  assert.deepEqual(framePeriods('2026-10-12'), ['CY2026Q2I', 'CY2026Q1I']);
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pipe-secdata-'));
+  const cacheDir = path.join(tmp, 'cache');
+  const outDir = path.join(tmp, 'out');
+  const state = { days: 560, calls: [] };
+  const f = e2eFetch(state);
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    if (u.hostname === 'www.sec.gov') return new Response('Forbidden', { status: 403 });
+    if (u.hostname === 'paper-api.alpaca.markets') {
+      return Response.json(f.syms.map((s) => ({ symbol: s, name: `${s} Inc. Common Stock`, exchange: 'NYSE', tradable: true })));
+    }
+    if (u.pathname.includes('/api/xbrl/frames/')) {
+      // every symbol but the last is a filer; the 2nd symbol's name match points at the wrong company
+      return Response.json({ data: f.syms.slice(0, -1).map((s, i) => ({ cik: 1000 + i, entityName: `${s} INC /DE/` })) });
+    }
+    const m = u.pathname.match(/submissions\/CIK(\d+)\.json/);
+    if (m) {
+      const res = await f.fetch(url);
+      const body = await res.json();
+      const i = Number(m[1]) - 1000;
+      return Response.json({ ...body, tickers: i === 1 ? ['ZZZZ'] : [f.syms[i] ?? 'AAPL'] });
+    }
+    return f.fetch(url);
+  };
+  const env = { ALPACA_KEY_ID: 'k', ALPACA_SECRET_KEY: 's', SEC_USER_AGENT: 'AlphaTerminal/0.6 test@example.com' };
+  const now = f.series.SPY.at(-1).time * 1000 + 26 * 3600000;
+  const r = await runNightly({ env, cacheDir, outDir, fetchImpl, now, historyDays: 900, wait: noWait });
+  assert.equal(r.stats.universeSource, 'alpaca-assets');
+  assert.equal(r.stats.cikMap.matchedByName, 23);
+  assert.equal(r.stats.cikMap.rejected, 1, 'name match contradicted by SEC tickers is dropped');
+  assert.equal(r.stats.cikMap.confirmed, 22);
+  assert.ok(r.stats.sec.refreshed >= 22);
+  const comp = JSON.parse(fs.readFileSync(path.join(outDir, 'companies', `${f.syms[0]}.json`), 'utf8'));
+  assert.equal(comp.cik, '0000001000');
+  assert.ok(comp.facts);
+  assert.ok(!fs.existsSync(path.join(outDir, 'companies', `${f.syms[1]}.json`)), 'rejected match not published');
+  const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
+  assert.ok(latest.mid.length > 0, 'fundamentals restored → mid-term ranking back');
+  assert.match(latest.sources.universe, /data\.sec\.gov/);
+  // second run reuses the confirmed map: no frames requests
+  const before = state.calls.length;
+  const r2 = await runNightly({ env, cacheDir, outDir, fetchImpl, now: now + 3600000, historyDays: 900, wait: noWait });
+  assert.equal(r2.stats.cikMap.cached, 22);
+  assert.ok(state.calls.slice(before).every((c) => !c.includes('/frames/')));
+  fs.rmSync(tmp, { recursive: true, force: true });
 });
