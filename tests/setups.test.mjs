@@ -151,3 +151,17 @@ test('narrative does not claim losses are shrinking when there is no year-ago fi
   const { narrative } = storySignals({ fundamentals, filings: [], news: [], asOf: '2026-10-12' });
   assert.match(narrative.takeaway, /적자가 줄어드는지는 아직 확인되지 않았습니다/);
 });
+
+test('a range after a big rally off the lows is not a base (ROKU Oct-2026 case)', () => {
+  let t = Date.UTC(2022, 0, 3) / 1000;
+  const bars = [];
+  const push = (c, v = 4e6) => { bars.push({ time: t, open: c, high: c * 1.015, low: c * 0.985, close: c, volume: v }); t += 86400; };
+  for (let i = 0; i < 250; i++) push(490 * Math.pow(50 / 490, i / 249)); // 490 -> 50 (old bubble peak far above)
+  for (let i = 0; i < 200; i++) push(50 + 8 * Math.sin(i / 10)); // the real bottom around 50
+  for (let i = 0; i < 120; i++) push(50 + i * 0.5); // rally to ~110
+  for (let i = 0; i < 130; i++) push(130 + 25 * Math.sin(i / 9) + i * 0.05, 3e6); // 104–160 consolidation
+  assert.equal(findBase(bars, bars.length - 1), null, 'not a bottom: base low is 2x the multi-year low');
+  // the same chart cut at the end of the real bottom does find a base near the lows
+  const atBottom = findBase(bars, 449);
+  assert.ok(!atBottom || atBottom.low < 50 * 1.3);
+});

@@ -23,6 +23,8 @@ export const SETUP_RULES = {
   nearPivot: 0.06, // within 6% below pivot = setting up
   minBelowPeak: 0.2, // base ceiling must sit >= 20% under the earlier peak — a bottom, not a high
   peakLookbackDays: 365 * 5,
+  maxAboveLow: 0.3, // base low within 30% of the multi-year low — the actual bottom, not a pause after a rally
+  lowLookbackDays: 365 * 3,
 };
 
 /** Minervini-style trend template (8 checks). */
@@ -109,6 +111,17 @@ export function priorPeak(bars, startIdx, monthly = null, lookbackDays = SETUP_R
   return peak;
 }
 
+/** Lowest low within the lookback before `startIdx` (daily + monthly history); null without history. */
+export function priorLow(bars, startIdx, monthly = null, lookbackDays = SETUP_RULES.lowLookbackDays) {
+  const t = bars[startIdx]?.time;
+  if (t === undefined) return null;
+  const from = t - lookbackDays * 86400;
+  let low = null;
+  for (let i = 0; i < startIdx; i++) if (bars[i].time >= from && (low === null || bars[i].low < low)) low = bars[i].low;
+  for (const m of monthly ?? []) if (m.time >= from && m.time + 31 * 86400 <= t && (low === null || m.low < low)) low = m.low;
+  return low;
+}
+
 /**
  * Best (longest qualifying) base ending at endIdx. A base is a BOTTOM: the stock fell from an
  * earlier peak and moves sideways well below it. Ranges near all-time highs are not bases here.
@@ -121,7 +134,11 @@ export function findBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
     if (s.depth > rules.maxDepth || s.depth < rules.minDepth) continue;
     const peak = priorPeak(bars, s.start, monthly, rules.peakLookbackDays);
     if (peak !== null && s.high > peak * (1 - rules.minBelowPeak)) continue;
+    // e.g. ROKU Oct-2026: 104–160 range after tripling from ~50 is a pause in an advance, not a bottom
+    const floor = priorLow(bars, s.start, monthly, rules.lowLookbackDays);
+    if (floor !== null && s.low > Math.min(floor, s.low) * (1 + rules.maxAboveLow)) continue;
     s.priorPeak = peak;
+    s.multiYearLow = floor === null ? s.low : Math.min(floor, s.low);
     // a window that starts in the middle of the prior decline would take a point on the way
     // down as the 'ceiling'; require the bars just before the window to sit at/below it.
     const pre = bars.slice(Math.max(0, s.start - 20), s.start);
