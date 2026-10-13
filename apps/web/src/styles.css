@@ -120,14 +120,14 @@ button{border:0;color:inherit;background:none}
 .quote strong{display:block;font-size:22px;letter-spacing:-.7px}
 .quote span{display:block;font-size:11px;margin-top:2px}
 .chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:5px;flex-wrap:wrap;padding:5px 12px 9px;border-bottom:1px solid #1f2141}
-.tf-list,.chart-options{display:flex;align-items:center;gap:2px}
+.tf-list,.chart-options{display:flex;align-items:center;gap:2px;flex-wrap:wrap;row-gap:4px}
 .tf-list button,.chart-options button{font-size:10px;color:#8089ae;border-radius:4px;padding:6px 7px}
 .tf-list button.selected,.chart-options button.selected{background:#212345;color:#8a96e5}
 .chart-options select{background:#171830;border:1px solid #2a2e4c;border-radius:4px;color:#9ca3bf;font-size:10px;padding:5px;max-width:90px}
 .chart-grid{display:grid;gap:1px;background:#1f2142;min-height:370px}
 .chart-grid.split-2{grid-template-columns:1fr 1fr}
 .chart-grid.split-4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
-.chart-cell{position:relative;min-width:0;height:370px;background:#0b0c1c}
+.chart-cell{position:relative;min-width:0;height:370px;background:#0b0c1c;overflow:hidden}
 .split-2 .chart-cell{height:370px}
 .split-4 .chart-cell{height:225px}
 .chart-mount{width:100%;height:100%}
@@ -331,7 +331,7 @@ button:disabled{opacity:.55;cursor:default}
 .star-on{color:#e5b970;margin-left:4px;vertical-align:middle}
 .factor-track.na{background:repeating-linear-gradient(45deg,#1e2040,#1e2040 4px,#181a34 4px,#181a34 8px)}
 .chart-cell{position:relative}
-.chart-overlay{position:absolute;left:0;top:0;pointer-events:none;z-index:2;overflow:visible}
+.chart-overlay{position:absolute;left:0;top:0;pointer-events:none;z-index:2;overflow:hidden}
 .chart-legend{position:absolute;left:12px;top:8px;z-index:3;font-size:10px;color:#878fb2;pointer-events:none;font-variant-numeric:tabular-nums;background:#0b0c1ccc;padding:2px 6px;border-radius:4px}
 .chart-legend b{color:#dadde8;font-weight:600;margin-right:6px}
 .chart-watermark{top:auto;bottom:34px;left:14px}

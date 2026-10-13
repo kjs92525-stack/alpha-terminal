@@ -117,7 +117,10 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
     // --- order blocks: primary structure visual ---
     // Active (unmitigated) blocks: solid zone extended to the right edge, accent bar, label with range.
     // Recently mitigated blocks: faint outline ending where price traded back into them.
-    const drawOrderBlocks = (parts: string[], w: number, x: (i: number) => number | null, y: (p: number) => number | null) => {
+    const drawOrderBlocks = (parts: string[], w: number, ph: number, x: (i: number) => number | null, y: (p: number) => number | null) => {
+      // blocks outside the visible price range are not drawn (they used to spill over the toolbar);
+      // one small edge note says how many sit above / below
+      const off = { above: [] as number[], below: [] as number[] };
       const last = bars.length - 1;
       const active = analysis.orderBlocks.filter((o) => o.mitigatedIndex === null).slice(-6);
       const recent = analysis.orderBlocks.filter((o) => o.mitigatedIndex !== null && last - (o.mitigatedIndex as number) <= 40).slice(-4);
@@ -127,10 +130,12 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
         const yt = y(o.top);
         const yb = y(o.bottom);
         if (x0 === null || x1 === null || yt === null || yb === null || x1 < 0 || x0 > w) return;
+        if (Math.max(yt, yb) < 0) { if (!faded) off.above.push(o.bottom, o.top); return; }
+        if (Math.min(yt, yb) > ph) { if (!faded) off.below.push(o.bottom, o.top); return; }
         const left = Math.max(0, x0);
         const right = Math.min(w, x1);
-        const top = Math.min(yt, yb);
-        const h = Math.max(2, Math.abs(yb - yt));
+        const top = Math.max(0, Math.min(yt, yb));
+        const h = Math.max(2, Math.min(ph, Math.max(yt, yb)) - top);
         const bull = o.direction === 'bull';
         const col = o.provisional ? C.provisional : bull ? C.obBull : C.obBear;
         if (faded) {
@@ -149,6 +154,12 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
       };
       for (const o of recent) zone(o, o.mitigatedIndex, true);
       for (const o of active) zone(o, null, false);
+      const note = (vals: number[], yPos: number, txt: string, col: string) => {
+        if (!vals.length) return;
+        parts.push(`<text x="${w - 10}" y="${yPos}" text-anchor="end" fill="${col}" font-size="10" font-weight="700" paint-order="stroke" stroke="${C.bg}" stroke-width="3">${txt} ${vals.length / 2}개 (${fmtPrice(Math.min(...vals))}–${fmtPrice(Math.max(...vals))})</text>`);
+      };
+      note(off.above, 14, '▲ 화면 위 오더블록', C.obBear);
+      note(off.below, ph - 6, '▼ 화면 아래 오더블록', C.obBull);
     };
 
     // --- SVG overlay: FVG / order-block zones and volume profile ---
@@ -177,7 +188,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
         const recent = analysis.fvg.filter((g) => g.filledIndex === null).slice(-8);
         for (const g of recent) rect(g.index, null, g.top, g.bottom, g.direction === 'bull' ? '#2fd27a1c' : '#ff54701c', g.provisional ? C.provisional : g.direction === 'bull' ? '#2fd27aaa' : '#ff5470aa', g.provisional ? 'FVG?' : 'FVG');
       }
-      if (show.has('ob')) drawOrderBlocks(parts, w, x, y);
+      if (show.has('ob')) drawOrderBlocks(parts, w, h, x, y);
       if (show.has('profile') && analysis.profile.bins.length) {
         const max = Math.max(...analysis.profile.bins.map((b) => b.volume));
         for (const b of analysis.profile.bins) {
