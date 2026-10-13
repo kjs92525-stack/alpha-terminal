@@ -63,33 +63,60 @@ function pick(section, names) {
 const isoDay = (s) => String(s ?? '').slice(0, 10);
 const days = (a, b) => (Date.parse(b) - Date.parse(a)) / DAY;
 
+/** Keep only what we use from a financials-reported response (small enough to cache). */
+export function compactReported(reported) {
+  return (reported?.data ?? [])
+    .filter((d) => /^(10-Q|10-K|20-F|40-F)/.test(d.form ?? '') && d.endDate)
+    .map((d) => ({
+      form: d.form, year: d.year ?? null, start: isoDay(d.startDate) || null, end: isoDay(d.endDate), filed: isoDay(d.filedDate) || null,
+      rev: pick(d.report?.ic, REVENUE), ni: pick(d.report?.ic, NET_INCOME), ocf: pick(d.report?.cf, OCF), cash: pick(d.report?.bs, CASH),
+    }))
+    .sort((a, b) => a.end.localeCompare(b.end));
+}
+
+const isAnnual = (form) => /^(10-K|20-F|40-F)/.test(form);
+
 /**
- * Quarterly series for a flow concept. Filings may report the 3-month period or the
- * fiscal year-to-date (and 10-Ks the full year); YTD values are differenced against the
- * quarters already seen in the same fiscal year. A value that cannot be derived is skipped.
+ * Quarterly series for a flow field ('rev' | 'ni' | 'ocf') from compact filings.
+ * 10-Qs may report the 3-month period or fiscal year-to-date: YTD values are differenced
+ * against the quarters already seen in the same fiscal year. The annual report (10-K) gives
+ * the fourth quarter as annual total minus the three quarters inside that fiscal year; if the
+ * annual value is clearly a single quarter already, it is used as-is. Underivable values are skipped.
  */
-export function quarterlyFlow(filings, section, names) {
-  const byYear = new Map();
-  for (const f of filings) {
-    const v = pick(f.report?.[section], names);
-    if (v === null) continue;
-    (byYear.get(f.year) ?? byYear.set(f.year, []).get(f.year)).push({ ...f, v });
-  }
+export function quarterlyFlow(rows, field) {
   const out = [];
+  const byYear = new Map();
+  for (const r of rows) {
+    if (isAnnual(r.form) || typeof r[field] !== 'number') continue;
+    (byYear.get(r.year) ?? byYear.set(r.year, []).get(r.year)).push(r);
+  }
   for (const items of byYear.values()) {
-    items.sort((a, b) => a.endDate.localeCompare(b.endDate));
+    items.sort((a, b) => a.end.localeCompare(b.end));
     let sum = 0;
     let n = 0;
     for (const it of items) {
-      const dur = days(it.startDate, it.endDate);
+      const dur = it.start ? days(it.start, it.end) : 91;
       let q = null;
-      if (dur > 0 && dur <= 110) q = it.v;
-      else if (Math.abs(dur - 91 * (n + 1)) <= 45) q = it.v - sum; // YTD covering the quarters already seen
+      if (dur > 0 && dur <= 110) q = it[field];
+      else if (Math.abs(dur - 91 * (n + 1)) <= 45) q = it[field] - sum;
       if (q === null) continue;
-      out.push({ end: it.endDate, value: q, filed: it.filedDate, form: it.form, fy: it.year });
+      out.push({ end: it.end, value: q, filed: it.filed, form: it.form, fy: it.year });
       sum += q;
       n++;
     }
+  }
+  for (const r of rows) {
+    if (!isAnnual(r.form) || typeof r[field] !== 'number' || out.some((q) => q.end === r.end)) continue;
+    const prior = out.filter((q) => days(q.end, r.end) > 20 && days(q.end, r.end) < 300).sort((a, b) => a.end.localeCompare(b.end)).slice(-3);
+    if (prior.length !== 3) continue;
+    const priorSum = prior.reduce((a, q) => a + q.value, 0);
+    const v = r[field];
+    const typical = Math.max(...prior.map((q) => Math.abs(q.value)));
+    let q4 = null;
+    if (field === 'rev' ? v > priorSum * 1.15 : Math.abs(v) > typical * 2.2) q4 = v - priorSum; // annual total
+    else if (field === 'rev' && v > 0 && v < typical * 2.2) q4 = v; // already a single quarter
+    if (q4 === null) continue;
+    out.push({ end: r.end, value: q4, filed: r.filed, form: `${r.form} Q4`, fy: r.year });
   }
   return out.sort((a, b) => a.end.localeCompare(b.end));
 }
@@ -100,17 +127,14 @@ function ttm(series) {
   return { end: s[3].end, value: s.reduce((a, x) => a + x.value, 0), filed: s[3].filed, form: 'TTM' };
 }
 
-/** Finnhub financials-reported (quarterly) + profile2 → Fundamentals (sec.mjs shape). */
-export function toFundamentals(reported, profile) {
-  const filings = (reported?.data ?? [])
-    .filter((d) => /^(10-Q|10-K|20-F|40-F)/.test(d.form ?? '') && d.endDate && d.startDate)
-    .map((d) => ({ ...d, endDate: isoDay(d.endDate), startDate: isoDay(d.startDate), filedDate: isoDay(d.filedDate) }));
-  let rev = quarterlyFlow(filings, 'ic', REVENUE);
-  const ni = quarterlyFlow(filings, 'ic', NET_INCOME);
-  const ocf = quarterlyFlow(filings, 'cf', OCF);
+/** Compact filings + profile → Fundamentals (sec.mjs shape). */
+export function fundamentalsFromCompact(rows, profile) {
+  let rev = quarterlyFlow(rows, 'rev');
+  const ni = quarterlyFlow(rows, 'ni');
+  const ocf = quarterlyFlow(rows, 'ocf');
   // a negative derived revenue quarter means the period guess was wrong — don't use the series
   if (rev.some((q) => q.value < 0)) rev = [];
-  const cashPts = filings.map((f) => ({ end: f.endDate, value: pick(f.report?.bs, CASH), filed: f.filedDate, form: f.form })).filter((p) => p.value !== null).sort((a, b) => a.end.localeCompare(b.end));
+  const cashPts = rows.filter((r) => typeof r.cash === 'number').map((r) => ({ end: r.end, value: r.cash, filed: r.filed, form: r.form }));
   const revTtm = ttm(rev);
   const revTtmPrior = rev.length >= 8 ? ttm(rev.slice(0, -4)) : null;
   const niTtm = ttm(ni);
@@ -139,6 +163,9 @@ export function toFundamentals(reported, profile) {
   };
 }
 
+/** Finnhub financials-reported (quarterly) + profile2 → Fundamentals. */
+export const toFundamentals = (reported, profile) => fundamentalsFromCompact(compactReported(reported), profile);
+
 /** One company: profile + quarterly reported financials. Symbol in vendor form (BRK.B). */
 export async function fetchCompany(client, symbol, now = Date.now()) {
   const sym = encodeURIComponent(symbol);
@@ -149,7 +176,14 @@ export async function fetchCompany(client, symbol, now = Date.now()) {
     name: profile?.name ?? null, industry: profile?.finnhubIndustry ?? null, sector: industryToSector(profile?.finnhubIndustry),
     marketCap: typeof profile?.marketCapitalization === 'number' ? profile.marketCapitalization * 1e6 : null,
     cik: reported?.cik ? String(reported.cik).padStart(10, '0') : null,
-    facts: toFundamentals(reported, profile),
+    profile: { name: profile?.name ?? null, finnhubIndustry: profile?.finnhubIndustry ?? null, shareOutstanding: profile?.shareOutstanding ?? null, marketCapitalization: profile?.marketCapitalization ?? null },
+    reported: compactReported(reported),
     filings: [],
   };
+}
+
+/** Cached record → record with facts recomputed from the compact filings (null if too old a format). */
+export function withFacts(rec) {
+  if (!rec?.reported) return null;
+  return { ...rec, facts: fundamentalsFromCompact(rec.reported, rec.profile) };
 }
