@@ -321,7 +321,10 @@ export async function runNightly({
       if (ACTIONABLE.has(quick.stage) || quick.stage === 'IN_BASE') {
         const chart = evaluateChart(bars, spyAsOf, htf.monthly);
         const st = chart.setup;
-        items.push({ type: st.stage === 'IN_BASE' ? 'base' : 'breakout', r, stage: st.stage, setupScore: chart.chartScore, plan: planOut(chart.plan), detail: {
+        // 바닥 다지기: rank buyable floors first (at the floor with a tight stop), wide-stop boxes last
+        const floorBonus = st.stage !== 'IN_BASE' ? 0
+          : (chart.plan?.entryType === 'zone' ? 15 : chart.plan?.entryType === 'limit' ? 8 : 0) - ((chart.plan?.riskPct ?? 1) > 0.25 ? 15 : 0);
+        items.push({ type: st.stage === 'IN_BASE' ? 'base' : 'breakout', r, stage: st.stage, setupScore: chart.chartScore + floorBonus, plan: planOut(chart.plan), detail: {
           pivot: r4(st.pivot), distanceToPivot: r4(st.distanceToPivot ?? null), extension: r4(st.extension ?? null),
           barsSinceBreakout: st.barsSinceBreakout ?? null, posInBase: r4(chart.plan?.posInBase ?? null), breakoutVolMult: r4(st.breakoutVolMult ?? null),
           base: st.base ? { months: Math.round(st.base.window / 21), depth: r4(st.base.depth), high: r4(st.base.high), low: r4(st.base.low), priorPeak: r4(st.base.priorPeak ?? null), multiYearLow: r4(st.base.multiYearLow ?? null), higherLows: st.base.higherLows, contraction: st.base.contraction, volumeDryUp: st.base.volumeDryUp } : null,
@@ -434,7 +437,7 @@ export async function runNightly({
     weights: { chart: 0.55, story: 0.45 },
     method: {
       breakout: '6–18개월 바닥(깊이 12–50%, 저점 상승·변동성 수축·거래량 감소) 상단을 50일 평균 1.4배 이상 거래량으로 돌파.',
-      base: '돌파 탭과 같은 바닥 조건(3년 고점 대비 크게 빠져 있거나 다년 저점 근처, 6–18개월 박스)을 만족하지만 아직 상단 6% 밖에 있는 종목. 박스 아래쪽 35% 안이면 분할매수 구간, 위쪽이면 상단 돌파 대기.',
+      base: '돌파 탭과 같은 바닥 조건(3년 고점 대비 크게 빠져 있거나 다년 저점 근처, 6–18개월 박스)을 만족하지만 아직 상단 6% 밖에 있는 종목. 박스 아래쪽 절반이면 바닥 근처(바닥+12% 이내)에서 분할매수 — 이미 바닥이면 지금, 조금 위면 지정가 대기. 위쪽 절반이면 상단 돌파 대기.',
       pullback: '상승 추세(200일선 위·상승, 50>200, 직전 30% 이상 상승) 종목이 최근 고점 대비 5–25% 조정 후 20일 EMA·50일선·이전 고점·오더블록 지지에 도달.',
       weekly_bottom: '최근 2년 고점 대비 35% 이상 하락 후 4주 이상 신저가 없음, 바닥 대비 20% 이내. 10주선 위 + 저점 상승이면 전환 시작.',
       monthly_bottom: '최근 5년 고점 대비 50% 이상 하락 후 2개월 이상 신저가 없음, 바닥 대비 25% 이내. 10개월선 위 + 저점 상승/이평 상승이면 전환 시작.',
