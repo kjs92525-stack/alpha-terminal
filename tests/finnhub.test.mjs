@@ -83,10 +83,19 @@ test('cached record keeps compact filings and facts are rebuilt from them', asyn
   const fetchImpl = async (url) => Response.json(url.includes('profile2') ? { name: 'Demo', finnhubIndustry: 'Software', shareOutstanding: 10 } : { cik: '123', data: ytdYear(2025, [10, 11, 12, 13]) });
   const c = makeFinnhubClient({ apiKey: 'k', fetchImpl, wait: async () => {}, minIntervalMs: 0 });
   const raw = await fetchCompany(c, 'DEMO');
-  assert.ok(Array.isArray(raw.reported) && !('facts' in raw));
+  assert.ok(Array.isArray(raw.reported) && !('facts' in raw) && raw.format === 2);
+  assert.equal(raw.reported.length, 4, 'quarterly + annual responses merged without duplicates');
   assert.ok(JSON.stringify(raw).length < 5000, 'small cache record');
   const rec = withFacts(JSON.parse(JSON.stringify(raw)));
   assert.deepEqual(rec.facts.revenueQuarterly.map((q) => q.value), [10, 11, 12, 13]);
   assert.equal(rec.sector, 'Information Technology');
   assert.equal(withFacts({ facts: {} }), null, 'old-format record is refetched');
+});
+
+test('annual 10-K fetched separately fills fiscal Q4; object-shaped report sections are read too', async () => {
+  const q = (start, end, rev) => ({ form: '10-Q', year: 2025, startDate: start, endDate: end, filedDate: end, report: { ic: { 'us-gaap_Revenues': rev } } });
+  const quarterly = { data: [q('2025-01-01', '2025-03-31', 10), q('2025-04-01', '2025-06-30', 11), q('2025-07-01', '2025-09-30', 12)] };
+  const annual = { data: [{ form: '10-K', year: 2025, startDate: '2025-01-01', endDate: '2025-12-31', filedDate: '2026-02-20', report: { ic: [{ concept: 'us-gaap_Revenues', value: 46 }] } }] };
+  const rev = quarterlyFlow(compactReported(quarterly, annual), 'rev');
+  assert.deepEqual(rev.map((x) => x.value), [10, 11, 12, 13]);
 });

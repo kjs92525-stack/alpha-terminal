@@ -36,6 +36,8 @@ export function storyPicks(data: Setups | null, limit = 8): StoryPick[] {
     if (surge) { why.push('뉴스 관심 급증'); bonus += 5; }
     if (row.themes.length) { why.push(`테마: ${row.themes.join('·')}`); bonus += 4; }
     if (widening) { why.push('⚠ 적자 확대'); bonus -= 20; }
+    const drop = lines.match(/순이익 [^(]*\(1년 전 [^,]+, -(\d+)%\)/);
+    if (drop && Number(drop[1]) >= 30) { why.push('⚠ 이익 감소'); bonus -= 12; }
     // the point is to find stories the market has not priced: tilt away from mega caps
     if (row.mcap != null && row.mcap > 300e9) bonus -= 12;
     else if (row.mcap != null && row.mcap < 20e9) bonus += 5;

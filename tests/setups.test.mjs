@@ -165,3 +165,14 @@ test('a range after a big rally off the lows is not a base (ROKU Oct-2026 case)'
   const atBottom = findBase(bars, 449);
   assert.ok(!atBottom || atBottom.low < 50 * 1.3);
 });
+
+test('profit down a lot is not called momentum; a quarter-to-quarter swing is not "turned profitable"', () => {
+  const q = (end, value) => ({ end, value, filed: end, form: '10-Q' });
+  const fundamentals = {
+    revenueQuarterly: [q('2025-03-31', 100), q('2025-06-30', 100), q('2025-09-30', 100), q('2026-03-31', 90), q('2026-06-30', 120), q('2026-09-30', 150)],
+    netIncomeQuarterly: [q('2025-09-30', 241e6), q('2026-06-30', -5e6), q('2026-09-30', 13e6)],
+  };
+  const s = storySignals({ fundamentals, filings: [], news: [], asOf: '2026-10-12' });
+  assert.doesNotMatch(s.reasons.map((r) => r.text).join(' '), /흑자 전환/);
+  assert.match(s.narrative.takeaway, /이익은 1년 전보다 크게 줄었습니다/);
+});

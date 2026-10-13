@@ -397,29 +397,31 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
       assert.equal(init.headers['X-Finnhub-Token'], 'fh');
       const i = f.syms.indexOf(u.searchParams.get('symbol'));
       if (u.pathname.endsWith('/profile2')) return Response.json({ name: `${u.searchParams.get('symbol')} Corp`, finnhubIndustry: ['Semiconductors', 'Biotechnology', 'Banking', 'Software'][i % 4], shareOutstanding: 100, marketCapitalization: 5000 });
+      if (u.searchParams.get('freq') === 'annual') return Response.json({ data: [] });
       return Response.json(reported(i));
     }
     return f.fetch(url);
   };
-  const env = { ALPACA_KEY_ID: 'k', ALPACA_SECRET_KEY: 's', SEC_USER_AGENT: 'AlphaTerminal/0.6 test@example.com', FINNHUB_API_KEY: 'fh', FINNHUB_MAX_CALLS: '30' };
+  const env = { ALPACA_KEY_ID: 'k', ALPACA_SECRET_KEY: 's', SEC_USER_AGENT: 'AlphaTerminal/0.6 test@example.com', FINNHUB_API_KEY: 'fh', FINNHUB_MAX_CALLS: '30', FINNHUB_MIN_INTERVAL_MS: '0' };
   const now = f.series.SPY.at(-1).time * 1000 + 26 * 3600000;
   const r = await runNightly({ env, cacheDir, outDir, fetchImpl, now, historyDays: 900, wait: noWait });
-  assert.equal(r.stats.finnhub.attempted, 15, 'call budget respected (2 calls per company)');
+  assert.equal(r.stats.finnhub.attempted, 10, 'call budget respected (3 calls per company)');
   assert.equal(fhCalls, 30);
-  assert.equal(r.stats.finnhub.withRevenue, 15);
+  assert.equal(r.stats.finnhub.withRevenue, 10);
   const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
   assert.ok(latest.mid.length > 0, 'mid-term ranking restored');
   assert.ok(latest.mid.some((x) => x.sector === 'Information Technology'));
   assert.match(latest.sources.fundamentals, /Finnhub/);
   const fetched = f.syms.filter((s) => fs.existsSync(path.join(outDir, 'companies', `${s}.json`)));
-  assert.equal(fetched.length, 15);
+  assert.equal(fetched.length, 10);
   const comp = JSON.parse(fs.readFileSync(path.join(outDir, 'companies', `${fetched[0]}.json`), 'utf8'));
   assert.equal(comp.source, 'Finnhub');
   assert.equal(comp.facts.revenueQuarterly.length, 8);
-  // next night: the other 9 companies, cached ones not refetched
+  // next night: the next 10 companies, cached ones not refetched
   fhCalls = 0;
   const r2 = await runNightly({ env, cacheDir, outDir, fetchImpl, now: now + 3600000, historyDays: 900, wait: noWait });
-  assert.equal(r2.stats.finnhub.attempted, 9);
-  assert.equal(fhCalls, 18);
+  assert.equal(r2.stats.finnhub.attempted, 10);
+  assert.equal(r2.stats.finnhub.cached, 10);
+  assert.equal(fhCalls, 30);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
