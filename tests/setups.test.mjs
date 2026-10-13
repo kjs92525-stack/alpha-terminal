@@ -218,3 +218,21 @@ test('volatile small caps: QUBT-like 6-month bottom 61% deep and IONQ-like highe
   const so = detectSetup(ob);
   assert.equal(so.stage, 'BREAKOUT', JSON.stringify(so));
 });
+
+test('바닥 다지기: inside the base near its floor → scale-in zone, stop under the floor, target the top', () => {
+  const bars = basePath();
+  const s = detectSetup(bars);
+  const range = s.base.high - s.base.low;
+  const px = s.base.low + range * 0.15;
+  const atFloor = [...bars.slice(0, -1), { ...bars.at(-1), open: px, high: px * 1.01, low: px * 0.99, close: px }];
+  const p = tradePlan(atFloor, { ...s, stage: 'IN_BASE' });
+  assert.equal(p.entryType, 'zone');
+  assert.ok(p.stop < s.base.low && p.zone[0] === s.base.low && p.zone[1] > px);
+  assert.equal(p.target, s.pivot);
+  assert.ok(p.rMultiple > 1.5, String(p.rMultiple));
+  assert.match(p.how, /분할매수/);
+  // upper part of the base: wait for the breakout instead
+  const hi = s.base.low + range * 0.8;
+  const upper = [...bars.slice(0, -1), { ...bars.at(-1), open: hi, high: hi * 1.01, low: hi * 0.99, close: hi }];
+  assert.equal(tradePlan(upper, { ...s, stage: 'IN_BASE' }).entryType, 'buy-stop');
+});

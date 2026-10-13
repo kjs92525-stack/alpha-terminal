@@ -4,10 +4,10 @@
 
 import type { SetupRow, SetupType, Setups } from './snapshot';
 
-export const TYPE_KO: Record<SetupType, string> = { breakout: '바닥 돌파', pullback: '눌림목', weekly_bottom: '주봉 바닥', monthly_bottom: '월봉 바닥' };
+export const TYPE_KO: Record<SetupType, string> = { breakout: '바닥 돌파', base: '바닥 다지기', pullback: '눌림목', weekly_bottom: '주봉 바닥', monthly_bottom: '월봉 바닥' };
 export const STAGE_KO: Record<string, string> = {
   BREAKOUT: '오늘 돌파', POST_BREAKOUT: '돌파 후 눌림', NEAR_PIVOT: '돌파 임박', BOUNCE: '지지 반등', AT_SUPPORT: '지지 테스트',
-  APPROACHING: '지지 접근', TURNING: '전환 시작', AT_BOTTOM: '바닥권', EXTENDED: '추격 금지', FAILED: '돌파 실패', IN_BASE: '바닥 형성 중', NONE: '—',
+  APPROACHING: '지지 접근', TURNING: '전환 시작', AT_BOTTOM: '바닥권', EXTENDED: '추격 금지', FAILED: '돌파 실패', IN_BASE: '바닥 다지는 중', NONE: '—',
 };
 const BUY_AREA = new Set(['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT', 'BOUNCE', 'AT_SUPPORT', 'TURNING', 'AT_BOTTOM']);
 
@@ -17,7 +17,7 @@ export function storyPicks(data: Setups | null, limit = 8): StoryPick[] {
   if (!data) return [];
   const best = new Map<string, StoryPick>();
   for (const row of data.candidates) {
-    if (!BUY_AREA.has(row.stage) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
+    if (!(BUY_AREA.has(row.stage) || (row.stage === 'IN_BASE' && row.plan?.entryType === 'zone')) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
     if (row.plan.rMultiple == null || row.plan.rMultiple < 1.5) continue; // target too close to be worth the risk
     const text = row.reasons.map((r) => r.text).join(' ');
     const lines = row.narrative?.lines.join(' ') ?? '';

@@ -245,9 +245,25 @@ export function tradePlan(bars, setup) {
     { price: setup.base.low, kind: '바닥 최저점' },
   ].filter((c) => c && c.price < entry - a * 0.5);
   const stop = candidates.sort((x, y) => y.price - x.price)[0] ?? { price: entry - 2 * a, kind: 'ATR×2' };
-  const target = entry + (setup.base.high - setup.base.low); // measured move = base height
-  const risk = (entry - stop.price) / entry;
   const $ = (v) => `$${v.toFixed(2)}`;
+  // still inside the base and in its lower part: buy the floor, stop under it, first target the top
+  const range = setup.base.high - setup.base.low;
+  const last = bars[n - 1].close;
+  const posInBase = range > 0 ? (last - setup.base.low) / range : null;
+  if (setup.stage === 'IN_BASE' && posInBase !== null && posInBase <= 0.35) {
+    const zone = [setup.base.low, setup.base.low + range * 0.35];
+    const floorStop = setup.base.low - Math.max(a, setup.base.low * 0.03);
+    const risk = (last - floorStop) / last;
+    return {
+      entry: last, stop: floorStop, stopKind: '바닥 최저점 아래', target: setup.pivot, target2: setup.pivot + range, zone, riskPct: risk,
+      how: `바닥 아래쪽 ${$(zone[0])}~${$(zone[1])}에서 분할매수 · 손절 ${$(floorStop)} (바닥 이탈) · 1차 목표 바닥 상단 ${$(setup.pivot)}, 거래량 실어 돌파하면 추가매수`,
+      entryType: 'zone', rMultiple: last > floorStop ? (setup.pivot - last) / (last - floorStop) : null, posInBase,
+      orderBlock: ob ? { top: ob.top, bottom: ob.bottom } : null,
+      note: risk > 0.12 ? '손절폭이 넓음 — 비중 축소' : null,
+    };
+  }
+  const target = entry + range; // measured move = base height
+  const risk = (entry - stop.price) / entry;
   const how = setup.stage === 'NEAR_PIVOT' || setup.stage === 'IN_BASE'
     ? `돌파가 ${$(setup.pivot)}를 거래량 실어 종가로 넘기면 매수 (넘기 전엔 대기) · 손절 ${$(stop.price)}`
     : setup.stage === 'EXTENDED'
@@ -256,7 +272,7 @@ export function tradePlan(bars, setup) {
   return {
     entry, stop: stop.price, stopKind: stop.kind, target, riskPct: risk, how,
     entryType: setup.stage === 'NEAR_PIVOT' || setup.stage === 'IN_BASE' ? 'buy-stop' : 'limit',
-    rMultiple: entry > stop.price ? (target - entry) / (entry - stop.price) : null,
+    rMultiple: entry > stop.price ? (target - entry) / (entry - stop.price) : null, posInBase,
     orderBlock: ob ? { top: ob.top, bottom: ob.bottom } : null,
     note: risk > 0.12 ? '손절폭이 넓음 — 비중 축소 또는 되돌림 진입 고려' : null,
   };

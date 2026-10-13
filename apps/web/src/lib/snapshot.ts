@@ -44,7 +44,7 @@ export const SECTOR_KO: Record<string, string> = {
   'Blank Check': 'SPAC', Other: '기타', Unknown: '미분류',
 };
 
-export type SetupType = 'breakout' | 'pullback' | 'weekly_bottom' | 'monthly_bottom';
+export type SetupType = 'breakout' | 'base' | 'pullback' | 'weekly_bottom' | 'monthly_bottom';
 export type SetupStage = 'BREAKOUT' | 'POST_BREAKOUT' | 'NEAR_PIVOT' | 'EXTENDED' | 'IN_BASE' | 'FAILED' | 'NONE' | 'BOUNCE' | 'AT_SUPPORT' | 'APPROACHING' | 'TURNING' | 'AT_BOTTOM';
 export interface SetupReason { kind: 'plus' | 'minus'; text: string; pts: number }
 export interface SetupPlan {
@@ -54,7 +54,7 @@ export interface SetupPlan {
 export interface SetupRow {
   type?: SetupType; symbol: string; name: string | null; sector: string; price: number; mcap: number | null; adv20: number | null; stage: SetupStage;
   // breakout
-  pivot?: number | null; distanceToPivot?: number | null; extension?: number | null; barsSinceBreakout?: number | null; breakoutVolMult?: number | null;
+  pivot?: number | null; distanceToPivot?: number | null; extension?: number | null; barsSinceBreakout?: number | null; posInBase?: number | null; breakoutVolMult?: number | null;
   base?: { months: number; depth: number; high: number; low: number; higherLows: boolean; contraction: boolean; volumeDryUp: boolean } | null;
   rs?: { newHigh: boolean; rs3m: number | null; rs12m: number | null };
   // pullback
