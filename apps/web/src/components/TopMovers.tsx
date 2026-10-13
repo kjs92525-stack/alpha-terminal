@@ -39,7 +39,7 @@ export function TopMovers() {
           {PRICE_FLOORS.map((p) => <option key={p} value={p}>${p} 이상</option>)}
         </select>
       </div>
-      {err && <ErrorBox error={err} hint={/ALPACA/.test(err) ? 'ALPACA 키를 Cloudflare 시크릿에 등록하세요.' : undefined} />}
+      {err && <ErrorBox error={err} hint={/401/.test(err) ? 'Alpaca 키가 거부됐습니다(401). 키를 새로 만들었다면 Cloudflare → alpha-terminal → Settings → Variables and Secrets의 ALPACA_KEY_ID / ALPACA_SECRET_KEY도 새 키로 바꿔야 합니다.' : /ALPACA/.test(err) ? 'ALPACA 키를 Cloudflare 시크릿에 등록하세요.' : undefined} />}
       {!data && !err && <Loading />}
       <div className="movers-list">
         {list.map((m, i) => (

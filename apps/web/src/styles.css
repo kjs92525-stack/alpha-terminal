@@ -595,3 +595,13 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .story-box b { display: block; margin-bottom: 4px; color: var(--accent-2, #7c8bff); }
 .story-box p { margin: 0 0 4px; }
 .story-box .takeaway { font-weight: 600; color: var(--text, #e7e9ff); }
+/* story picks */
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; padding: 0 14px 14px; }
+.pick-card { border: 1px solid var(--line, #23264d); border-radius: 8px; padding: 10px 12px; background: var(--panel-2, #151838); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pick-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pick-top b { font-size: 15px; }
+.pick-hook { font-size: 12px; color: var(--accent-2, #7c8bff); }
+.pick-why { display: flex; flex-wrap: wrap; gap: 4px; }
+.pick-take { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.pick-how { margin: 0; font-size: 11px; color: var(--muted, #8a8fbf); line-height: 1.5; }
+.pick-actions { display: flex; gap: 6px; margin-top: auto; flex-wrap: wrap; }

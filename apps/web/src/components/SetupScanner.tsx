@@ -4,6 +4,7 @@ import { useTerminal } from '../lib/store';
 import { fetchBacktest, fetchSetups, NoSnapshotError, SECTOR_KO, type Backtest, type SetupRow, type Setups, type SetupStage, type SetupType } from '../lib/snapshot';
 import { fmtEt, fmtPct, fmtPrice, fmtUsd, heatColor, signClass } from '../lib/format';
 import { ErrorBox, Loading, PanelHead } from './ui';
+import { buildStoryPrompt } from '../lib/storyPicks';
 
 const STAGE: Record<SetupStage, { ko: string; cls: string; tip: string }> = {
   BREAKOUT: { ko: '오늘 돌파', cls: 'up', tip: '오늘 바닥 상단을 거래량 실린 양봉으로 돌파' },
@@ -62,6 +63,16 @@ export function SetupScanner() {
   const method = data ? (typeof data.method === 'string' ? data.method : data.method[type]) : '';
 
   const openChart = (s: string) => { select(s); setPage('charts'); };
+  const [copied, setCopied] = useState<string | null>(null);
+  const copyPrompt = async (x: SetupRow) => {
+    if (!data) return;
+    const text = buildStoryPrompt(x, data.asOf);
+    try { await navigator.clipboard.writeText(text); } catch {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    setCopied(`${typeOf(x)}:${x.symbol}`);
+    setTimeout(() => setCopied(null), 2500);
+  };
   const pickType = (t: SetupType) => { setType(t); setStage('all'); setOpen(null); };
 
   return (
@@ -141,7 +152,10 @@ export function SetupScanner() {
                                   {p && <li>손절 기준: {p.stopKind}{p.note ? ` — ${p.note}` : ''}</li>}
                                   <li>시총 {fmtUsd(x.mcap)} · 일평균 거래대금 {fmtUsd(x.adv20)}</li>
                                 </ul>
-                                <button className="secondary-button" onClick={() => openChart(x.symbol)}>차트 열기</button>
+                                <div className="pick-actions">
+                                  <button className="secondary-button" onClick={() => openChart(x.symbol)}>차트 열기</button>
+                                  <button className="primary-button" onClick={() => copyPrompt(x)}>{copied === key ? '복사됨 ✓' : '분석 프롬프트 복사'}</button>
+                                </div>
                               </div>
                               <div>
                                 {x.narrative && (
