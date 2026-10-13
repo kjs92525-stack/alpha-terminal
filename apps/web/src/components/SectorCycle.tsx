@@ -9,8 +9,8 @@ import { Loading, PanelHead } from './ui';
 const PHASE_LABEL: Record<CyclePhase, string> = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', NEUTRAL: '숨고르기', LATE: '과열·후반', DOWN: '하락' };
 const PHASE_CLS: Record<CyclePhase, string> = { EARLY: 'up', BASING: 'neutral', LEADING: 'up', NEUTRAL: '', LATE: 'neutral', DOWN: 'down' };
 const PHASE_TIP: Record<CyclePhase, string> = {
-  EARLY: '2년 전보다 아직 싼(크게 오른 적 없는) 업종이 200일선 위로 올라오고 시장보다 강해지는 자리 — 사이클이 돌기 시작하는 곳',
-  BASING: '고점에서 20% 이상 내려와 200일선 근처에서 옆으로 기는 업종. 2년간 이미 크게 오른 업종(조정 중)은 제외 — 다음 사이클 후보',
+  EARLY: '부진했던 업종(2년간 시장보다 크게 오르지 않음)이 200일선 위로 올라오고 시장보다 강해지는 자리 — 사이클이 돌기 시작하는 곳',
+  BASING: '고점에서 20% 이상 내려와 200일선 근처에서 옆으로 기는 업종. 2년간 시장보다 크게 오른 업종(조정 중)은 제외 — 다음 사이클 후보',
   LEADING: '이미 상승 추세가 자리 잡고 시장보다 강한 업종',
   LATE: '200일선보다 30% 이상 위거나 과열 — 추격 주의',
   NEUTRAL: '고점에서 조금 내려와 방향을 고르는 중 — 뚜렷한 신호 없음',
