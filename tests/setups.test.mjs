@@ -121,3 +121,26 @@ test('news: a capped feed that is all from this week is not a surge; one stray w
   assert.doesNotMatch(s.reasons.map((r) => r.text).join('\n'), /관심 급증/);
   assert.deepEqual(s.themes, []);
 });
+
+test('story narrative: loss narrowing + accelerating revenue reads as a turnaround, in plain sentences', () => {
+  const q = (end, value) => ({ end, value, filed: end, form: '10-Q' });
+  const fundamentals = {
+    revenueQuarterly: [q('2025-03-31', 100), q('2025-06-30', 105), q('2025-09-30', 110), q('2026-03-31', 112), q('2026-06-30', 125), q('2026-09-30', 145)],
+    netIncomeQuarterly: [q('2025-09-30', -40e6), q('2026-06-30', -20e6), q('2026-09-30', -12e6)],
+    runwayMonths: 18,
+  };
+  const news = [
+    { time: '2026-10-08T12:00:00Z', headline: 'Demo wins $120M Army drone contract', sentiment: 'positive', tags: ['계약'] },
+    { time: '2026-10-01T12:00:00Z', headline: 'Short report questions Demo accounting', sentiment: 'negative' },
+  ];
+  const { narrative } = storySignals({ fundamentals, filings: [], news, asOf: '2026-10-12' });
+  const text = narrative.lines.join(' ');
+  assert.match(text, /순손실 -\$12\.0M로 아직 적자지만, 1년 전\(-\$40\.0M\)보다 적자가 70% 줄었습니다/);
+  assert.match(text, /매출 성장률이 3개 분기 연속 빨라지고/);
+  assert.match(text, /약 18개월 버틸/);
+  assert.match(text, /Army drone contract/);
+  assert.match(narrative.takeaway, /흑자 전환이 확인되면 재평가/);
+  assert.match(narrative.method, /AI 해석 아님/);
+  const none = storySignals({ fundamentals: null, filings: [], news: [], asOf: '2026-10-12' }).narrative;
+  assert.match(none.takeaway, /실적 데이터가 없어/);
+});

@@ -126,7 +126,7 @@ export function SetupScanner() {
                         <td className="heat"><span style={{ background: heatColor(x.chartScore) }}>{x.chartScore}</span></td>
                         <td className="heat"><span style={{ background: heatColor(x.storyScore) }}>{x.storyScore}</span></td>
                         <td className="heat"><span style={{ background: heatColor(x.score) }}>{x.score}</span></td>
-                        <td className="muted reason-cell">{pos[0]?.text ?? (x.newsChecked ? '실적·뉴스 근거 없음' : '뉴스 미확인(상위 후보만 조회)')}{x.themes.length ? ` · ${x.themes.join(', ')}` : ''}</td>
+                        <td className="muted reason-cell">{x.narrative?.takeaway ?? pos[0]?.text ?? (x.newsChecked ? '실적·뉴스 근거 없음' : '뉴스 미확인(상위 후보만 조회)')}{x.themes.length ? ` · ${x.themes.join(', ')}` : ''}</td>
                       </tr>
                       {isOpen && (
                         <tr className="detail-row">
@@ -144,7 +144,15 @@ export function SetupScanner() {
                                 <button className="secondary-button" onClick={() => openChart(x.symbol)}>차트 열기</button>
                               </div>
                               <div>
-                                <h4>스토리</h4>
+                                {x.narrative && (
+                                  <div className="story-box">
+                                    <b>스토리 요약</b>
+                                    {x.narrative.lines.map((l, i) => <p key={i}>{l}</p>)}
+                                    <p className="takeaway">→ {x.narrative.takeaway}</p>
+                                    <small className="muted">{x.narrative.method}</small>
+                                  </div>
+                                )}
+                                <h4>스토리 점수 근거</h4>
                                 <ul>
                                   {pos.map((r, i) => <li key={i} className="up">+{r.pts} {r.text}</li>)}
                                   {neg.map((r, i) => <li key={i} className="down">{r.pts} {r.text}</li>)}

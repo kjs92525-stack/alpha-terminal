@@ -591,3 +591,7 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .entry-cell { font-weight: 600; }
 .how-box { background: rgba(91,108,255,0.12); border: 1px solid var(--accent, #5b6cff); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; }
 .how-box b { color: var(--accent-2, #7c8bff); margin-right: 6px; }
+.story-box { border-left: 3px solid var(--accent-2, #7c8bff); background: rgba(124,139,255,0.07); padding: 8px 10px; margin-bottom: 10px; font-size: 12px; line-height: 1.65; }
+.story-box b { display: block; margin-bottom: 4px; color: var(--accent-2, #7c8bff); }
+.story-box p { margin: 0 0 4px; }
+.story-box .takeaway { font-weight: 600; color: var(--text, #e7e9ff); }
