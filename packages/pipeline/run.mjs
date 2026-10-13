@@ -6,7 +6,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
-import { fetchDailyBars, mergeBars } from './alpaca.mjs';
+import { fetchDailyBars, mergeBars, fetchNews } from './alpaca.mjs';
+import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
+import { storySignals } from '../analysis/story.mjs';
+import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
+import { resampleWeekly } from '../analysis/indicators.mjs';
+import { classifyHeadline } from '../analysis/news.mjs';
+import { throttle } from './http.mjs';
 import { makeSecClient, refreshCompanies, dailyIndexUrl, parseDailyIndex, businessDaysBetween } from './secdata.mjs';
 import { computeFeatures } from './features.mjs';
 import { rankHorizon, selectRecommendations, exclusionReasons, MODEL_VERSION, MID_FACTORS, SHORT_FACTORS, REC_FILTERS } from './ranking.mjs';
@@ -78,6 +84,30 @@ export async function runNightly({
   stats.alpacaRequests = requests;
   stats.fullFetches = needFull.length;
 
+  // 2b. long monthly history (for 월봉 바닥). Completed months rarely change, so refetch weekly;
+  //     the recent months are always rebuilt from the daily bars (mergeMonthly).
+  const monthlyDir = path.join(cacheDir, 'monthly');
+  const monthlyStale = !state.monthlyFetchedAt || now - Date.parse(state.monthlyFetchedAt) > 6 * 86400000;
+  const monthly = new Map();
+  const needMonthly = [];
+  for (const s of symbols) {
+    const m = unpackBars(readJson(path.join(monthlyDir, `${safeName(s)}.json`), null));
+    monthly.set(s, m);
+    if (monthlyStale || !m.length) needMonthly.push(s);
+  }
+  stats.monthlyFetched = 0;
+  if (needMonthly.length && env.SKIP_MONTHLY !== '1') {
+    try {
+      const r = await fetchDailyBars({ ...alpaca, timeframe: '1Month', symbols: needMonthly, start: env.MONTHLY_START || '2012-01-01', end, onBatch: (d, t) => log(`monthly ${d}/${t}`) });
+      for (const s of needMonthly) if (r.bars[s]?.length) { monthly.set(s, r.bars[s]); writeJson(path.join(monthlyDir, `${safeName(s)}.json`), packBars(r.bars[s])); }
+      stats.monthlyFetched = needMonthly.length;
+      stats.alpacaRequests += r.requests;
+      if (monthlyStale) state.monthlyFetchedAt = new Date(now).toISOString();
+    } catch (e) {
+      stats.monthlyError = String(e.message ?? e).slice(0, 200); // monthly is optional: weekly/daily scans still run
+    }
+  }
+
   // 3. as-of date = last CLOSED SPY session
   const spy = cached.get(BENCH);
   if (!spy?.length) throw new Error('No SPY bars — cannot determine the as-of session');
@@ -103,6 +133,31 @@ export async function runNightly({
   const sr = await refreshCompanies({ ciks, cache, client: sec, changed, now, maxRefresh: Number(env.SEC_MAX_REFRESH || 6000), onProgress: (d, t) => { if (d % 250 === 0 || d === t) log(`sec ${d}/${t}`); } });
   stats.sec = { ...sr, errors: sr.errors.slice(0, 20), changedFilers: changed.size, requests: sec.requests };
 
+  // 4b. publish SEC data for the API (SEC refuses requests from Cloudflare Workers; the API
+  //     falls back to these files). Company files are only rewritten when their content changes.
+  const allListed = buildUniverse(parseExchangeTickers(tickers));
+  writeJson(path.join(outDir, 'sec', 'tickers.json'), { generatedAt: new Date(now).toISOString(), source: 'SEC company_tickers_exchange.json', rows: Object.fromEntries(allListed.map((u) => [u.ticker, [u.cik, u.name]])) });
+  let companyFilesWritten = 0;
+  const recent = [];
+  const recentCutoff = Date.parse(asOf) - 5 * 86400000;
+  for (const u of universe) {
+    const rec = cache.get(u.cik);
+    if (!rec) continue;
+    const body = { symbol: u.ticker, cik: u.cik, name: rec.name ?? u.name, sic: rec.sic ?? null, sicDescription: rec.sicDescription ?? null, fetchedAt: rec.fetchedAt, filings: (rec.filings ?? []).slice(0, 40), facts: rec.facts ?? null };
+    const file = path.join(outDir, 'companies', `${u.ticker}.json`);
+    const next = JSON.stringify(body);
+    let prev = null;
+    try { prev = fs.readFileSync(file, 'utf8'); } catch { /* new file */ }
+    const strip = (txt) => txt && txt.replace(/"fetchedAt":"[^"]*",/, '');
+    if (strip(prev) !== strip(next)) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, next); companyFilesWritten++; }
+    for (const f of rec.filings ?? []) {
+      if (f.filingDate && Date.parse(f.filingDate) >= recentCutoff && f.category !== 'INSIDER' && f.category !== 'EXHIBIT') recent.push({ ...f, company: rec.name ?? u.name, cik: u.cik, ticker: u.ticker });
+    }
+  }
+  recent.sort((x, y) => String(y.acceptedAt ?? y.filingDate).localeCompare(String(x.acceptedAt ?? x.filingDate)));
+  writeJson(path.join(outDir, 'sec', 'recent-filings.json'), { generatedAt: new Date(now).toISOString(), note: '야간 배치 수집본 — 실시간 아님', items: recent.slice(0, 300) });
+  stats.secPublished = { companyFilesWritten, recentFilings: recent.length };
+
   // 5. features
   const staleCutoff = Date.parse(asOf) - 7 * 86400000;
   const rows = [];
@@ -121,6 +176,119 @@ export async function runNightly({
   const short = rankHorizon(rows, 'short');
   stats.ranked = { mid: mid.length, short: short.length };
   const recs = { mid: selectRecommendations(mid, 'mid'), short: selectRecommendations(short, 'short') };
+
+  // 6b. setup scanner (primary product). Four chart setups, each with a buy point:
+  //     breakout (바닥 돌파), pullback (눌림목), weekly bottom (주봉 바닥), monthly bottom (월봉 바닥).
+  //     Story signals (fundamentals + news) are added for the best candidates.
+  const asOfSec = Date.parse(`${asOf}T00:00:00Z`) / 1000;
+  const spyAsOf = spy.filter((b) => b.time <= asOfSec);
+  const ACTIONABLE = new Set(['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT']);
+  const items = [];
+  const planOut = (p) => (p ? {
+    entry: r4(p.entry), stop: r4(p.stop), stopKind: p.stopKind, target: r4(p.target), target2: r4(p.target2 ?? null), zone: p.zone ? p.zone.map(r4) : null,
+    entryType: p.entryType ?? null, how: p.how ?? null, riskPct: r4(p.riskPct), rMultiple: r4(p.rMultiple), note: p.note ?? null,
+  } : null);
+  for (const r of rows) {
+    if (r.features.price < 3 || (r.features.adv20 ?? 0) < 2e6 || r.sector === 'Blank Check') continue;
+    const bars = (cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec);
+    if (bars.length < 220) continue;
+    if (bars.length >= 260) {
+      const quick = detectSetup(bars);
+      if (ACTIONABLE.has(quick.stage)) {
+        const chart = evaluateChart(bars, spyAsOf);
+        const st = chart.setup;
+        items.push({ type: 'breakout', r, stage: st.stage, setupScore: chart.chartScore, plan: planOut(chart.plan), detail: {
+          pivot: r4(st.pivot), distanceToPivot: r4(st.distanceToPivot ?? null), extension: r4(st.extension ?? null),
+          barsSinceBreakout: st.barsSinceBreakout ?? null, breakoutVolMult: r4(st.breakoutVolMult ?? null),
+          base: st.base ? { months: Math.round(st.base.window / 21), depth: r4(st.base.depth), high: r4(st.base.high), low: r4(st.base.low), higherLows: st.base.higherLows, contraction: st.base.contraction, volumeDryUp: st.base.volumeDryUp } : null,
+          trend: { passed: chart.trend.passed, total: chart.trend.total }, rs: { newHigh: chart.rs.rsNewHigh, rs3m: r4(chart.rs.rs3m), rs12m: r4(chart.rs.rs12m) },
+        } });
+      }
+    }
+    const pb = detectPullback(bars);
+    if (pb.stage !== 'NONE') {
+      items.push({ type: 'pullback', r, stage: pb.stage, setupScore: pb.score, plan: planOut(pb.plan), detail: {
+        high: r4(pb.high), highAgeBars: pb.highAgeBars, pullLow: r4(pb.pullLow), depth: r4(pb.depth), currentDepth: r4(pb.currentDepth),
+        support: { kind: pb.support.kind, price: r4(pb.support.price) }, confluence: pb.confluence, volumeDryUp: pb.volumeDryUp, rsi: r4(pb.rsi), rsiCooled: pb.rsiCooled, trend: pb.trend,
+      } });
+    }
+    const htf = { weekly: resampleWeekly(bars), monthly: mergeMonthly((monthly.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec), bars) };
+    for (const tf of ['weekly', 'monthly']) {
+      const hb = detectHtfBottom(htf[tf], tf);
+      if (hb.stage === 'NONE') continue;
+      items.push({ type: tf === 'weekly' ? 'weekly_bottom' : 'monthly_bottom', r, stage: hb.stage, setupScore: hb.score, plan: planOut(hb.plan), detail: {
+        high: r4(hb.high), low: r4(hb.low), decline: r4(hb.decline), lowAgeBars: hb.lowAgeBars, lowAgeLabel: hb.lowAgeLabel, aboveLow: r4(hb.aboveLow),
+        higherLow: hb.higherLow, aboveMa: hb.aboveMa, maRising: hb.maRising, volumeDryUp: hb.volumeDryUp, rsiRecover: hb.rsiRecover, pivot: r4(hb.pivot), bars: htf[tf].length,
+      } });
+    }
+  }
+  // news budget: best candidates of each type first (round-robin), one request per symbol
+  const TYPES = ['breakout', 'pullback', 'weekly_bottom', 'monthly_bottom'];
+  const byType = Object.fromEntries(TYPES.map((t) => [t, items.filter((x) => x.type === t).sort((a, b) => b.setupScore - a.setupScore)]));
+  const maxStory = Number(env.SETUP_NEWS_MAX || 200);
+  const newsOrder = [];
+  for (let k = 0; newsOrder.length < maxStory && TYPES.some((t) => k < byType[t].length); k++) {
+    for (const t of TYPES) { const x = byType[t][k]; if (x && !newsOrder.includes(x.r.symbol) && newsOrder.length < maxStory) newsOrder.push(x.r.symbol); }
+  }
+  const newsGate = throttle(320);
+  const newsStart = new Date(Date.parse(asOf) - 60 * 86400000).toISOString();
+  const newsBy = new Map();
+  let newsRequests = 0;
+  for (const sym of newsOrder) {
+    try {
+      await newsGate();
+      newsBy.set(sym, (await fetchNews({ symbol: sym, start: newsStart, keyId: env.ALPACA_KEY_ID, secretKey: env.ALPACA_SECRET_KEY, fetchImpl, wait }))
+        .filter((n) => Date.parse(n.time) <= asOfSec * 1000 + 86400000)
+        .map((n) => ({ ...n, ...classifyHeadline(n.headline) })));
+      newsRequests++;
+    } catch { newsBy.set(sym, []); /* news is optional evidence */ }
+  }
+  const storyBy = new Map();
+  const setups = [];
+  for (const x of items) {
+    const { r } = x;
+    if (!storyBy.has(r.symbol)) {
+      const company = cache.get(r.cik);
+      storyBy.set(r.symbol, storySignals({ fundamentals: company?.facts ?? null, filings: company?.filings ?? [], news: newsBy.get(r.symbol) ?? [], asOf }));
+    }
+    const story = storyBy.get(r.symbol);
+    const news = newsBy.get(r.symbol) ?? [];
+    setups.push({
+      type: x.type, symbol: r.symbol, name: r.name, sector: r.sector, price: r4(r.features.price), mcap: r.features.mcap ? Math.round(r.features.mcap) : null, adv20: r.features.adv20 ? Math.round(r.features.adv20) : null,
+      stage: x.stage, ...x.detail, plan: x.plan,
+      chartScore: x.setupScore, storyScore: story.storyScore, score: Math.round(x.setupScore * 0.55 + story.storyScore * 0.45),
+      reasons: story.reasons, themes: story.themes, revenueYoY: story.revenueYoY.map((q) => ({ end: q.end, yoy: r4(q.yoy) })),
+      news: news.slice(0, 5).map((n) => ({ time: n.time, headline: n.headline, url: n.url, sentiment: n.sentiment, tags: n.tags })),
+      newsChecked: newsBy.has(r.symbol),
+    });
+  }
+  setups.sort((a, b) => b.score - a.score);
+  const count = (arr) => arr.reduce((m, x) => ((m[x.stage] = (m[x.stage] ?? 0) + 1), m), {});
+  stats.setups = {
+    scanned: rows.length, candidates: setups.length, newsRequests,
+    byStage: count(setups.filter((x) => x.type === 'breakout')),
+    byType: Object.fromEntries(TYPES.map((t) => [t, count(setups.filter((x) => x.type === t))])),
+  };
+  const PER_TYPE = 150;
+  writeJson(path.join(outDir, 'setups.json'), {
+    asOf, generatedAt: new Date().toISOString(), model: 'setups-v2', rules: { breakout: SETUP_RULES, pullback: PULLBACK_RULES, bottom: BOTTOM_RULES },
+    weights: { chart: 0.55, story: 0.45 },
+    method: {
+      breakout: '6–18개월 바닥(깊이 12–50%, 저점 상승·변동성 수축·거래량 감소) 상단을 50일 평균 1.4배 이상 거래량으로 돌파.',
+      pullback: '상승 추세(200일선 위·상승, 50>200, 직전 30% 이상 상승) 종목이 최근 고점 대비 5–25% 조정 후 20일 EMA·50일선·이전 고점·오더블록 지지에 도달.',
+      weekly_bottom: '최근 2년 고점 대비 35% 이상 하락 후 4주 이상 신저가 없음, 바닥 대비 20% 이내. 10주선 위 + 저점 상승이면 전환 시작.',
+      monthly_bottom: '최근 5년 고점 대비 50% 이상 하락 후 2개월 이상 신저가 없음, 바닥 대비 25% 이내. 10개월선 위 + 저점 상승/이평 상승이면 전환 시작.',
+      story: 'SEC 분기 매출 가속·흑자 전환·뉴스 관심·테마·의심받는 성장 가점, 희석·런웨이·위험 공시 감점.',
+    },
+    caveat: '돌파·눌림·바닥 매수 모두 실패가 흔합니다. 손절가를 지키는 것을 전제로 한 후보 목록이며 투자 자문이 아닙니다. 주봉·월봉의 마지막 봉은 진행 중인 봉입니다.',
+    stats: stats.setups,
+    candidates: TYPES.flatMap((t) => setups.filter((x) => x.type === t).slice(0, PER_TYPE)),
+  });
+  const toRec = (x) => ({ rank: 0, symbol: x.symbol, name: x.name, sector: x.sector, score: x.score, factors: { chart: x.chartScore, story: x.storyScore, type: x.type, stage: x.stage }, features: { price: x.price } });
+  const pick = (pred) => setups.filter((x) => pred(x) && x.plan && x.plan.riskPct !== null && x.plan.riskPct <= 0.15).slice(0, 20).map(toRec).map((x, i) => ({ ...x, rank: i + 1 }));
+  recs.setups = pick((x) => x.type === 'breakout' && (x.stage === 'BREAKOUT' || x.stage === 'POST_BREAKOUT'));
+  recs.pullback = pick((x) => x.type === 'pullback' && (x.stage === 'BOUNCE' || x.stage === 'AT_SUPPORT'));
+  recs.bottom = pick((x) => (x.type === 'weekly_bottom' || x.type === 'monthly_bottom') && x.stage === 'TURNING');
 
   const detail = (r) => ({
     rank: r.rank, percentile: r.percentile, symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, coverage: r.coverage, factors: r.factors,

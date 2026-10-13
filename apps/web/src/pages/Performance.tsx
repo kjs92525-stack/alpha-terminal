@@ -4,13 +4,13 @@ import { fetchPerformance, NoSnapshotError, DATA_HISTORY_URL, type Performance a
 import { ErrorBox, Loading, PanelHead } from '../components/ui';
 import { fmtEt, fmtPct, signClass } from '../lib/format';
 
-const BOOKS: Array<[string, string]> = [['mid_20d', '중장기 · 20거래일'], ['mid_60d', '중장기 · 60거래일'], ['short_5d', '단기 · 5거래일'], ['short_1d', '단기 · 1거래일']];
+const BOOKS: Array<[string, string]> = [['setups_20d', '바닥 돌파 · 20거래일'], ['setups_60d', '바닥 돌파 · 60거래일'], ['pullback_20d', '눌림목 · 20거래일'], ['pullback_60d', '눌림목 · 60거래일'], ['bottom_20d', '주봉·월봉 바닥 · 20거래일'], ['bottom_60d', '주봉·월봉 바닥 · 60거래일'], ['mid_20d', '중장기 · 20거래일'], ['mid_60d', '중장기 · 60거래일'], ['short_5d', '단기 · 5거래일'], ['short_1d', '단기 · 1거래일']];
 
 export function Performance() {
   const [data, setData] = useState<Perf | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
-  const [key, setKey] = useState('mid_20d');
+  const [key, setKey] = useState('setups_20d');
   useEffect(() => { fetchPerformance().then(setData).catch((e) => (e instanceof NoSnapshotError ? setMissing(true) : setErr(e.message))); }, []);
 
   return (

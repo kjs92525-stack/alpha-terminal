@@ -43,3 +43,42 @@ export const SECTOR_KO: Record<string, string> = {
   Industrials: '산업재', Energy: '에너지', Materials: '소재', Utilities: '유틸리티', 'Real Estate': '부동산', 'Communication Services': '커뮤니케이션',
   'Blank Check': 'SPAC', Other: '기타', Unknown: '미분류',
 };
+
+export type SetupType = 'breakout' | 'pullback' | 'weekly_bottom' | 'monthly_bottom';
+export type SetupStage = 'BREAKOUT' | 'POST_BREAKOUT' | 'NEAR_PIVOT' | 'EXTENDED' | 'IN_BASE' | 'FAILED' | 'NONE' | 'BOUNCE' | 'AT_SUPPORT' | 'APPROACHING' | 'TURNING' | 'AT_BOTTOM';
+export interface SetupReason { kind: 'plus' | 'minus'; text: string; pts: number }
+export interface SetupPlan {
+  entry: number; stop: number; stopKind: string; target: number; target2?: number | null; zone?: [number, number] | null;
+  entryType?: 'buy-stop' | 'limit' | 'zone' | 'market' | null; how?: string | null; riskPct: number | null; rMultiple: number | null; note: string | null;
+}
+export interface SetupRow {
+  type?: SetupType; symbol: string; name: string | null; sector: string; price: number; mcap: number | null; adv20: number | null; stage: SetupStage;
+  // breakout
+  pivot?: number | null; distanceToPivot?: number | null; extension?: number | null; barsSinceBreakout?: number | null; breakoutVolMult?: number | null;
+  base?: { months: number; depth: number; high: number; low: number; higherLows: boolean; contraction: boolean; volumeDryUp: boolean } | null;
+  rs?: { newHigh: boolean; rs3m: number | null; rs12m: number | null };
+  // pullback
+  high?: number; highAgeBars?: number; pullLow?: number; depth?: number; currentDepth?: number; support?: { kind: string; price: number };
+  confluence?: string[]; rsi?: number | null; rsiCooled?: boolean;
+  // weekly / monthly bottom
+  low?: number; decline?: number; lowAgeBars?: number; lowAgeLabel?: string; aboveLow?: number; higherLow?: boolean; aboveMa?: boolean; maRising?: boolean; rsiRecover?: boolean; bars?: number;
+  volumeDryUp?: boolean; trend?: { passed: number; total: number };
+  plan: SetupPlan | null;
+  chartScore: number; storyScore: number; score: number;
+  reasons: SetupReason[]; themes: string[]; revenueYoY: Array<{ end: string; yoy: number }>;
+  news: Array<{ time: string; headline: string; url?: string; sentiment?: string; tags?: string[] }>;
+  newsChecked: boolean;
+}
+export interface Setups {
+  asOf: string; generatedAt: string; model: string; weights: { chart: number; story: number }; method: string | Record<string, string>; caveat: string;
+  stats: { scanned: number; candidates: number; newsRequests: number; byStage: Record<string, number>; byType?: Record<SetupType, Record<string, number>> };
+  candidates: SetupRow[];
+}
+export interface BtSummary { n: number; winRate?: number; stoppedRate?: number; avgReturn?: number; medianReturn?: number; avgR?: number; avgExcessVsSpy?: number; bigWinners?: number; p10?: number; p90?: number }
+export interface Backtest {
+  generatedAt: string; method: string; limits: string[]; trades: number; symbols: number;
+  report: Record<string, Record<string, BtSummary>>;
+  caseStudies: Record<string, Array<{ date: string; entry: number; stop: number; baseMonths: number; results: Record<string, { ret: number; r: number; stopped: boolean; spy: number | null } | null> }>>;
+}
+export const fetchSetups = () => get<Setups>('setups.json');
+export const fetchBacktest = () => get<Backtest>('backtest/breakouts.json');

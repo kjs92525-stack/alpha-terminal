@@ -97,7 +97,9 @@ export async function movers(env: FeedEnv, top: number, minPrice: number) {
 
 const TYPES = ['8-K', '424B', 'S-3', 'S-1', 'SC 13D', '10-Q', '10-K'];
 
-export async function secLatest(env: FeedEnv, tickerOf: (cik: string) => string | null, limit: number) {
+export interface SnapshotFilings { items: Array<{ ticker: string | null } & Record<string, unknown>>; generatedAt: string }
+
+export async function secLatest(env: FeedEnv, tickerOf: (cik: string) => string | null, limit: number, fallback?: () => Promise<SnapshotFilings | null>) {
   if (!env.SEC_USER_AGENT?.trim()) throw new FeedError(503, 'SEC_USER_AGENT is not configured');
   const results = await Promise.allSettled(TYPES.map(async (t) => {
     const res = await fetch(currentFeedUrl(t, 40), { headers: { 'User-Agent': env.SEC_USER_AGENT!, Accept: 'application/atom+xml' } });
@@ -112,5 +114,15 @@ export async function secLatest(env: FeedEnv, tickerOf: (cik: string) => string 
     .slice(0, Math.min(100, limit));
   const quotes = await snapshots(env, items.map((i) => i.ticker).filter((t): t is string => Boolean(t)).map((t) => t.replace('-', '.')));
   const errors = results.filter((r) => r.status === 'rejected').map((r) => String((r as PromiseRejectedResult).reason?.message ?? r));
+  if (errors.length === TYPES.length && fallback) {
+    // SEC refused every request (seen as 403 from Cloudflare): serve the nightly copy, clearly labelled.
+    const snap = await fallback().catch(() => null);
+    if (snap) {
+      const snapItems = snap.items.slice(0, Math.min(100, limit));
+      const snapQuotes = await snapshots(env, snapItems.map((i) => i.ticker).filter((t): t is string => Boolean(t)).map((t) => t.replace('-', '.')));
+      return { items: snapItems, quotes: snapQuotes, errors, source: 'SEC EDGAR (야간 수집본 · 실시간 아님)', fetchedAt: snap.generatedAt };
+    }
+    throw new FeedError(502, `SEC가 서버 요청을 거부했습니다 (${errors[0]}). 야간 수집본도 아직 없습니다.`);
+  }
   return { items, quotes, errors, source: 'SEC EDGAR current filings (Atom)', fetchedAt: new Date().toISOString() };
 }

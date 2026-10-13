@@ -11,6 +11,7 @@ import { percentiles, rankHorizon, selectRecommendations, exclusionReasons } fro
 import { forwardReturn, evaluateLedgers, makeLedger } from '../packages/pipeline/ledger.mjs';
 import { runNightly } from '../packages/pipeline/run.mjs';
 import { makeBars } from './helpers.mjs';
+import { resampleMonthly } from '../packages/analysis/zones.mjs';
 
 const noWait = async () => {};
 
@@ -185,7 +186,12 @@ function e2eFetch(state) {
       if (u.hostname === 'data.alpaca.markets') {
         const start = Date.parse(u.searchParams.get('start')) / 1000;
         const bars = {};
-        for (const s of u.searchParams.get('symbols').split(',')) bars[s] = (series[s] ?? []).filter((b) => b.time >= start).map(toAlpaca);
+        const monthly = u.searchParams.get('timeframe') === '1Month';
+        if (monthly) state.monthlyCalls = (state.monthlyCalls ?? 0) + 1;
+        for (const s of u.searchParams.get('symbols').split(',')) {
+          const src = (series[s] ?? []).filter((b) => b.time >= start);
+          bars[s] = (monthly ? resampleMonthly(src) : src).map(toAlpaca);
+        }
         return Response.json({ bars, next_page_token: null });
       }
       if (u.pathname.includes('/daily-index/')) return new Response(IDX.replace('1234567 ', '0001003 '));
@@ -226,6 +232,20 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.ok(latest.recommendations.mid.length > 0);
   assert.ok(fs.existsSync(path.join(outDir, 'ledger', `${r1.asOf}.json`)));
   assert.ok(fs.existsSync(path.join(outDir, 'rankings', `${r1.asOf}.json`)));
+  // SEC fallback files for the API
+  const tick = JSON.parse(fs.readFileSync(path.join(outDir, 'sec', 'tickers.json'), 'utf8'));
+  assert.ok(Object.keys(tick.rows).length >= 24);
+  const comp = JSON.parse(fs.readFileSync(path.join(outDir, 'companies', `${f1.syms[0]}.json`), 'utf8'));
+  assert.equal(comp.cik, '0000001000');
+  assert.ok(comp.facts && comp.filings.length >= 1);
+  assert.ok(fs.existsSync(path.join(outDir, 'sec', 'recent-filings.json')));
+  const setups = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
+  assert.equal(setups.asOf, r1.asOf);
+  assert.ok(Array.isArray(setups.candidates) && setups.stats && setups.caveat);
+  assert.deepEqual(Object.keys(setups.stats.byType).sort(), ['breakout', 'monthly_bottom', 'pullback', 'weekly_bottom']);
+  for (const c of setups.candidates) assert.ok(c.type && c.stage && (!c.plan || typeof c.plan.how === 'string'), JSON.stringify(c).slice(0, 200));
+  assert.ok(state.monthlyCalls >= 1, 'long monthly history fetched');
+  assert.ok(fs.existsSync(path.join(cacheDir, 'monthly', 'SPY.json')));
   const perf = JSON.parse(fs.readFileSync(path.join(outDir, 'performance.json'), 'utf8'));
   assert.equal(perf.ledgers, 1);
   // dilution filer (cik 1005) is flagged
@@ -239,6 +259,8 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.equal(r1b.stats.ledgerWritten, false);
   assert.equal(fs.readFileSync(ledgerPath, 'utf8'), before);
   assert.equal(r1b.stats.fullFetches, 0, 'second run is incremental');
+  assert.equal(r1b.stats.monthlyFetched, 0, 'monthly history is reused within the week');
+  assert.equal(r1b.stats.secPublished.companyFilesWritten, 0, 'unchanged company files are not rewritten');
 
   // 30 sessions later: new ledger, first ledger's 20d outcome is evaluated
   state.days = 600;
