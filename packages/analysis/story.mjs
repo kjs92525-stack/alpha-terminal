@@ -160,7 +160,8 @@ export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }
   const improving = growth === 'accel' || profit === 'loss-narrowing' || profit === 'turned';
   let takeaway;
   if (!lastQ && !yoy.length) takeaway = '실적 데이터가 없어 차트와 뉴스만으로 판단해야 합니다.';
-  else if ((profit === 'loss-narrowing' || profit === 'loss') && growth === 'accel') takeaway = '적자지만 매출이 빨라지고 적자가 줄고 있어, 흑자 전환이 확인되면 재평가될 수 있는 유형입니다.';
+  else if (profit === 'loss-narrowing' && growth === 'accel') takeaway = '적자지만 매출이 빨라지고 적자가 줄고 있어, 흑자 전환이 확인되면 재평가될 수 있는 유형입니다.';
+  else if (profit === 'loss' && growth === 'accel') takeaway = '적자지만 매출은 빨라지는 중입니다 — 적자가 줄어드는지는 아직 확인되지 않았습니다.';
   else if (profit === 'loss-narrowing') takeaway = '아직 적자지만 개선 중입니다 — 다음 분기에 적자가 더 줄어드는지가 관건입니다.';
   else if (profit === 'turned') takeaway = '흑자 전환 초기입니다 — 이익이 다음 분기에도 이어지는지 확인이 필요합니다.';
   else if ((profit === 'profit-growing' || profit === 'profit') && growth === 'accel') takeaway = '이미 흑자에 성장도 빨라지는 실적 모멘텀형입니다.';
