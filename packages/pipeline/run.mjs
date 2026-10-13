@@ -20,6 +20,7 @@ import { makeSecClient, normalizeUserAgent, refreshCompanies, dailyIndexUrl, par
 import { computeFeatures } from './features.mjs';
 import { rankHorizon, selectRecommendations, exclusionReasons, MODEL_VERSION, MID_FACTORS, SHORT_FACTORS, REC_FILTERS } from './ranking.mjs';
 import { makeLedger, evaluateLedgers } from './ledger.mjs';
+import { buildBrief } from './brief.mjs';
 
 const BENCH = 'SPY';
 const r4 = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 1e4) / 1e4 : v ?? null);
@@ -447,6 +448,11 @@ export async function runNightly({
     stats: stats.setups,
     candidates: TYPES.flatMap((t) => setups.filter((x) => x.type === t).slice(0, PER_TYPE)),
   });
+  // small Markdown brief for chat assistants that read a URL (the JSON files are too large)
+  try {
+    const brief = buildBrief({ setups: readJson(path.join(outDir, 'setups.json')), sectors: readJson(path.join(outDir, 'sectors.json'), null), siteUrl: env.SITE_URL || null });
+    fs.writeFileSync(path.join(outDir, 'brief.md'), brief);
+  } catch (e) { stats.briefError = String(e?.message ?? e); }
   const toRec = (x) => ({ rank: 0, symbol: x.symbol, name: x.name, sector: x.sector, score: x.score, factors: { chart: x.chartScore, story: x.storyScore, type: x.type, stage: x.stage }, features: { price: x.price } });
   const pick = (pred) => setups.filter((x) => pred(x) && x.plan && x.plan.riskPct !== null && x.plan.riskPct <= 0.15).slice(0, 20).map(toRec).map((x, i) => ({ ...x, rank: i + 1 }));
   recs.setups = pick((x) => x.type === 'breakout' && (x.stage === 'BREAKOUT' || x.stage === 'POST_BREAKOUT'));
