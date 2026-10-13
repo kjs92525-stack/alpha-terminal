@@ -6,14 +6,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
-import { fetchDailyBars, mergeBars, fetchNews } from './alpaca.mjs';
+import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
 import { resampleWeekly } from '../analysis/indicators.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
 import { throttle } from './http.mjs';
-import { makeSecClient, refreshCompanies, dailyIndexUrl, parseDailyIndex, businessDaysBetween } from './secdata.mjs';
+import { makeSecClient, normalizeUserAgent, refreshCompanies, dailyIndexUrl, parseDailyIndex, businessDaysBetween } from './secdata.mjs';
 import { computeFeatures } from './features.mjs';
 import { rankHorizon, selectRecommendations, exclusionReasons, MODEL_VERSION, MID_FACTORS, SHORT_FACTORS, REC_FILTERS } from './ranking.mjs';
 import { makeLedger, evaluateLedgers } from './ledger.mjs';
@@ -40,11 +40,30 @@ export async function runNightly({
   const t0 = Date.now();
   const stats = { startedAt: new Date(now).toISOString() };
   const state = readJson(path.join(cacheDir, 'state.json'), {});
-  const sec = makeSecClient({ userAgent: env.SEC_USER_AGENT, fetchImpl, wait });
+  const uaCheck = normalizeUserAgent(env.SEC_USER_AGENT);
+  stats.secUserAgentIssues = uaCheck.issues;
+  for (const i of uaCheck.issues) log(`SEC_USER_AGENT: ${i}`);
+  const sec = makeSecClient({ userAgent: uaCheck.ua, fetchImpl, wait });
 
-  // 1. universe
-  const tickers = await sec.json('https://www.sec.gov/files/company_tickers_exchange.json');
-  let universe = buildUniverse(parseExchangeTickers(tickers));
+  // 1. universe — SEC list (has CIKs for filings/fundamentals). If SEC refuses this runner
+  //    (it blocks some cloud IP ranges), use the last good SEC list, else Alpaca's asset list,
+  //    and skip SEC refresh for this run: price-based scans still run.
+  const tickerCacheFile = path.join(cacheDir, 'sec-tickers.json');
+  let tickers = null;
+  let secOk = true;
+  try {
+    tickers = await sec.json('https://www.sec.gov/files/company_tickers_exchange.json');
+    if (tickers) writeJson(tickerCacheFile, tickers);
+    stats.universeSource = 'sec';
+  } catch (e) {
+    secOk = false;
+    stats.secError = String(e.message ?? e).slice(0, 200);
+    log(`SEC unavailable (${stats.secError}) — falling back`);
+    tickers = readJson(tickerCacheFile, null);
+    stats.universeSource = tickers ? 'sec-cache' : 'alpaca-assets';
+  }
+  const listed = tickers ? parseExchangeTickers(tickers) : await fetchAssets({ keyId: env.ALPACA_KEY_ID, secretKey: env.ALPACA_SECRET_KEY, fetchImpl, wait });
+  let universe = buildUniverse(listed);
   if (limit > 0) universe = universe.slice(0, limit);
   stats.universe = universe.length;
   log(`universe: ${universe.length}`);
@@ -119,7 +138,7 @@ export async function runNightly({
   // 4. SEC refresh (changed filers from daily indices since last run)
   const changed = new Set();
   const lastIndex = state.lastIndexDate ?? new Date(Date.parse(asOf) - 3 * 86400000).toISOString().slice(0, 10);
-  for (const day of businessDaysBetween(lastIndex, asOf)) {
+  for (const day of secOk ? businessDaysBetween(lastIndex, asOf) : []) {
     const txt = await sec.text(dailyIndexUrl(day));
     if (txt) for (const row of parseDailyIndex(txt)) changed.add(row.cik);
   }
@@ -129,19 +148,23 @@ export async function runNightly({
     get: (cik) => { if (!compCache.has(cik)) compCache.set(cik, readJson(path.join(compDir, `${cik}.json`), null)); return compCache.get(cik); },
     set: (cik, rec) => { compCache.set(cik, rec); writeJson(path.join(compDir, `${cik}.json`), rec); },
   };
-  const ciks = [...new Set(universe.map((u) => u.cik))];
-  const sr = await refreshCompanies({ ciks, cache, client: sec, changed, now, maxRefresh: Number(env.SEC_MAX_REFRESH || 6000), onProgress: (d, t) => { if (d % 250 === 0 || d === t) log(`sec ${d}/${t}`); } });
-  stats.sec = { ...sr, errors: sr.errors.slice(0, 20), changedFilers: changed.size, requests: sec.requests };
+  const ciks = [...new Set(universe.map((u) => u.cik).filter(Boolean))];
+  if (secOk) {
+    const sr = await refreshCompanies({ ciks, cache, client: sec, changed, now, maxRefresh: Number(env.SEC_MAX_REFRESH || 6000), onProgress: (d, t) => { if (d % 250 === 0 || d === t) log(`sec ${d}/${t}`); } });
+    stats.sec = { ...sr, errors: sr.errors.slice(0, 20), changedFilers: changed.size, requests: sec.requests };
+  } else {
+    stats.sec = { skipped: true, reason: stats.secError, requests: sec.requests };
+  }
 
   // 4b. publish SEC data for the API (SEC refuses requests from Cloudflare Workers; the API
   //     falls back to these files). Company files are only rewritten when their content changes.
-  const allListed = buildUniverse(parseExchangeTickers(tickers));
-  writeJson(path.join(outDir, 'sec', 'tickers.json'), { generatedAt: new Date(now).toISOString(), source: 'SEC company_tickers_exchange.json', rows: Object.fromEntries(allListed.map((u) => [u.ticker, [u.cik, u.name]])) });
+  const allListed = buildUniverse(listed).filter((u) => u.cik);
+  if (allListed.length) writeJson(path.join(outDir, 'sec', 'tickers.json'), { generatedAt: new Date(now).toISOString(), source: 'SEC company_tickers_exchange.json', rows: Object.fromEntries(allListed.map((u) => [u.ticker, [u.cik, u.name]])) });
   let companyFilesWritten = 0;
   const recent = [];
   const recentCutoff = Date.parse(asOf) - 5 * 86400000;
   for (const u of universe) {
-    const rec = cache.get(u.cik);
+    const rec = u.cik ? cache.get(u.cik) : null;
     if (!rec) continue;
     const body = { symbol: u.ticker, cik: u.cik, name: rec.name ?? u.name, sic: rec.sic ?? null, sicDescription: rec.sicDescription ?? null, fetchedAt: rec.fetchedAt, filings: (rec.filings ?? []).slice(0, 40), facts: rec.facts ?? null };
     const file = path.join(outDir, 'companies', `${u.ticker}.json`);
@@ -164,7 +187,7 @@ export async function runNightly({
   for (const u of universe) {
     const bars = cached.get(u.symbol);
     if (!bars?.length) continue;
-    const company = cache.get(u.cik);
+    const company = u.cik ? cache.get(u.cik) : null;
     const features = computeFeatures(bars, company, asOf);
     if (!features || Date.parse(features.lastDate) < staleCutoff) continue;
     rows.push({ symbol: u.symbol, ticker: fromVendorSymbol(u.symbol), cik: u.cik, name: company?.name ?? u.name, exchange: u.exchange, sector: sicToSector(company?.sic), features });
@@ -248,7 +271,7 @@ export async function runNightly({
   for (const x of items) {
     const { r } = x;
     if (!storyBy.has(r.symbol)) {
-      const company = cache.get(r.cik);
+      const company = r.cik ? cache.get(r.cik) : null;
       storyBy.set(r.symbol, storySignals({ fundamentals: company?.facts ?? null, filings: company?.filings ?? [], news: newsBy.get(r.symbol) ?? [], asOf }));
     }
     const story = storyBy.get(r.symbol);
@@ -300,6 +323,7 @@ export async function runNightly({
     prices: `Alpaca Market Data v2 (${env.ALPACA_FEED || 'sip'}, adjustment=all, daily)`,
     filings: 'SEC EDGAR submissions + daily form index',
     fundamentals: 'SEC XBRL companyfacts (latest annual)',
+    universe: { sec: 'SEC company_tickers_exchange.json', 'sec-cache': 'SEC 종목 목록(이전 수집본) — 오늘 SEC 접속 실패', 'alpaca-assets': 'Alpaca 종목 목록 — SEC 접속 실패로 섹터·재무·공시 없음' }[stats.universeSource],
   };
   const latest = {
     asOf, model: MODEL_VERSION, generatedAt: new Date().toISOString(), universe: universe.length, ranked: stats.ranked, sources,

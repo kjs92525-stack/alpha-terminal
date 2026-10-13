@@ -30,8 +30,17 @@ jobs:
         id: check
         run: |
           if [ -z "$ALPACA_KEY_ID" ] || [ -z "$ALPACA_SECRET_KEY" ] || [ -z "$SEC_USER_AGENT" ]; then
-            echo "::notice::ALPACA_KEY_ID / ALPACA_SECRET_KEY / SEC_USER_AGENT not set — pipeline skipped."
             echo "ok=false" >> "$GITHUB_OUTPUT"
+            missing=""
+            [ -z "$ALPACA_KEY_ID" ] && missing="$missing ALPACA_KEY_ID"
+            [ -z "$ALPACA_SECRET_KEY" ] && missing="$missing ALPACA_SECRET_KEY"
+            [ -z "$SEC_USER_AGENT" ] && missing="$missing SEC_USER_AGENT"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              # a manual run without secrets must not look like a success
+              echo "::error::비밀 값 없음:$missing — Settings → Secrets and variables → Actions → Secrets 탭(Repository secrets)에 등록하세요."
+              exit 1
+            fi
+            echo "::notice::Secrets not set ($missing) — scheduled run skipped."
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
