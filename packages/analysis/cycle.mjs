@@ -52,17 +52,19 @@ export function cyclePhase(bars, spy) {
   const rsSeries = bars.filter((b) => spyBy.has(b.time)).map((b) => b.close / spyBy.get(b.time));
   const rs3m = ret(rsSeries, 63);
   const rs12m = ret(rsSeries, 252);
+  const rs24m = ret(rsSeries, 504);
   const weekly = c.filter((_, i) => i % 5 === (n - 1) % 5);
   const rsiW = rsi(weekly, 14).at(-1);
-  const m = { vs200, ma50vs200, ma50Slope, ma200Slope, ddFromHigh, offLow, ret3m, ret12m, ret24m, rs3m, rs12m, rsiW };
+  const m = { vs200, ma50vs200, ma50Slope, ma200Slope, ddFromHigh, offLow, ret3m, ret12m, ret24m, rs3m, rs12m, rs24m, rsiW };
 
-  // a group already well above where it was two years ago is pulling back, not bottoming
+  // a group that already ran (beat the market by 15%p+ over two years, or up 50%+) is pulling
+  // back, not bottoming; a laggard that rose with a rising market still counts as early
   // (a rebound off a deep low can be up a lot over 12 months and still be early)
-  const ranAlready = isNum(ret24m) ? ret24m >= 0.2 : (ret12m ?? 0) >= 0.1;
+  const ranAlready = isNum(ret24m) ? ret24m >= 0.5 || (rs24m ?? 0) >= 0.15 : (ret12m ?? 0) >= 0.1;
   let phase;
   if (vs200 > 0.3 || (isNum(rsiW) && rsiW > 75 && ddFromHigh < 0.05)) phase = 'LATE';
   // turning up after a flat/weak stretch, now outperforming the market
-  else if (!ranAlready && vs200 > 0 && ma50Slope > 0 && (rs3m ?? 0) > 0 && ma50vs200 < 0.15) phase = 'EARLY';
+  else if (!ranAlready && vs200 > 0 && ma50Slope > 0 && (rs3m ?? 0) > 0 && ((ret12m ?? 0) < 0.1 || ddFromHigh > 0.2) && ma50vs200 < 0.15) phase = 'EARLY';
   else if (vs200 > 0 && ma50vs200 > 0.03 && (ret12m ?? 0) > 0.15) phase = 'LEADING';
   // well off the highs, moving sideways around the 200-day, and no big run behind it
   else if (!ranAlready && ddFromHigh >= 0.2 && Math.abs(vs200) < 0.1) phase = 'BASING';
