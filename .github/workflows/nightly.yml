@@ -1,0 +1,79 @@
+# Nightly all-stocks pipeline. Publishes rankings, the immutable recommendation
+# ledger and performance stats to the `data` branch (public, auditable history).
+#
+# Required repository secrets: ALPACA_KEY_ID, ALPACA_SECRET_KEY, SEC_USER_AGENT
+# ("AlphaTerminal/0.5 you@example.com"). Without them the job is skipped.
+name: Nightly pipeline
+on:
+  schedule:
+    - cron: '45 22 * * 1-5' # 22:45 UTC = 18:45 EDT / 17:45 EST, after the US close
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Limit universe size (0 = all, use e.g. 200 for a smoke test)'
+        default: '0'
+permissions:
+  contents: write
+concurrency:
+  group: nightly-pipeline
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+    steps:
+      - name: Check secrets
+        id: check
+        run: |
+          if [ -z "$ALPACA_KEY_ID" ] || [ -z "$ALPACA_SECRET_KEY" ] || [ -z "$SEC_USER_AGENT" ]; then
+            echo "::notice::ALPACA_KEY_ID / ALPACA_SECRET_KEY / SEC_USER_AGENT not set — pipeline skipped."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.check.outputs.ok == 'true'
+        uses: actions/checkout@v4
+      - if: steps.check.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: steps.check.outputs.ok == 'true'
+        name: Restore pipeline cache (bars + SEC)
+        uses: actions/cache@v4
+        with:
+          path: .pipeline-cache
+          key: pipeline-cache-${{ github.run_id }}
+          restore-keys: pipeline-cache-
+      - if: steps.check.outputs.ok == 'true'
+        name: Check out data branch
+        run: |
+          git fetch origin data --depth=1 || true
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            git worktree add -B data data-branch origin/data
+          else
+            git worktree add --detach data-branch
+            cd data-branch
+            git checkout --orphan data
+            git rm -rf . -q || true
+            printf '# ALPHA TERMINAL data\n\nGenerated nightly by .github/workflows/nightly.yml. ledger/ files are written once and never modified — see this branch history.\n' > README.md
+          fi
+      - if: steps.check.outputs.ok == 'true'
+        name: Run pipeline
+        run: node scripts/nightly.mjs --cache .pipeline-cache --out data-branch --limit "${{ github.event.inputs.limit || '0' }}"
+      - if: steps.check.outputs.ok == 'true'
+        name: Publish
+        run: |
+          cd data-branch
+          # Guard: an existing ledger file must never change.
+          if git rev-parse -q --verify HEAD >/dev/null && git diff --name-only --diff-filter=MD HEAD -- ledger/ | grep -v 'ledger/index.json' | grep -q .; then
+            echo "::error::Existing ledger files were modified — refusing to publish."; exit 1
+          fi
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          ASOF=$(node -e "console.log(require('./latest.json').asOf)")
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: ${ASOF}"
+          git push origin data

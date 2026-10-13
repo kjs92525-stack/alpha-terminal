@@ -1,0 +1,21 @@
+# Cloudflare Pages project (web app + /api/* Pages Functions).
+name = "alpha-terminal"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "*"
+PRICE_PROVIDERS = "stooq,yahoo"
+SCREEN_MAX = "5"
+
+# Secrets (Pages > Settings > Variables and Secrets): SEC_USER_AGENT, ALPACA_KEY_ID, ALPACA_SECRET_KEY
+#   SEC_USER_AGENT = "AlphaTerminal/0.3 you@example.com"
+
+# TradingView webhook (see integrations/tradingview/README.md)
+#   Secrets: TV_WEBHOOK_SECRET (required), TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (optional)
+#   Alert history: create a KV namespace and bind it as ALERTS, e.g.
+#     npx wrangler kv namespace create ALERTS
+#   then uncomment with the returned id:
+# [[kv_namespaces]]
+# binding = "ALERTS"
+# id = "<namespace id>"

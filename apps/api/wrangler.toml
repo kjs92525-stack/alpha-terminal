@@ -1,0 +1,18 @@
+# Standalone Worker deployment (optional). The default deployment serves the
+# same API through Cloudflare Pages Functions — see the root wrangler.toml.
+name = "alpha-terminal-api"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "*"
+PRICE_PROVIDERS = "stooq,yahoo"
+SCREEN_MAX = "5"
+
+# Secret (never commit): wrangler secret put SEC_USER_AGENT
+#   value example: "AlphaTerminal/0.3 you@example.com"
+
+# TradingView webhook: wrangler secret put TV_WEBHOOK_SECRET (+ TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+# [[kv_namespaces]]
+# binding = "ALERTS"
+# id = "<namespace id>"
