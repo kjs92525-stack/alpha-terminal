@@ -1,13 +1,13 @@
 {
- "startedAt": "2026-10-13T17:31:28.988Z",
+ "startedAt": "2026-10-13T21:58:49.105Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
  "universe": 5262,
- "alpacaRequests": 311,
- "fullFetches": 1744,
+ "alpacaRequests": 387,
+ "fullFetches": 2968,
  "monthlyFetched": 0,
- "asOf": "2026-10-12",
+ "asOf": "2026-10-13",
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
  "sec": {
   "skipped": true,
@@ -16,54 +16,54 @@
  },
  "finnhub": {
   "needed": 5262,
-  "cached": 2499,
+  "cached": 2998,
   "attempted": 500,
   "fetched": 499,
-  "withRevenue": 285,
+  "withRevenue": 277,
   "errors": [
    "QCRH: Finnhub HTTP 500"
   ],
   "calls": 1499
  },
  "secPublished": {
-  "companyFilesWritten": 495,
+  "companyFilesWritten": 492,
   "recentFilings": 0
  },
- "withFeatures": 5257,
+ "withFeatures": 5259,
  "ranked": {
-  "mid": 2236,
-  "short": 3546
+  "mid": 2482,
+  "short": 3541
  },
  "setups": {
-  "scanned": 5257,
-  "candidates": 1798,
+  "scanned": 5259,
+  "candidates": 1762,
   "newsRequests": 200,
   "byStage": {
    "POST_BREAKOUT": 5,
-   "NEAR_PIVOT": 32,
+   "NEAR_PIVOT": 35,
    "BREAKOUT": 1
   },
   "byType": {
    "breakout": {
     "POST_BREAKOUT": 5,
-    "NEAR_PIVOT": 32,
+    "NEAR_PIVOT": 35,
     "BREAKOUT": 1
    },
    "base": {
-    "IN_BASE": 556
+    "IN_BASE": 542
    },
    "pullback": {
-    "BOUNCE": 234,
-    "AT_SUPPORT": 482,
-    "APPROACHING": 9
+    "AT_SUPPORT": 439,
+    "BOUNCE": 255,
+    "APPROACHING": 10
    },
    "weekly_bottom": {
-    "TURNING": 31,
-    "AT_BOTTOM": 276
+    "TURNING": 27,
+    "AT_BOTTOM": 275
    },
    "monthly_bottom": {
-    "AT_BOTTOM": 166,
-    "TURNING": 6
+    "AT_BOTTOM": 168,
+    "TURNING": 5
    }
   }
  },
@@ -76,8 +76,8 @@
    "NEUTRAL": 21,
    "DOWN": 5
   },
-  "grouped": 772
+  "grouped": 740
  },
- "ledgerWritten": false,
- "seconds": 2137
+ "ledgerWritten": true,
+ "seconds": 2094
 }
