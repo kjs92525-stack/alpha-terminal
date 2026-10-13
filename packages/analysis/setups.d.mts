@@ -4,7 +4,7 @@ export type Stage = 'BREAKOUT' | 'POST_BREAKOUT' | 'EXTENDED' | 'FAILED' | 'NEAR
 export interface Setup { stage: Stage; base?: Base; pivot?: number; breakoutIndex?: number; barsSinceBreakout?: number; breakoutVolMult?: number; extension?: number; distanceToPivot?: number; reason?: string }
 export interface TrendTemplate { passed: number; total: number; checks: Record<string, boolean>; ok: boolean }
 export interface RelStrength { rsNewHigh: boolean; rs3m: number | null; rs12m: number | null }
-export interface TradePlan { entry: number; stop: number; stopKind: string; target: number; riskPct: number; rMultiple: number | null; orderBlock: { top: number; bottom: number } | null; note: string | null }
+export interface TradePlan { entry: number; stop: number; stopKind: string; target: number; riskPct: number; rMultiple: number | null; orderBlock: { top: number; bottom: number } | null; note: string | null; how: string; entryType: 'buy-stop' | 'limit' }
 export const SETUP_RULES: { baseWindows: number[]; maxDepth: number; minDepth: number; breakoutVolMult: number; lookbackBreakout: number; maxExtension: number; nearPivot: number };
 export function trendTemplate(bars: Bar[]): TrendTemplate;
 export function relativeStrength(bars: Bar[], bench: Bar[]): RelStrength;

@@ -26,7 +26,7 @@ export function parseAlpacaBars(json) {
  * Fetch adjusted daily bars for many symbols, following next_page_token.
  * Returns { bars: {SYMBOL: Bar[]}, requests, feed }.
  */
-export async function fetchDailyBars({ symbols, start, end, keyId, secretKey, feed = 'sip', batchSize = 100, fetchImpl = fetch, minIntervalMs = 320, onBatch, wait } = {}) {
+export async function fetchDailyBars({ symbols, start, end, keyId, secretKey, feed = 'sip', timeframe = '1Day', batchSize = 100, fetchImpl = fetch, minIntervalMs = 320, onBatch, wait } = {}) {
   if (!keyId || !secretKey) throw new Error('Alpaca API keys missing (ALPACA_KEY_ID / ALPACA_SECRET_KEY)');
   const gate = throttle(minIntervalMs);
   const headers = { 'APCA-API-KEY-ID': keyId, 'APCA-API-SECRET-KEY': secretKey, Accept: 'application/json' };
@@ -37,7 +37,7 @@ export async function fetchDailyBars({ symbols, start, end, keyId, secretKey, fe
     const batch = symbols.slice(i, i + batchSize);
     let token = null;
     for (;;) {
-      const qs = new URLSearchParams({ symbols: batch.join(','), timeframe: '1Day', start, end, limit: '10000', adjustment: 'all', feed: activeFeed, sort: 'asc' });
+      const qs = new URLSearchParams({ symbols: batch.join(','), timeframe, start, end, limit: '10000', adjustment: 'all', feed: activeFeed, sort: 'asc' });
       if (token) qs.set('page_token', token);
       await gate();
       const res = await fetchRetry(`${BASE}?${qs}`, { headers }, { fetchImpl, wait });

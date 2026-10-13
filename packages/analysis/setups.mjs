@@ -165,8 +165,15 @@ export function tradePlan(bars, setup) {
   const stop = candidates.sort((x, y) => y.price - x.price)[0] ?? { price: entry - 2 * a, kind: 'ATR×2' };
   const target = entry + (setup.base.high - setup.base.low); // measured move = base height
   const risk = (entry - stop.price) / entry;
+  const $ = (v) => `$${v.toFixed(2)}`;
+  const how = setup.stage === 'NEAR_PIVOT' || setup.stage === 'IN_BASE'
+    ? `돌파가 ${$(setup.pivot)}를 거래량 실어 종가로 넘기면 매수 (넘기 전엔 대기) · 손절 ${$(stop.price)}`
+    : setup.stage === 'EXTENDED'
+      ? `추격 금지 — 돌파가 ${$(setup.pivot)} 부근까지 되돌림 시 매수 검토 · 손절 ${$(stop.price)}`
+      : `돌파가 ${$(setup.pivot)}~${$(setup.pivot * 1.05)} 구간에서 매수 (5% 이상 위면 추격 금지) · 손절 ${$(stop.price)}`;
   return {
-    entry, stop: stop.price, stopKind: stop.kind, target, riskPct: risk,
+    entry, stop: stop.price, stopKind: stop.kind, target, riskPct: risk, how,
+    entryType: setup.stage === 'NEAR_PIVOT' || setup.stage === 'IN_BASE' ? 'buy-stop' : 'limit',
     rMultiple: entry > stop.price ? (target - entry) / (entry - stop.price) : null,
     orderBlock: ob ? { top: ob.top, bottom: ob.bottom } : null,
     note: risk > 0.12 ? '손절폭이 넓음 — 비중 축소 또는 되돌림 진입 고려' : null,

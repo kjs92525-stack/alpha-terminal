@@ -5,7 +5,7 @@
 // is only known after the close) and exiting at the close `h` sessions later, versus SPY
 // over the identical window. Pending entries (not enough bars yet) are reported as such.
 
-export const HORIZONS = { mid: [20, 60], short: [1, 5], setups: [20, 60] };
+export const HORIZONS = { mid: [20, 60], short: [1, 5], setups: [20, 60], pullback: [20, 60], bottom: [20, 60] };
 
 export function makeLedger(asOf, model, recs) {
   const entry = (r) => ({
@@ -18,6 +18,8 @@ export function makeLedger(asOf, model, recs) {
     mid: (recs.mid ?? []).map(entry),
     short: (recs.short ?? []).map(entry),
     setups: (recs.setups ?? []).map(entry),
+    pullback: (recs.pullback ?? []).map(entry),
+    bottom: (recs.bottom ?? []).map(entry),
   };
 }
 
@@ -53,7 +55,7 @@ export function evaluateLedgers(ledgers, getBars, spyBars) {
   const detail = [];
   const pools = {};
   for (const L of ledgers) {
-    for (const book of ['setups', 'mid', 'short']) {
+    for (const book of ['setups', 'pullback', 'bottom', 'mid', 'short']) {
       for (const h of HORIZONS[book]) {
         const key = `${book}_${h}d`;
         const spy = forwardReturn(spyBars, L.asOf, h);

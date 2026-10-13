@@ -588,3 +588,6 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .setup-detail ul { margin: 0 0 8px; padding-left: 16px; font-size: 12px; line-height: 1.6; }
 .news-mini li { font-size: 11px; }
 @media (max-width: 760px) { .setup-detail { grid-template-columns: 1fr; position: sticky; left: 0; max-width: calc(100vw - 100px); } }
+.entry-cell { font-weight: 600; }
+.how-box { background: rgba(91,108,255,0.12); border: 1px solid var(--accent, #5b6cff); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; }
+.how-box b { color: var(--accent-2, #7c8bff); margin-right: 6px; }
