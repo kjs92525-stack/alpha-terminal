@@ -8,7 +8,7 @@ import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
 import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
 import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
-import { makeFinnhubClient, fetchCompany } from './finnhub.mjs';
+import { makeFinnhubClient, fetchCompany, withFacts } from './finnhub.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
@@ -210,10 +210,11 @@ export async function runNightly({
   const fhDir = path.join(cacheDir, 'finnhub');
   const fhRec = new Map();
   const secFacts = (u) => (u.cik ? cache.get(u.cik)?.facts : null);
-  for (const u of universe) { const r = readJson(path.join(fhDir, `${safeName(u.symbol)}.json`), null); if (r) fhRec.set(u.symbol, r); }
+  // facts are recomputed from cached compact filings every run; records in an older format are refetched
+  for (const u of universe) { const r = withFacts(readJson(path.join(fhDir, `${safeName(u.symbol)}.json`), null)); if (r) fhRec.set(u.symbol, r); }
   if (env.FINNHUB_API_KEY) {
     const fh = makeFinnhubClient({ apiKey: env.FINNHUB_API_KEY, fetchImpl, wait });
-    const maxCompanies = Math.floor(Number(env.FINNHUB_MAX_CALLS || 500) / 2);
+    const maxCompanies = Math.floor(Number(env.FINNHUB_MAX_CALLS || 1500) / 2);
     const adv = (s) => { const b = (cached.get(s) ?? []).slice(-20); return b.length ? b.reduce((a, x) => a + x.close * x.volume, 0) / b.length : 0; };
     const need = universe.filter((u) => !secFacts(u));
     const missing = need.filter((u) => !fhRec.has(u.symbol)).sort((a, b) => adv(b.symbol) - adv(a.symbol));
@@ -224,9 +225,10 @@ export async function runNightly({
     for (let i = 0; i < todo.length; i++) {
       const u = todo[i];
       try {
-        const rec = await fetchCompany(fh, u.symbol, now);
+        const raw = await fetchCompany(fh, u.symbol, now);
+        writeJson(path.join(fhDir, `${safeName(u.symbol)}.json`), raw);
+        const rec = withFacts(raw);
         fhRec.set(u.symbol, rec);
-        writeJson(path.join(fhDir, `${safeName(u.symbol)}.json`), rec);
         fstats.fetched++;
         if (rec.facts?.revenueQuarterly?.length) fstats.withRevenue++;
       } catch (e) {
