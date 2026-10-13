@@ -28,5 +28,6 @@ test('daily bar closed check uses 16:00 America/New_York', () => {
   const bar = Date.UTC(2025, 5, 10) / 1000;
   assert.equal(isDailyBarClosed(bar, Date.UTC(2025, 5, 10, 19, 0)), false); // 15:00 ET
   assert.equal(isDailyBarClosed(bar, Date.UTC(2025, 5, 10, 20, 30)), true); // 16:30 ET
+  assert.equal(isDailyBarClosed(bar, Date.UTC(2025, 5, 10, 20, 10)), false); // 16:10 ET: final bar not in the free feed yet
   assert.equal(isDailyBarClosed(bar, Date.UTC(2025, 5, 12, 12, 0)), true);
 });

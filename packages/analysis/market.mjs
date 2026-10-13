@@ -57,11 +57,13 @@ export function parseYahooChart(json, { daily = false } = {}) {
 /** Drop the last bar if it belongs to a session that has not closed yet (daily data, US equities). */
 export function isDailyBarClosed(barTimeSec, nowMs = Date.now()) {
   // US regular session closes 16:00 America/New_York. Compare using ET wall-clock.
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false });
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
   const parts = Object.fromEntries(fmt.formatToParts(new Date(nowMs)).map((p) => [p.type, p.value]));
   const today = `${parts.year}-${parts.month}-${parts.day}`;
   const barDay = new Date(barTimeSec * 1000).toISOString().slice(0, 10);
   if (barDay < today) return true;
   if (barDay > today) return false;
-  return Number(parts.hour) >= 16;
+  // 16:20 ET: the close plus the free SIP feed's 15-minute delay, so the bar is final
+  const h = Number(parts.hour) % 24;
+  return h > 16 || (h === 16 && Number(parts.minute) >= 20);
 }
