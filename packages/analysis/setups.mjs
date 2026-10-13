@@ -251,8 +251,10 @@ export function tradePlan(bars, setup) {
   const range = setup.base.high - setup.base.low;
   const last = bars[n - 1].close;
   const posInBase = range > 0 ? (last - setup.base.low) / range : null;
-  if (setup.stage === 'IN_BASE' && posInBase !== null && posInBase <= 0.5) {
-    const zone = [setup.base.low, Math.min(setup.base.low + range * 0.2, setup.base.low * 1.12)];
+  const floorZone = [setup.base.low, Math.min(setup.base.low + range * 0.2, setup.base.low * 1.12)];
+  // more than 15% above the floor zone is not a floor buy (a limit order that far away rarely fills)
+  if (setup.stage === 'IN_BASE' && posInBase !== null && posInBase <= 0.5 && last <= floorZone[1] * 1.15) {
+    const zone = floorZone;
     const floorStop = setup.base.low - Math.max(a, setup.base.low * 0.03);
     const atFloor = last <= zone[1] * 1.03;
     const buy = atFloor ? last : zone[1];
