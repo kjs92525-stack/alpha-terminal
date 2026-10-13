@@ -103,16 +103,29 @@ export function summarize(trades, h) {
  * barsBySymbol: { SYMBOL: Bar[] } (adjusted daily), spy: Bar[].
  * Returns the report object (also usable in tests).
  */
-/** Volume breakouts above the 6-month high where no base qualified, with the reason per window. */
-export function nearMisses(bars, rules = SETUP_RULES, limit = 8) {
+/**
+ * First volume breakout above the 6-month high of each advance (40-bar cooldown) where no base
+ * qualified, with the window stats and the reason per window — for tuning on case studies.
+ */
+export function nearMisses(bars, rules = SETUP_RULES, limit = 12) {
   const highs = bars.map((b) => b.high);
   const max126 = rollingMax(highs, 126);
   const vol50 = sma(bars.map((b) => b.volume), 50);
   const out = [];
+  let cooldown = -1;
   for (let i = 300; i < bars.length; i++) {
+    if (i < cooldown) continue;
     if (max126[i - 1] === null || bars[i].close <= max126[i - 1] || !(vol50[i - 1] > 0) || bars[i].volume / vol50[i - 1] < rules.breakoutVolMult) continue;
+    cooldown = i + 40;
     if (findBase(bars, i - 1, rules)) continue;
-    out.push({ date: new Date(bars[i].time * 1000).toISOString().slice(0, 10), close: bars[i].close, why: explainBase(bars, i - 1, rules).map((e) => `${Math.round(e.window / 21)}개월: ${e.reason}`) });
+    const why = explainBase(bars, i - 1, rules).map((e) => {
+      const W = e.window;
+      const seg = bars.slice(Math.max(0, i - W), i);
+      const hi = Math.max(...seg.map((b) => b.high));
+      const lo = Math.min(...seg.map((b) => b.low));
+      return `${Math.round(W / 21)}개월[${lo.toFixed(2)}~${hi.toFixed(2)}]: ${e.reason}`;
+    });
+    out.push({ date: new Date(bars[i].time * 1000).toISOString().slice(0, 10), close: bars[i].close, volMult: Math.round((bars[i].volume / vol50[i - 1]) * 10) / 10, why });
   }
   return out.slice(-limit);
 }
