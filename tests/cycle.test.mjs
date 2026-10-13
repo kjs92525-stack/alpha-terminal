@@ -37,3 +37,15 @@ test('stocks are attached to the ETF they track beyond the market, not to everyt
   const marketOnly = series(path(mkt.map((r) => r + rnd() * 0.002)));
   assert.equal(bestGroup(marketOnly, { SMH, XBI }, SPY), null);
 });
+
+test('modest pullback near highs is a pause, not a bottom; weak-year turnaround outperforming is early', () => {
+  const spyUp = series(Array.from({ length: 600 }, (_, i) => 400 + i * 0.1));
+  // up 50% over two years, then a 9% dip just under the 200-day: a pause
+  const pause = Array.from({ length: 560 }, (_, i) => 60 + i * 0.06).concat(Array.from({ length: 40 }, (_, i) => 93.6 - i * 0.22));
+  const p = cyclePhase(series(pause), spyUp);
+  assert.ok(['NEUTRAL', 'LEADING'].includes(p.phase), p.phase);
+  assert.notEqual(p.phase, 'BASING');
+  // flat-to-down year, then a sharp 3-month rally beating the market (IGV 2026-like)
+  const turn = Array.from({ length: 460 }, (_, i) => 100 - i * 0.05).concat(Array.from({ length: 140 }, (_, i) => 77 + i * 0.06 + 1.5 * Math.sin(i / 6)));
+  assert.equal(cyclePhase(series(turn), spyUp).phase, 'EARLY');
+});

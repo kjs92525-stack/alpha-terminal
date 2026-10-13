@@ -6,13 +6,14 @@ import { STAGE_KO, TYPE_KO } from '../lib/storyPicks';
 import { fmtEt, fmtPct, fmtPrice, signClass } from '../lib/format';
 import { Loading, PanelHead } from './ui';
 
-const PHASE_LABEL: Record<CyclePhase, string> = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', LATE: '과열·후반', DOWN: '하락' };
-const PHASE_CLS: Record<CyclePhase, string> = { EARLY: 'up', BASING: 'neutral', LEADING: 'up', LATE: 'neutral', DOWN: 'down' };
+const PHASE_LABEL: Record<CyclePhase, string> = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', NEUTRAL: '숨고르기', LATE: '과열·후반', DOWN: '하락' };
+const PHASE_CLS: Record<CyclePhase, string> = { EARLY: 'up', BASING: 'neutral', LEADING: 'up', NEUTRAL: '', LATE: 'neutral', DOWN: 'down' };
 const PHASE_TIP: Record<CyclePhase, string> = {
-  EARLY: '긴 하락 뒤 200일선 위로 올라오고 50일선이 고개를 든 업종 — 사이클이 돌기 시작하는 자리',
-  BASING: '고점에서 많이 내려와 200일선 근처에서 옆으로 기는 업종 — 아직 방향 미정',
+  EARLY: '부진했던 1년(또는 큰 하락) 뒤 200일선 위로 올라오고 시장보다 강해지는 업종 — 사이클이 돌기 시작하는 자리',
+  BASING: '고점에서 20% 이상 내려와 200일선 근처에서 옆으로 기는 업종 — 다음 사이클 후보',
   LEADING: '이미 상승 추세가 자리 잡고 시장보다 강한 업종',
   LATE: '200일선보다 30% 이상 위거나 과열 — 추격 주의',
+  NEUTRAL: '고점에서 조금 내려와 방향을 고르는 중 — 뚜렷한 신호 없음',
   DOWN: '내려가는 200일선 아래, 시장보다 약한 업종',
 };
 
@@ -37,7 +38,7 @@ export function SectorCycle({ compact = false }: { compact?: boolean }) {
       {state === 'ok' && !compact && (
         <div className="event-filter">
           <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>전체</button>
-          {(['EARLY', 'BASING', 'LEADING', 'LATE', 'DOWN'] as CyclePhase[]).map((p) => <button key={p} className={filter === p ? 'active' : ''} onClick={() => setFilter(p)} title={PHASE_TIP[p]}>{PHASE_LABEL[p]} ({count(p)})</button>)}
+          {(['EARLY', 'BASING', 'LEADING', 'NEUTRAL', 'LATE', 'DOWN'] as CyclePhase[]).map((p) => <button key={p} className={filter === p ? 'active' : ''} onClick={() => setFilter(p)} title={PHASE_TIP[p]}>{PHASE_LABEL[p]} ({count(p)})</button>)}
         </div>
       )}
       {state === 'ok' && (
