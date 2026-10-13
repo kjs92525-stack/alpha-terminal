@@ -1,21 +1,32 @@
-# Cloudflare Pages project (web app + /api/* Pages Functions).
+# Cloudflare Worker: web app (static assets from dist/) + API (/api/*) on one domain.
+# Dashboard: Workers & Pages -> Create -> Import a repository -> alpha-terminal
+#   Build command:  npm run build
+#   Deploy command: npx wrangler deploy
 name = "alpha-terminal"
-pages_build_output_dir = "dist"
+main = "apps/api/src/worker.ts"
 compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/health"]
+
+[observability]
+enabled = true
 
 [vars]
 ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
 SCREEN_MAX = "5"
 
-# Secrets (Pages > Settings > Variables and Secrets): SEC_USER_AGENT, ALPACA_KEY_ID, ALPACA_SECRET_KEY
-#   SEC_USER_AGENT = "AlphaTerminal/0.3 you@example.com"
-
-# TradingView webhook (see integrations/tradingview/README.md)
-#   Secrets: TV_WEBHOOK_SECRET (required), TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (optional)
-#   Alert history: create a KV namespace and bind it as ALERTS, e.g.
-#     npx wrangler kv namespace create ALERTS
-#   then uncomment with the returned id:
+# Secrets (Worker > Settings > Variables and Secrets, type "Secret"):
+#   SEC_USER_AGENT     e.g. "AlphaTerminal/0.6 you@example.com"
+#   ALPACA_KEY_ID, ALPACA_SECRET_KEY
+#   TV_WEBHOOK_SECRET (+ optional TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+#
+# Optional TradingView alert history: create a KV namespace and bind it as ALERTS
+#   npx wrangler kv namespace create ALERTS
 # [[kv_namespaces]]
 # binding = "ALERTS"
 # id = "<namespace id>"
