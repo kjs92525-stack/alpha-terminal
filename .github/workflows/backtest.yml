@@ -27,7 +27,12 @@ jobs:
         id: check
         run: |
           if [ -z "$ALPACA_KEY_ID" ] || [ -z "$ALPACA_SECRET_KEY" ] || [ -z "$SEC_USER_AGENT" ]; then
-            echo "::notice::Secrets missing — backtest skipped."; echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::비밀 값 없음 — Settings → Secrets and variables → Actions → Secrets 탭(Repository secrets)에 ALPACA_KEY_ID, ALPACA_SECRET_KEY, SEC_USER_AGENT를 등록하세요."
+              exit 1
+            fi
+            echo "::notice::Secrets missing — scheduled backtest skipped."
           else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
       - if: steps.check.outputs.ok == 'true'
         uses: actions/checkout@v4
