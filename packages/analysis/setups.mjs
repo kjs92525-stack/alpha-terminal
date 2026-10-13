@@ -21,6 +21,8 @@ export const SETUP_RULES = {
   lookbackBreakout: 10, // bars after a breakout still treated as actionable
   maxExtension: 0.12, // above pivot beyond this = extended, do not chase
   nearPivot: 0.06, // within 6% below pivot = setting up
+  minBelowPeak: 0.2, // base ceiling must sit >= 20% under the earlier peak — a bottom, not a high
+  peakLookbackDays: 365 * 5,
 };
 
 /** Minervini-style trend template (8 checks). */
@@ -92,13 +94,34 @@ function baseStats(bars, endIdx, W) {
   };
 }
 
-/** Best (longest qualifying) base ending at endIdx. */
-export function findBase(bars, endIdx, rules = SETUP_RULES) {
+/**
+ * Highest high before `beforeTime` within the lookback, from daily bars and (optionally)
+ * long monthly history. null when there is no earlier history (e.g. a recent IPO).
+ */
+export function priorPeak(bars, startIdx, monthly = null, lookbackDays = SETUP_RULES.peakLookbackDays) {
+  const t = bars[startIdx]?.time;
+  if (t === undefined) return null;
+  const from = t - lookbackDays * 86400;
+  let peak = null;
+  for (let i = 0; i < startIdx; i++) if (bars[i].time >= from && (peak === null || bars[i].high > peak)) peak = bars[i].high;
+  // monthly bars: only months that ended before the window started
+  for (const m of monthly ?? []) if (m.time >= from && m.time + 31 * 86400 <= t && (peak === null || m.high > peak)) peak = m.high;
+  return peak;
+}
+
+/**
+ * Best (longest qualifying) base ending at endIdx. A base is a BOTTOM: the stock fell from an
+ * earlier peak and moves sideways well below it. Ranges near all-time highs are not bases here.
+ */
+export function findBase(bars, endIdx, rules = SETUP_RULES, monthly = null) {
   let best = null;
   for (const W of rules.baseWindows) {
     const s = baseStats(bars, endIdx, W);
     if (!s) continue;
     if (s.depth > rules.maxDepth || s.depth < rules.minDepth) continue;
+    const peak = priorPeak(bars, s.start, monthly, rules.peakLookbackDays);
+    if (peak !== null && s.high > peak * (1 - rules.minBelowPeak)) continue;
+    s.priorPeak = peak;
     // a window that starts in the middle of the prior decline would take a point on the way
     // down as the 'ceiling'; require the bars just before the window to sit at/below it.
     const pre = bars.slice(Math.max(0, s.start - 20), s.start);
@@ -118,7 +141,7 @@ export function findBase(bars, endIdx, rules = SETUP_RULES) {
  * stage: BREAKOUT (today), POST_BREAKOUT (≤10 bars ago, not extended), EXTENDED,
  *        NEAR_PIVOT (≤6% below pivot), IN_BASE, NONE.
  */
-export function detectSetup(bars, rules = SETUP_RULES) {
+export function detectSetup(bars, rules = SETUP_RULES, monthly = null) {
   const n = bars.length;
   if (n < 160) return { stage: 'NONE', reason: 'insufficient history' };
   const vol50 = sma(bars.map((b) => b.volume), 50);
@@ -126,7 +149,7 @@ export function detectSetup(bars, rules = SETUP_RULES) {
   // breakout within the last N bars: bar k closes above the base that ended at k-1
   for (let k = 0; k <= rules.lookbackBreakout; k++) {
     const i = n - 1 - k;
-    const base = findBase(bars, i - 1, rules);
+    const base = findBase(bars, i - 1, rules, monthly);
     if (!base) continue;
     const bar = bars[i];
     const volMult = isNum(vol50[i - 1]) && vol50[i - 1] > 0 ? bar.volume / vol50[i - 1] : null;
@@ -136,7 +159,7 @@ export function detectSetup(bars, rules = SETUP_RULES) {
       return { stage, base, pivot: base.high, breakoutIndex: i, barsSinceBreakout: k, breakoutVolMult: volMult, extension: ext };
     }
   }
-  const base = findBase(bars, n - 1, rules);
+  const base = findBase(bars, n - 1, rules, monthly);
   if (!base) return { stage: 'NONE' };
   const gap = 1 - last.close / base.high;
   if (gap >= 0 && gap <= rules.nearPivot) return { stage: 'NEAR_PIVOT', base, pivot: base.high, distanceToPivot: gap };
@@ -181,8 +204,8 @@ export function tradePlan(bars, setup) {
 }
 
 /** One-call evaluation used by the pipeline and the backtest. */
-export function evaluateChart(bars, bench) {
-  const setup = detectSetup(bars);
+export function evaluateChart(bars, bench, monthly = null) {
+  const setup = detectSetup(bars, SETUP_RULES, monthly);
   const tt = trendTemplate(bars);
   const rs = bench ? relativeStrength(bars, bench) : { rsNewHigh: false, rs3m: null, rs12m: null };
   if (tt.checks) { tt.checks.rsPositive = isNum(rs.rs3m) ? rs.rs3m > 0 : false; tt.passed = Object.values(tt.checks).filter(Boolean).length; tt.ok = tt.passed >= 7; }

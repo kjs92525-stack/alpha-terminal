@@ -23,7 +23,7 @@ export const THEMES = [
   ['AI', /\b(AI|artificial intelligence|generative|LLM|GPU|inference|data cent(er|re)s?)\b/],
   ['방산', /\b(defense|defence|Pentagon|Army|Navy|Air Force|DoD|missile|drone)s?\b/i],
   ['원전·에너지', /\b(nuclear|uranium|SMR|reactor|grid|power demand)\b/i],
-  ['우주', /\b(space|satellite|launch|orbit)\b/i],
+  ['우주', /\b(satellites?|orbit(al)?|rockets?|spacecraft|space (force|station|launch|company|economy))\b/i],
   ['양자', /\bquantum\b/i],
   ['비만·바이오', /\b(GLP-1|obesity|FDA approv\w*|phase 3)\b/i],
   ['크립토', /\b(bitcoin|crypto|blockchain|stablecoin)\b/i],
@@ -63,10 +63,17 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf })
   // 3. narrative heat: news volume and themes (20)
   const recent = news.filter((n) => asOfMs - Date.parse(n.time) <= 7 * DAY);
   const older = news.filter((n) => { const d = asOfMs - Date.parse(n.time); return d > 7 * DAY && d <= 60 * DAY; });
+  // only meaningful when the fetched news reaches back past the last week (a capped request of a
+  // heavily covered stock can be all from this week, which is not a "surge")
+  const oldest = news.reduce((m, n) => Math.min(m, Date.parse(n.time)), Infinity);
+  const covered = news.length > 0 && asOfMs - oldest > 21 * DAY;
   const weeklyBase = older.length / (53 / 7);
-  if (recent.length >= 3 && recent.length >= Math.max(2, weeklyBase * 2)) add(10, `최근 1주 뉴스 ${recent.length}건 (평소 주 ${weeklyBase.toFixed(1)}건) — 관심 급증`);
-  const text = news.map((n) => n.headline).join(' \n ');
-  const themes = THEMES.filter(([, re]) => re.test(text)).map(([t]) => t);
+  if (covered && recent.length >= 5 && recent.length >= Math.max(2, weeklyBase * 2)) add(10, `최근 1주 뉴스 ${recent.length}건 (평소 주 ${weeklyBase.toFixed(1)}건) — 관심 급증`);
+  // a theme counts when several headlines (and a real share of them) are about it
+  const themes = THEMES.filter(([, re]) => {
+    const hits = news.filter((n) => re.test(n.headline ?? '')).length;
+    return hits >= 3 && hits / news.length >= 0.2;
+  }).map(([t]) => t);
   if (themes.length) add(Math.min(10, themes.length * 5), `테마 연결: ${themes.join(', ')}`);
 
   // 4. "doubted while improving" (10): negative headline share with improving fundamentals
