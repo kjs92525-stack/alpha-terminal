@@ -23,7 +23,7 @@ const STAGE: Record<SetupStage, { ko: string; cls: string; tip: string }> = {
 
 const TYPES: Array<{ key: SetupType; ko: string; desc: string; stages: SetupStage[] }> = [
   { key: 'breakout', ko: '바닥 돌파', desc: '6–18개월 바닥을 다진 뒤 상단을 거래량 실어 뚫는 자리', stages: ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT'] },
-  { key: 'base', ko: '바닥 다지기', desc: '크게 빠진 뒤 6–18개월째 바닥에서 옆으로 기는 종목 (아직 돌파 전). 박스 아래쪽이면 분할매수, 위쪽이면 돌파 대기', stages: ['IN_BASE'] },
+  { key: 'base', ko: '바닥 다지기', desc: '크게 빠진 뒤 6–18개월째 바닥에서 옆으로 기는 종목 (아직 돌파 전). 박스 아래쪽 절반이면 바닥 근처 분할매수(지정가), 위쪽이면 돌파 대기', stages: ['IN_BASE'] },
   { key: 'pullback', ko: '눌림목', desc: '상승 추세 종목이 5–25% 쉬면서 20일 EMA·50일선·이전 고점·오더블록 지지에 닿은 자리', stages: ['BOUNCE', 'AT_SUPPORT', 'APPROACHING'] },
   { key: 'weekly_bottom', ko: '주봉 바닥', desc: '2년 고점 대비 35% 이상 빠진 뒤 신저가를 멈추고 바닥 20% 이내에 있는 종목', stages: ['TURNING', 'AT_BOTTOM'] },
   { key: 'monthly_bottom', ko: '월봉 바닥', desc: '5년 고점 대비 50% 이상 빠진 뒤 신저가를 멈추고 바닥 25% 이내에 있는 종목', stages: ['TURNING', 'AT_BOTTOM'] },
@@ -36,7 +36,7 @@ function structure(x: SetupRow): [string, string] {
     case 'breakout':
       return [x.base ? `바닥 ${x.base.months}개월` : '—', x.pivot != null ? `돌파가 $${fmtPrice(x.pivot)} ${x.extension != null ? fmtPct(x.extension) : x.distanceToPivot != null ? `-${(x.distanceToPivot * 100).toFixed(1)}%` : ''}` : ''];
     case 'base':
-      return [x.base ? `바닥 ${x.base.months}개월 · 폭 ${((x.base.depth ?? 0) * 100).toFixed(0)}%` : '—', x.posInBase != null ? `박스 ${x.posInBase <= 0.35 ? '아래쪽' : x.posInBase >= 0.65 ? '위쪽' : '중간'} (${(x.posInBase * 100).toFixed(0)}%) · 상단 $${fmtPrice(x.pivot ?? 0)}` : ''];
+      return [x.base ? `바닥 ${x.base.months}개월 · 폭 ${((x.base.depth ?? 0) * 100).toFixed(0)}%` : '—', x.posInBase != null ? `박스 ${x.posInBase <= 0.5 ? '아래쪽' : '위쪽'} (${(x.posInBase * 100).toFixed(0)}%) · 상단 $${fmtPrice(x.pivot ?? 0)}` : ''];
     case 'pullback':
       return [`조정 -${((x.depth ?? 0) * 100).toFixed(0)}%`, x.support ? `${x.support.kind} $${fmtPrice(x.support.price)}` : ''];
     default:

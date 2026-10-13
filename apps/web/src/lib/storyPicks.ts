@@ -17,7 +17,7 @@ export function storyPicks(data: Setups | null, limit = 8): StoryPick[] {
   if (!data) return [];
   const best = new Map<string, StoryPick>();
   for (const row of data.candidates) {
-    if (!(BUY_AREA.has(row.stage) || (row.stage === 'IN_BASE' && row.plan?.entryType === 'zone')) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
+    if (!(BUY_AREA.has(row.stage) || (row.stage === 'IN_BASE' && (row.plan?.entryType === 'zone' || row.plan?.entryType === 'limit'))) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
     if (row.plan.rMultiple == null || row.plan.rMultiple < 1.5) continue; // target too close to be worth the risk
     const text = row.reasons.map((r) => r.text).join(' ');
     const lines = row.narrative?.lines.join(' ') ?? '';

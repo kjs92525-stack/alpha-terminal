@@ -227,10 +227,17 @@ test('바닥 다지기: inside the base near its floor → scale-in zone, stop u
   const atFloor = [...bars.slice(0, -1), { ...bars.at(-1), open: px, high: px * 1.01, low: px * 0.99, close: px }];
   const p = tradePlan(atFloor, { ...s, stage: 'IN_BASE' });
   assert.equal(p.entryType, 'zone');
-  assert.ok(p.stop < s.base.low && p.zone[0] === s.base.low && p.zone[1] > px);
+  assert.ok(p.stop < s.base.low && p.zone[0] === s.base.low && p.zone[1] >= px);
+  assert.ok(p.riskPct < 0.2, String(p.riskPct));
   assert.equal(p.target, s.pivot);
   assert.ok(p.rMultiple > 1.5, String(p.rMultiple));
   assert.match(p.how, /분할매수/);
+  // middle of the base: limit order at the floor zone, not at today's price
+  const mid = s.base.low + range * 0.45;
+  const midBars = [...bars.slice(0, -1), { ...bars.at(-1), open: mid, high: mid * 1.01, low: mid * 0.99, close: mid }];
+  const pm = tradePlan(midBars, { ...s, stage: 'IN_BASE' });
+  assert.equal(pm.entryType, 'limit');
+  assert.ok(pm.entry < mid && pm.entry === pm.zone[1]);
   // upper part of the base: wait for the breakout instead
   const hi = s.base.low + range * 0.8;
   const upper = [...bars.slice(0, -1), { ...bars.at(-1), open: hi, high: hi * 1.01, low: hi * 0.99, close: hi }];
