@@ -13,7 +13,7 @@ indicator("ALPHA TERMINAL · Structure", shorttitle = "ALPHA STRUCT", overlay = 
 leftLen   = input.int(3, "Pivot left bars", minval = 1, group = "Structure")
 rightLen  = input.int(3, "Pivot right bars (confirmation delay)", minval = 1, group = "Structure")
 showSwing = input.bool(false, "Show confirmed swing points", group = "Structure")
-showFvg   = input.bool(true, "Show FVG", group = "FVG")
+showFvg   = input.bool(false, "Show FVG", group = "FVG")
 minGapPct = input.float(0.15, "Min FVG size (% of price)", minval = 0, step = 0.05, group = "FVG") / 100
 maxFvg    = input.int(12, "Max open FVG boxes", minval = 1, maxval = 50, group = "FVG")
 showOb    = input.bool(true, "Show order blocks", group = "Order block")
@@ -23,8 +23,12 @@ alertBos  = input.bool(true, "Alert on BOS", group = "Alerts")
 alertChoch = input.bool(true, "Alert on CHoCH", group = "Alerts")
 alertFvg  = input.bool(false, "Alert on new FVG", group = "Alerts")
 
-colBull = color.new(#58d7b0, 0)
-colBear = color.new(#ee7c89, 0)
+colBull = color.new(#2fd27a, 0)
+colBear = color.new(#ff5470, 0)
+colObBull = input.color(#3d8bff, "Bullish OB color", group = "Order block")
+colObBear = input.color(#d65cff, "Bearish OB color", group = "Order block")
+obFillTransp = input.int(72, "OB fill transparency (0-100)", minval = 0, maxval = 100, group = "Order block")
+showStruct = input.bool(true, "Show BOS/CHoCH labels (small)", group = "Structure")
 
 // ---------- alert payload ----------
 sendAlert(string signal, float level) =>
@@ -68,9 +72,11 @@ addOb(int dir, int swingIdx) =>
     for k = 1 to span
         isOpp = dir == 1 ? close[k] < open[k] : close[k] > open[k]
         if isOpp
-            b = box.new(bar_index - k, high[k], bar_index, low[k], border_color = dir == 1 ? color.new(#7aa2f7, 20) : color.new(#c58af9, 20),
-                 bgcolor = dir == 1 ? color.new(#7aa2f7, 85) : color.new(#c58af9, 85), extend = extend.right,
-                 text = "OB", text_size = size.tiny, text_color = dir == 1 ? #7aa2f7 : #c58af9, text_halign = text.align_left, text_valign = text.align_top)
+            obCol = dir == 1 ? colObBull : colObBear
+            b = box.new(bar_index - k, high[k], bar_index, low[k], border_color = obCol, border_width = 2,
+                 bgcolor = color.new(obCol, obFillTransp), extend = extend.right,
+                 text = (dir == 1 ? "▲ 매수 OB " : "▼ 매도 OB ") + str.tostring(low[k], format.mintick) + "–" + str.tostring(high[k], format.mintick),
+                 text_size = size.small, text_color = obCol, text_halign = text.align_left, text_valign = text.align_top)
             array.push(obBoxes, b)
             array.push(obDir, dir)
             array.push(obBorn, bar_index)
@@ -84,8 +90,9 @@ addOb(int dir, int swingIdx) =>
 bullBreak = not highBroken and not na(lastHigh) and close > lastHigh
 if bullBreak
     kind = trend == -1 ? "CHoCH" : "BOS"
-    line.new(lastHighIdx, lastHigh, bar_index, lastHigh, color = colBull, style = line.style_dashed)
-    label.new(bar_index, lastHigh, kind, style = label.style_label_down, color = color.new(colBull, 70), textcolor = colBull, size = size.small)
+    if showStruct
+        line.new(lastHighIdx, lastHigh, bar_index, lastHigh, color = color.new(colBull, 60), style = line.style_dotted)
+        label.new(bar_index, lastHigh, kind, style = label.style_label_down, color = color.new(colBull, 85), textcolor = color.new(colBull, 30), size = size.tiny)
     if showOb
         addOb(1, lastHighIdx)
     if (kind == "BOS" and alertBos) or (kind == "CHoCH" and alertChoch)
@@ -96,8 +103,9 @@ if bullBreak
 bearBreak = not lowBroken and not na(lastLow) and close < lastLow
 if bearBreak
     kind = trend == 1 ? "CHoCH" : "BOS"
-    line.new(lastLowIdx, lastLow, bar_index, lastLow, color = colBear, style = line.style_dashed)
-    label.new(bar_index, lastLow, kind, style = label.style_label_up, color = color.new(colBear, 70), textcolor = colBear, size = size.small)
+    if showStruct
+        line.new(lastLowIdx, lastLow, bar_index, lastLow, color = color.new(colBear, 60), style = line.style_dotted)
+        label.new(bar_index, lastLow, kind, style = label.style_label_up, color = color.new(colBear, 85), textcolor = color.new(colBear, 30), size = size.tiny)
     if showOb
         addOb(-1, lastLowIdx)
     if (kind == "BOS" and alertBos) or (kind == "CHoCH" and alertChoch)
@@ -114,7 +122,10 @@ if array.size(obBoxes) > 0
         if touched and array.get(obBorn, i) < bar_index
             box.set_right(b, bar_index)
             box.set_extend(b, extend.none)
-            box.set_bgcolor(b, color.new(color.gray, 92))
+            box.set_bgcolor(b, color.new(color.gray, 94))
+            box.set_border_color(b, color.new(color.gray, 70))
+            box.set_border_width(b, 1)
+            box.set_text(b, "")
             array.remove(obBoxes, i)
             array.remove(obDir, i)
             array.remove(obBorn, i)
