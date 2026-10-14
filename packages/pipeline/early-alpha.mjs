@@ -77,16 +77,18 @@ export function publishEarlyAlpha({ candidates, outDir, asOf, generatedAt, getBa
   // A failed same-day news check may be retried without changing the immutable
   // scores/cohort. Keep the original record and expose the refreshed evidence.
   const freshBy = new Map(candidates.map((r) => [r.symbol, r]));
+  const revision = today.model !== EARLY_MODEL;
   const displayRows = today.candidates.map((r) => {
     const fresh = freshBy.get(r.symbol);
+    if (revision && fresh) return {...fresh, firstSeen:r.firstSeen, isNew:false, warnings:[...fresh.warnings,'모델 재검토 점수 — 최초 일일 원장·성과 추적은 기존 기록 유지']};
     return r.newsStatus === 'error' && fresh?.newsStatus === 'ok' ? {
       ...r, evidence: fresh.evidence, enrichmentStatus: 'ok',
       risk: fresh.risk.level === 'high' ? fresh.risk : r.risk,
       warnings: [...new Set([...r.warnings, ...fresh.warnings, '뉴스 근거 재조회 완료 — 점수·선정 상태는 최초 일일 원장 기준 (다음 배치부터 재산정)'])],
     } : r;
   });
-  const latest = { ...today, candidates: displayRows, enrichment: { generatedAt, newsRequests: stats.newsRequests ?? 0, newsFailures: stats.newsFailures ?? 0 }, rules: EARLY_RULES, performance,
-    refreshedAt: generatedAt, method: '성장 30 + 수익성 25 + 제목 기반 촉매 10 + 가격 소외 15 + 매출 대비 가치 10 + 바닥 구조 10 − 위험 감점. 점수는 상승확률이 아닙니다. 저보도·저기관보유를 직접 측정하지 않는 가격 기반 소외 대용 모델.',
+  const latest = { ...today, model: revision ? EARLY_MODEL : today.model, ledgerModel:today.model, stats:revision ? {...stats,candidates:displayRows.filter(r=>r.status==='candidate').length} : today.stats, candidates: displayRows, enrichment: { generatedAt, newsRequests: stats.newsRequests ?? 0, newsFailures: stats.newsFailures ?? 0 }, rules: EARLY_RULES, performance,
+    refreshedAt: generatedAt, method: '성장 30 + 수익성 25 + 제목 기반 촉매 10 + 가격 소외 15 + 매출 대비 가치 10 + 바닥 구조 10 − 위험 감점. 원문 검토에 따라 일회성 매출·순이익은 가점을 제한합니다. 수익성 원문 미검증은 최대 10점입니다. 점수는 상승확률·투자 확신이 아닙니다. 저보도·저기관보유를 직접 측정하지 않는 가격 기반 소외 대용 모델.',
     caveat: '뉴스 제목과 공시 항목은 계약 구속력·규모·첫 상업화의 공식 확인이 아닙니다. 원문 검증 필수. 후보가 없으면 기준을 자동 완화하지 않습니다.' };
   write(path.join(root, 'latest.json'), latest);
   return latest;

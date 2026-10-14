@@ -5,6 +5,7 @@
 // Inputs: Fundamentals (SEC XBRL summary incl. quarterly revenue / net income),
 // classified filings, and classified news items (optional).
 
+import { financialReview } from './financial-review.mjs';
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const DAY = 86400000;
 
@@ -30,7 +31,7 @@ export const THEMES = [
   ['로봇·자율주행', /\b(robot\w*|humanoid|autonomous|robotaxi)\b/i],
 ];
 
-export function storySignals({ fundamentals: f, filings = [], news = [], asOf }) {
+export function storySignals({ fundamentals: f, filings = [], news = [], asOf, ticker }) {
   const asOfMs = Date.parse(asOf);
   const reasons = [];
   let score = 0;
@@ -43,7 +44,7 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf })
     const latest = g[g.length - 1].yoy;
     const earlier = g[0].yoy;
     if (latest > 0.15) add(10, `최근 분기 매출 +${(latest * 100).toFixed(0)}% (전년 동기 대비)`);
-    if (latest - earlier > 0.05 && latest > 0) add(20, `매출 성장 가속: ${(earlier * 100).toFixed(0)}% → ${(latest * 100).toFixed(0)}% (${g.length}개 분기)`);
+    if (latest - earlier > 0.05 && latest > 0 && g.every((q,i)=>!i || Date.parse(q.end)-Date.parse(g[i-1].end)<=110*DAY && q.yoy>g[i-1].yoy)) add(20, `매출 성장 가속: ${(earlier * 100).toFixed(0)}% → ${(latest * 100).toFixed(0)}% (${g.length}개 분기)`);
     else if (latest - earlier < -0.1) add(-10, `매출 성장 둔화: ${(earlier * 100).toFixed(0)}% → ${(latest * 100).toFixed(0)}%`, 'minus');
   } else if (isNum(f?.revenueGrowth) && f.revenueGrowth > 0.2) {
     add(8, `연간 매출 +${(f.revenueGrowth * 100).toFixed(0)}% (분기 데이터 부족)`);
@@ -61,6 +62,13 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf })
     else if (lastQ.value < 0 && yearAgo && yearAgo.value < 0 && lastQ.value > yearAgo.value * 0.5) add(8, '적자 폭 절반 이하로 축소 — 흑자 전환 접근');
   }
 
+  const reviewed = financialReview(ticker, asOf, ni.at(-1)?.end);
+  if (reviewed) {
+    const growthPoints=reasons.filter(r=>r.kind==='plus' && /매출/.test(r.text)).reduce((a,r)=>a+r.pts,0);
+    const profitPoints=reasons.filter(r=>r.kind==='plus' && /흑자|순이익|적자 폭/.test(r.text)).reduce((a,r)=>a+r.pts,0);
+    if(growthPoints>reviewed.growthCap) add(reviewed.growthCap-growthPoints,reviewed.quality,'minus');
+    if(profitPoints>reviewed.profitCap) add(reviewed.profitCap-profitPoints,reviewed.quality,'minus');
+  }
   // 3. narrative heat: news volume and themes (20)
   const recent = news.filter((n) => asOfMs - Date.parse(n.time) <= 7 * DAY);
   const older = news.filter((n) => { const d = asOfMs - Date.parse(n.time); return d > 7 * DAY && d <= 60 * DAY; });
@@ -136,11 +144,13 @@ export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }
   if (yoy.length >= 2) {
     const a = yoy[0].yoy;
     const b = yoy.at(-1).yoy;
-    growth = b - a > 0.05 ? 'accel' : b - a < -0.1 ? 'decel' : 'steady';
+    const consecutive = yoy.every((q, i) => !i || Date.parse(q.end)-Date.parse(yoy[i-1].end)<=110*DAY);
+    const accelerating = consecutive && yoy.every((q,i)=>!i || q.yoy>yoy[i-1].yoy);
+    growth = accelerating && b - a > 0.05 ? 'accel' : b - a < -0.1 ? 'decel' : 'steady';
     const path = yoy.map((q) => pct(q.yoy)).join(' → ');
     lines.push(growth === 'accel' ? `매출 성장률이 ${yoy.length}개 분기 연속 빨라지고 있습니다 (전년 대비 ${path}).`
       : growth === 'decel' ? `매출 성장률은 느려지는 중입니다 (전년 대비 ${path}).`
-        : `매출은 전년 대비 ${path} 수준으로 비슷하게 유지되고 있습니다.`);
+        : `매출 성장률은 전년 대비 ${path}입니다. 연속 가속은 확인되지 않았습니다.`);
   } else if (isNum(f?.revenueGrowth)) {
     lines.push(`최근 1년 매출 ${pct(f.revenueGrowth)} (분기 추이는 데이터 부족).`);
   }

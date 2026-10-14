@@ -1,3 +1,4 @@
+import { InvestmentReviewPanel } from '../components/InvestmentReview';
 import { ExternalLink, Star } from 'lucide-react';
 import { useAnalysis, useTerminal } from '../lib/store';
 import { ErrorBox, FactorBars, Loading, PanelHead, ScoreRing, SourceBadge } from '../components/ui';
@@ -6,7 +7,7 @@ import { ChartWorkspace, useBars } from '../components/ChartWorkspace';
 import { fmtNum, fmtPct, fmtPrice, fmtShares, fmtUsd, RISK_LABEL, signClass, SIZE_LABEL, STYLE_LABEL } from '../lib/format';
 
 export function Research() {
-  const { selected, watchlist, toggleWatch } = useTerminal();
+  const { selected, watchlist, toggleWatch, mode } = useTerminal();
   const { data, error, loading } = useAnalysis(selected);
   const { data: bars } = useBars(selected, '1D');
   if (error) return <ErrorBox error={error} hint="티커가 맞는지, API/시세 공급자가 동작하는지 확인하세요." />;
@@ -28,7 +29,7 @@ export function Research() {
             </div>
           </div>
           <div className="hero-right">
-            <div><strong>{s.rating}</strong><small>{s.model}</small></div>
+            <div><strong>{s.rating}</strong><small>팩터 점수 · 매수 판정 아님 · {s.model}</small></div>
             <ScoreRing score={s.score} size={92} />
             <button className="secondary-button" onClick={() => toggleWatch(selected)}><Star size={12} /> {watchlist.includes(selected) ? '관심 해제' : '관심등록'}</button>
           </div>
@@ -36,6 +37,7 @@ export function Research() {
         {data.warnings.map((w) => <ErrorBox key={w} error={w} />)}
       </section>
 
+      <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
       <div className="detail-grid">
         <section className="panel">
           <PanelHead kicker="FACTORS" title="팩터 분해" />
@@ -75,18 +77,18 @@ export function Research() {
           </div>
         </section>
         <section className="panel">
-          <PanelHead kicker="FUNDAMENTALS" title="재무 (SEC XBRL)" right={data.sources.fundamentals && <SourceBadge {...data.sources.fundamentals} />} />
+          <PanelHead kicker="FUNDAMENTALS" title="보고 재무 (출처·기간 확인)" right={data.sources.fundamentals && <SourceBadge {...data.sources.fundamentals} />} />
           {f ? (
             <div className="fact-grid">
               <div><small>시가총액 (추정)</small><b>{fmtUsd(m.marketCap)}</b><em>주식수 × 종가</em></div>
-              <div><small>연간 매출</small><b>{fmtUsd(f.revenue?.value)}</b><em>{f.revenue ? `FY ${f.revenue.end} · 제출 ${f.revenue.filed}` : ''}</em></div>
+              <div><small>보고 매출</small><b>{fmtUsd(f.revenue?.value)}</b><em>{f.revenue ? `${f.revenue.form} ${f.revenue.end} · 제출 ${f.revenue.filed}` : ''}</em></div>
               <div><small>매출 성장률</small><b className={signClass(f.revenueGrowth)}>{fmtPct(f.revenueGrowth)}</b><em>전년 대비</em></div>
               <div><small>순이익 / 이익률</small><b>{fmtUsd(f.netIncome?.value)}</b><em>{fmtPct(f.netMargin)}</em></div>
-              <div><small>P/S · P/E</small><b>{fmtNum(m.priceToSales, 1)} · {fmtNum(m.priceToEarnings, 1)}</b><em>연간 기준</em></div>
-              <div><small>현금성 자산</small><b>{fmtUsd(f.liquidAssets)}</b><em>{f.cash?.end}</em></div>
+              <div><small>P/S · P/E</small><b>{fmtNum(m.priceToSales, 1)} · {fmtNum(m.priceToEarnings, 1)}</b><em>보고 매출·순이익 기간 기준</em></div>
+              <div><small>자동 수집 현금성 자산 (원문 검토값과 구분)</small><b>{fmtUsd(f.liquidAssets)}</b><em>{f.cash?.end}{f.cash && f.revenueQuarterly.at(-1) && f.cash.end < f.revenueQuarterly.at(-1)!.end ? ' · 과거 현금, 최신 확인 필요' : ''}</em></div>
               <div><small>영업현금흐름</small><b className={signClass(f.operatingCashFlow?.value)}>{fmtUsd(f.operatingCashFlow?.value)}</b><em>{f.operatingCashFlow?.end}</em></div>
               <div><small>런웨이</small><b>{f.runwayMonths !== null ? `${f.runwayMonths.toFixed(0)}개월` : '—'}</b></div>
-              <div><small>유통주식수</small><b>{fmtShares(f.sharesOutstanding?.value)}</b><em>{f.sharesOutstanding?.end}</em></div>
+              <div><small>발행주식수 (유통물량과 다름)</small><b>{fmtShares(f.sharesOutstanding?.value)}</b><em>{f.sharesOutstanding?.end}</em></div>
               <div><small>주식수 1Y 변화</small><b className={(f.sharesYoY ?? 0) > 0.05 ? 'down' : ''}>{fmtPct(f.sharesYoY)}</b></div>
             </div>
           ) : <div className="pad-box muted">XBRL 재무 데이터 없음 (해외 발행사·신규 상장 등)</div>}

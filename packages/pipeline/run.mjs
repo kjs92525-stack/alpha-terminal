@@ -377,7 +377,7 @@ export async function runNightly({
     const { r } = x;
     if (!storyBy.has(r.symbol)) {
       const company = companyBy.get(r.symbol) ?? null;
-      storyBy.set(r.symbol, storySignals({ fundamentals: company?.facts ?? null, filings: company?.filings ?? [], news: newsBy.get(r.symbol) ?? [], asOf }));
+      storyBy.set(r.symbol, storySignals({ ticker:r.ticker ?? r.symbol, fundamentals: company?.facts ?? null, filings: company?.filings ?? [], news: newsBy.get(r.symbol) ?? [], asOf }));
     }
     const story = storyBy.get(r.symbol);
     const news = newsBy.get(r.symbol) ?? [];

@@ -11,6 +11,9 @@ on:
     branches: [main]
     paths:
       - 'packages/analysis/early-alpha.mjs'
+      - 'packages/analysis/financial-review.mjs'
+      - 'packages/analysis/story.mjs'
+      - 'packages/pipeline/finnhub.mjs'
       - 'packages/pipeline/early-alpha.mjs'
       - '.github/workflows/nightly.yml'
   schedule:

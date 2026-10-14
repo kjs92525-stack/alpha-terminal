@@ -27,9 +27,9 @@ test('independent early business inflection scores, evidence, cap and transparen
   assert.equal(r.model, EARLY_MODEL);
   assert.equal(r.status, 'candidate');
   assert.equal(r.marketCap, 500e6);
-  assert.equal(r.components.growth, 30); assert.equal(r.components.profitability, 25);
+  assert.equal(r.components.growth, 30); assert.equal(r.components.profitability, 10);
   assert.equal(r.components.neglect, 15); assert.equal(r.components.value, 10); assert.equal(r.components.base, 10);
-  assert.equal(r.score, 90);
+  assert.equal(r.score, 75);
   assert.ok(r.evidence.every((e) => e.url && e.publishedAt));
   assert.equal(r.risk.runwayMonths, 60);
   assert.ok(r.warnings.some((w) => /ATM/.test(w)));
@@ -64,7 +64,7 @@ test('LOI, MOU, cancelled, planned, invalid-link and duplicated catalysts cannot
   assert.equal(score({ news: [news('Company wins supply contract', 'javascript:alert(1)')] }).components.catalyst, 0);
   const item = news('Company wins supply contract');
   assert.equal(score({ news: [item, item, { ...item, url: 'https://example.com/syndicated' }] }).components.catalyst, 10);
-  assert.equal(score({ news: [item] }).score, 100);
+  assert.equal(score({ news: [item] }).score, 85);
   assert.ok(score({ news: [item] }).evidence.some((e) => e.confidence === 'headline_only'));
 });
 
@@ -106,7 +106,7 @@ test('daily immutable snapshots, first discovery, no duplicated cohorts; missing
     assert.equal(day1.candidates[0].isNew, true);
     const file = path.join(dir, 'early-alpha', 'ledger', `${asOf}.json`); const before = fs.readFileSync(file, 'utf8');
     const rerun = publishEarlyAlpha({ ...args, candidates: [{ ...score(), score: 1 }] });
-    assert.equal(fs.readFileSync(file, 'utf8'), before); assert.equal(rerun.candidates[0].score, 90);
+    assert.equal(fs.readFileSync(file, 'utf8'), before); assert.equal(rerun.candidates[0].score, 75);
     const day2 = publishEarlyAlpha({ ...args, asOf: '2027-03-01', getBars: () => [], candidates: [score()] });
     assert.equal(day2.candidates[0].isNew, false); assert.equal(day2.candidates[0].firstSeen, asOf);
     assert.equal(day2.performance.discoveries.length, 1);

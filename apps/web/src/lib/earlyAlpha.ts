@@ -9,7 +9,7 @@ export interface EarlyRow {
 }
 export interface EarlyOutcome { status: string; return: number | null; excess: number | null; mfe: number | null; mae: number | null; entryDate?: string; exitDate?: string }
 export interface EarlyData {
-  asOf: string; model: string; generatedAt: string; refreshedAt: string; method: string; caveat: string;
+  asOf: string; model: string; ledgerModel?: string; generatedAt: string; refreshedAt: string; method: string; caveat: string;
   stats: { scanned: number; eligible: number; candidates: number; newsRequests: number; newsFailures: number; newsBudget: number };
   enrichment?: { generatedAt: string; newsRequests: number; newsFailures: number };
   candidates: EarlyRow[];
