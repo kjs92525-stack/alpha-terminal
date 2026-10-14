@@ -20,6 +20,8 @@ test('changed identities and economic models do not reuse old business or generi
  assert.match(businessStory('MPB','2026-10-14').economics,/은행의 안전성/);
  assert.match(businessStory('ABTC','2026-10-14').economics,/주당/);
  assert.match(businessStory('TWFG','2026-10-14').risk,/직접 인수/);
+ assert.equal(businessStory('NRP','2026-10-14').model,'royalty');
+ assert.match(businessStory('NRP','2026-10-14').economics,/직접 광산을 운영하기보다/);
  assert.match(businessStory('PCT','2026-10-14').risk,/수율/);
 });
 test('a new financial period keeps business context without promoting an unverified quarterly thesis',()=>{
