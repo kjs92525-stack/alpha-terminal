@@ -5,6 +5,14 @@
 # ("AlphaTerminal/0.5 you@example.com"). Without them the job is skipped.
 name: Nightly pipeline
 on:
+  # Refresh immediately when the EARLY ALPHA engine is released; the normal
+  # weekday schedule and manual full-universe runs remain available.
+  push:
+    branches: [main]
+    paths:
+      - 'packages/analysis/early-alpha.mjs'
+      - 'packages/pipeline/early-alpha.mjs'
+      - '.github/workflows/nightly.yml'
   schedule:
     # 21:30 UTC Mon-Fri = 06:30 KST Tue-Sat; 17:30 EDT / 16:30 EST — after the close plus the
     # free feed's 15-minute delay, so the day's final bar is in (results ready ~07:00-07:10 KST)
