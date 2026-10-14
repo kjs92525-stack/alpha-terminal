@@ -652,3 +652,6 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 @media(max-width:850px) { .ea-workspace>.ea-detail { grid-row:1; } .ea-list { max-height:330px; } .ea-story p { font-size:14px; } }
 .ea-story-picker { display:flex; align-items:center; gap:12px; margin:0 0 16px; font-size:12px; color:var(--muted,#8a969e); }
 .ea-story-picker select { min-width:0; max-width:100%; flex:1; padding:12px; background:var(--surface,#141c20); color:var(--text,#e6ece8); border:1px solid var(--border,#293438); border-radius:7px; }
+.ea-reader { scroll-margin-top:20px; }
+.ea-reader:focus { outline:none; }
+.ea-reader:focus-visible { outline:2px solid #7bb98e; outline-offset:3px; }
