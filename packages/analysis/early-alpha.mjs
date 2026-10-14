@@ -153,5 +153,5 @@ export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'n
   return { symbol: row.symbol, ticker: row.ticker ?? row.symbol, name: row.name, sector: row.sector, asOf, model: EARLY_MODEL, score, status, components, reasons, warnings, excluded,
     price: m.price, marketCap: cap, capMethod, capBasis, ret63: m.ret63, drawdown: m.drawdown, adv20: m.adv20,
     revenueYoY: yoy, evidence, qualityReview: review ? {period:review.period,publishedAt:review.publishedAt,source:review.source} : null, risk: { level: review?.issuance || dilution.length || riskNews.length || f.runway !== null && f.runway < 12 ? 'high' : offeringChecked ? 'review' : 'unknown', dilutionFilings: dilution.length, runwayMonths: f.runway, sharesYoY: f.sharesYoY, checked: Boolean(offeringChecked) },
-    newsStatus, fetchedAt: company?.fetchedAt ?? null };
+    reportPeriod:latestReport?.end ?? null, newsStatus, fetchedAt: company?.fetchedAt ?? null };
 }

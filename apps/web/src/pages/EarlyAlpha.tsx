@@ -14,7 +14,7 @@ function Evidence({ row, asOf }: { row: EarlyRow; asOf: string }) {
   const evidence = representativeEvidence(row, asOf);
   return <section className="ea-detail" aria-label={`${row.ticker} 사업 스토리`}>
     <div className="ea-detail-heading"><div><small>REVALUATION DOSSIER</small><h2>{row.ticker} <span>{row.name}</span></h2></div><button className="ea-button" onClick={() => { select(row.ticker); setPage('research'); }}>기업 분석 <ArrowUpRight size={14} /></button></div>
-    <InvestmentReviewPanel input={{ticker:row.ticker,asOf,price:row.price,marketCap:row.marketCap,status:row.status,risk:row.risk,excluded:row.excluded}} />
+    <InvestmentReviewPanel input={{ticker:row.ticker,asOf,price:row.price,marketCap:row.marketCap,status:row.status,reportPeriod:row.reportPeriod ?? row.revenueYoY?.at(-1)?.end,risk:row.risk,excluded:row.excluded}} />
     <div className="ea-story">
       <small>{story.reviewed ? `회사 원문 확인 · 발표 ${story.publishedAt} · 검토 ${story.reviewedAt}` : '자동 요약 · 사업 맥락 검증 대기'}</small>
       <h3 className="ea-story-title">{story.title}</h3>

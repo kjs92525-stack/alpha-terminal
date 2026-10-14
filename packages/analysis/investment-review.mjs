@@ -1,8 +1,8 @@
 import { financialReview } from './financial-review.mjs';
 const finite = (v) => typeof v==='number' && Number.isFinite(v);
 const money = (v) => `$${(v/1e6).toFixed(1)}M`;
-export function investmentReview({ ticker, asOf, price, marketCap, status, risk, fundamentals=null, excluded=[], demo=false }) {
-  const latest = fundamentals?.revenueQuarterly?.at(-1)?.end;
+export function investmentReview({ ticker, asOf, price, marketCap, status, risk, fundamentals=null, excluded=[], demo=false, reportPeriod=null }) {
+  const latest = reportPeriod ?? fundamentals?.revenueQuarterly?.at(-1)?.end;
   const r=demo ? null : financialReview(ticker,asOf,latest);
   const checks=[]; const add=(label,state,text)=>checks.push({label,state,text});
   add('반복 이익',r ? (r.profitCap===25?'caution':'blocked'):'missing',r?.quality ?? '순이익에서 본업 이익·일회성 효과를 분리하지 못했습니다. 흑자만으로 지속 이익을 가정하지 않습니다.');

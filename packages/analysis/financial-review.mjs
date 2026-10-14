@@ -44,6 +44,6 @@ export const FINANCIAL_REVIEWS = {
 };
 export function financialReview(ticker, asOf, period) {
   const r=FINANCIAL_REVIEWS[ticker];
-  if (!r || !Number.isFinite(Date.parse(asOf)) || Date.parse(r.publishedAt)>Date.parse(asOf) || Date.parse(asOf)-Date.parse(r.period)>200*86400000 || period && Math.abs(Date.parse(period)-Date.parse(r.period))>20*86400000) return null;
+  if (!r || !Number.isFinite(Date.parse(asOf)) || Date.parse(r.publishedAt)>Date.parse(asOf) || Date.parse(asOf)-Date.parse(r.period)>200*86400000 || period && (!Number.isFinite(Date.parse(period)) || Math.abs(Date.parse(period)-Date.parse(r.period))>20*86400000)) return null;
   return r;
 }

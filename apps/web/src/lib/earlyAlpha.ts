@@ -1,7 +1,7 @@
 import { SNAPSHOT_BASE } from './snapshot';
 export interface EarlyEvidence { kind: string; title: string; url: string | null; publishedAt: string; period?: string; value?: number; source: string; confidence: string }
 export interface EarlyRow {
-  symbol: string; ticker: string; name: string; sector: string; score: number; status: 'candidate' | 'watch' | 'excluded';
+  reportPeriod?: string | null; revenueYoY?: Array<{end:string;yoy:number;value:number}>; symbol: string; ticker: string; name: string; sector: string; score: number; status: 'candidate' | 'watch' | 'excluded';
   price: number; marketCap: number; capMethod: string; ret63: number; drawdown: number; adv20: number;
   firstSeen: string | null; isNew: boolean; components: Record<string, number>; reasons: Array<{ factor: string; points: number; text: string }>;
   warnings: string[]; excluded: string[]; evidence: EarlyEvidence[]; fetchedAt: string | null; newsStatus: string; enrichmentStatus?: string;

@@ -35,6 +35,7 @@ test('restricted cash excluded; cash and investments explicit; pricing remains i
   assert.equal(investmentReview({...input,demo:true}).verdict,'예시 데이터 · 투자 판정 불가');
   assert.match(investmentReview({...input,status:'excluded',excluded:['현금 부족']}).summary,/현금 부족/);
   assert.equal(investmentReview({...input,ticker:'UNKNOWN'}).cash,null);
+  assert.equal(investmentReview({...input,reportPeriod:'2026-09-30'}).cash,null);
 });
 test('reverse earnings accounts for dilution without inventing valuation or adding cash again',()=>{
   const r=investmentReview({ticker:'FF',asOf,price:10,marketCap:100e6});

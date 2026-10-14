@@ -62,7 +62,7 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf, t
     else if (lastQ.value < 0 && yearAgo && yearAgo.value < 0 && lastQ.value > yearAgo.value * 0.5) add(8, '적자 폭 절반 이하로 축소 — 흑자 전환 접근');
   }
 
-  const reviewed = financialReview(ticker, asOf, ni.at(-1)?.end);
+  const reviewed = financialReview(ticker, asOf, [ni.at(-1)?.end,f?.revenueQuarterly?.at(-1)?.end].filter(Boolean).sort().at(-1));
   if (reviewed) {
     const growthPoints=reasons.filter(r=>r.kind==='plus' && /매출/.test(r.text)).reduce((a,r)=>a+r.pts,0);
     const profitPoints=reasons.filter(r=>r.kind==='plus' && /흑자|순이익|적자 폭/.test(r.text)).reduce((a,r)=>a+r.pts,0);
