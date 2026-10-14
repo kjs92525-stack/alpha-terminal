@@ -13,6 +13,8 @@ import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs'
 import { storySignals } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
 import { resampleWeekly } from '../analysis/indicators.mjs';
+import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs';
+import { earlyMarket } from '../analysis/early-alpha.mjs';
 import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
 import { throttle } from './http.mjs';
@@ -431,6 +433,12 @@ export async function runNightly({
     caveat: 'ETF 국면은 업종 전체의 평균이며 개별 종목과 다를 수 있습니다. 사이클 초입 판정은 실패(재하락)도 흔합니다.',
     groups,
   });
+  const sectorStocks = Object.fromEntries(Object.keys(BUSINESS_LINKS).map(ticker => {
+    const row=rows.find(r=>r.ticker===ticker || r.symbol===ticker);
+    const market=earlyMarket((cached.get(row?.symbol??ticker)??[]),asOf);
+    return [ticker,{price:market.price,ret21:market.ret21,ret63:market.ret63,lastDate:market.lastDate,marketCap:row?.features.mcap??null,source:'야간 기준 종가·프로필 또는 보고 주식 수 추정 시총'}];
+  }));
+  writeJson(path.join(outDir,'sector-radar.json'),buildSectorRadar({asOf,groups,stocks:sectorStocks}));
   stats.sectors = { groups: groups.length, byPhase: groups.reduce((m, g) => ((m[g.phase] = (m[g.phase] ?? 0) + 1), m), {}), grouped: [...groupOf.values()].filter(Boolean).length };
 
   const PER_TYPE = 150;

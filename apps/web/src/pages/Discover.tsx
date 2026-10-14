@@ -8,6 +8,7 @@ import type { ScreenRow } from '../lib/types';
 import { UniverseRankings } from '../components/UniverseRankings';
 import { SetupScanner } from '../components/SetupScanner';
 import { StoryPicks } from '../components/StoryPicks';
+import { SectorRadar } from '../components/SectorRadar';
 import { SectorCycle } from '../components/SectorCycle';
 
 type SortKey = 'score' | 'momentum' | 'trend' | 'quality' | 'valuation' | 'liquidity' | 'risk' | 'ret3m' | 'marketCap';
@@ -47,7 +48,7 @@ export function Discover() {
   return (
     <>
       <StoryPicks />
-      <div style={{ marginTop: 12 }}><SectorCycle /></div>
+      <div style={{ marginTop: 12 }}><SectorRadar /><SectorCycle /></div>
       <div style={{ marginTop: 12 }}><SetupScanner /></div>
       <div style={{ marginTop: 12 }}><UniverseRankings /></div>
       <section className="panel" style={{ marginTop: 12 }}>

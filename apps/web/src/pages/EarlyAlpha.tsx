@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { fetchEarlyAlpha, type EarlyData, type EarlyRow } from '../lib/earlyAlpha';
+import { SectorRadar } from '../components/SectorRadar';
+import { MacroStory } from '../components/MacroStory';
 import { InvestmentReviewPanel } from '../components/InvestmentReview';
 import { useTerminal } from '../lib/store';
 import { buildEarlyStory, representativeEvidence } from '../../../../packages/analysis/early-story.mjs';
@@ -21,6 +23,7 @@ function Evidence({ row, asOf }: { row: EarlyRow; asOf: string }) {
       <p>{story.business}</p>
       <h3>지금 달라지는 것</h3><p>{story.change}</p>
       <h3>왜 재평가될 수 있나 <small>해석·조건부 가설</small></h3><p>{story.thesis}</p>
+      <MacroStory ticker={row.ticker} asOf={asOf} />
       <h3>다음에 볼 사건</h3><p>{story.next}</p>
       <div className="ea-story-risk"><h3><ShieldAlert size={16} /> 이야기가 깨지는 지점</h3><p>{story.risk}</p><p>{story.funding}</p></div>
       <p className="ea-story-status">{story.status}{story.stale && ' 기존 사업 맥락은 재검토가 필요해 자동 요약으로 표시합니다.'}</p>
@@ -74,6 +77,7 @@ export function EarlyAlpha() {
     {loading && <p role="status">야간 발굴 결과를 불러오는 중…</p>}
     {data && <><div className="ea-meta">기준 {data.asOf} · {data.model}{data.ledgerModel && data.ledgerModel !== data.model && ' (현재 재검토 점수·최초 원장 별도 보존)'} · 최초 기록 {data.generatedAt} · 갱신 {data.refreshedAt}{age > 4 && <strong> · 오래된 데이터</strong>}</div>
       <div className="ea-stats"><div><span>검사 종목</span><b>{data.stats.scanned.toLocaleString()}</b></div><div><span>재평가 후보</span><b>{data.stats.candidates}</b></div><div><span>오늘 최초 발굴</span><b>{data.candidates.filter((r) => r.isNew).length}</b></div><div><span>뉴스 확인 / 실패</span><b>{data.enrichment?.newsRequests ?? data.stats.newsRequests} / {data.enrichment?.newsFailures ?? data.stats.newsFailures}</b></div></div>
+      <SectorRadar />
       <div className="ea-controls"><div className="ea-tabs">{[['candidate', '재평가 후보'], ['new', '오늘 신규'], ['watch', '관찰'], ['excluded', '제외'], ['all', '전체']].map(([id, label]) => <button key={id} aria-pressed={filter === id} className={filter === id ? 'active' : ''} onClick={() => { setFilter(id); setSymbol(''); }}>{label}</button>)}</div><label className="ea-search"><Search size={14} /><input aria-label="EARLY ALPHA 검색" placeholder="티커·기업명" value={q} onChange={(e) => { setQ(e.target.value); setSymbol(''); }} /></label></div>
       <div className="ea-list" aria-label="발굴 종목 목록">{rows.length ? rows.map((r) => <CompanyCard key={r.symbol} row={r} asOf={data.asOf} expanded={r.symbol === symbol} onToggle={() => setSymbol((current) => current === r.symbol ? '' : r.symbol)} />) : <div className="ea-empty">이 조건에 맞는 종목이 없습니다. 기준을 완화해 후보를 채우지 않습니다.</div>}</div>
       <section className="ea-detail"><div className="ea-detail-heading"><h2>최초 발굴 성과</h2><select aria-label="성과 기간" value={horizon} onChange={(e) => setHorizon(e.target.value)}>{['21', '63', '126'].map((h) => <option key={h} value={h}>{h}거래일</option>)}</select></div><p>{data.performance.method}</p>{summary && <div className="ea-stats"><div><span>완료 / 전체</span><b>{summary.complete} / {summary.total}</b></div><div><span>평균 수익률</span><b>{pct(summary.meanReturn)}</b></div><div><span>SPY 대비</span><b>{pct(summary.meanExcess)}</b></div><div><span>대기 / 데이터 누락</span><b>{summary.pending} / {summary.missing}</b></div></div>}{summary && summary.complete < 30 && <p>완료 표본 30개 미만 — 성과를 일반화할 수 없습니다.</p>}<div className="ea-table-wrap"><table className="ea-table"><thead><tr><th>종목</th><th>최초 발굴</th><th>상태</th><th>수익률</th><th>SPY 대비</th><th>MFE</th><th>MAE</th></tr></thead><tbody>{data.performance.discoveries.map((d) => { const o = d.outcomes[horizon]; return <tr key={`${d.symbol}-${d.asOf}`}><td>{d.symbol}</td><td>{d.asOf}</td><td>{o.status === 'complete' ? '완료' : o.status === 'missing' ? '누락·상장폐지 확인' : '대기'}</td><td>{pct(o.return)}</td><td>{pct(o.excess)}</td><td>{pct(o.mfe)}</td><td>{pct(o.mae)}</td></tr>; })}</tbody></table></div></section>

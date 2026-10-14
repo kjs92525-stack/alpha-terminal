@@ -31,7 +31,7 @@ export function SectorCycle({ compact = false }: { compact?: boolean }) {
   return (
     <section className="panel">
       <PanelHead kicker="SECTOR CYCLE · NIGHTLY" title={compact ? '사이클이 돌기 시작하는 섹터' : '섹터·테마 사이클'} right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
-      {!compact && <p className="pad-box muted small">업종·테마 ETF {data?.groups.length ?? ''}개의 차트로 사이클 국면을 판정하고, 매수 자리 후보 종목을 주가 움직임이 가장 닮은 업종에 묶었습니다. <b>사이클 초입</b>은 긴 하락 뒤 200일선 위로 올라오고 50일선이 고개를 든 업종입니다.</p>}
+      {!compact && <p className="pad-box muted small">업종·테마 ETF {data?.groups.length ?? ''}개의 차트로 사이클 국면을 판정하고, 가격 연동 차트 후보를 주가 움직임이 가장 닮은 업종에 묶었습니다. 사업 연결과 투자 근거는 위 산업 스토리에서 별도로 확인합니다. <b>사이클 초입</b>은 긴 하락 뒤 200일선 위로 올라오고 50일선이 고개를 든 업종입니다.</p>}
       {state === 'loading' && <Loading label="섹터 불러오기" />}
       {state === 'missing' && <div className="pad-box muted">아직 야간 수집 결과가 없습니다 (다음 수집 후 표시).</div>}
       {state === 'error' && <div className="pad-box muted">섹터 데이터를 불러오지 못했습니다.</div>}
@@ -44,7 +44,7 @@ export function SectorCycle({ compact = false }: { compact?: boolean }) {
       {state === 'ok' && (
         <div className="table-wrap">
           <table className="data-table">
-            <thead><tr><th /><th>업종 (ETF)</th><th>국면</th><th>3개월</th><th>12개월</th><th>2년</th><th>200일선 대비</th><th>2년 고점 대비</th><th>시장 대비 3M</th><th>매수 자리 종목</th></tr></thead>
+            <thead><tr><th /><th>업종 (ETF)</th><th>국면</th><th>3개월</th><th>12개월</th><th>2년</th><th>200일선 대비</th><th>2년 고점 대비</th><th>시장 대비 3M</th><th>가격 연동 차트 후보</th></tr></thead>
             <tbody>
               {groups.map((g) => {
                 const m = g.metrics;

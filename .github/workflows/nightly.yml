@@ -12,6 +12,8 @@ on:
     paths:
       - 'packages/analysis/early-alpha.mjs'
       - 'packages/analysis/financial-review.mjs'
+      - 'packages/analysis/sector-stories.mjs'
+      - 'packages/pipeline/run.mjs'
       - 'packages/analysis/story.mjs'
       - 'packages/pipeline/finnhub.mjs'
       - 'packages/pipeline/early-alpha.mjs'
