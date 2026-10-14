@@ -6,8 +6,9 @@ export function CompanyDossier({row,asOf}:{row:DossierRow;asOf:string}) {
     <small>기업 원문 기반 해석 · 보고 {d.report.period} · 발표 {d.report.publishedAt} · 편집 검토 {d.story.reviewedAt}</small>
     <h3 className="ea-story-title">{d.headline}</h3>
     <p className="dossier-lead">{d.opening}</p>
-    <MacroStory ticker={row.ticker} asOf={asOf} />
-    <h3>산업의 기회가 이 회사의 돈이 되는 과정</h3><p>{d.mechanism}</p>
+    <h3>고객이 왜 이 제품을 사야 하나</h3><p>{d.mechanism}</p>
+    {d.business && <><h3>이 회사가 선택받을 근거는 어디까지인가</h3><p>{d.business.edge}</p><h3>주문이 매출·이익·현금이 되는 과정 <small>조건부 해석</small></h3><p>{d.business.earnings}</p>{d.business.sources.map(s=><a className="ea-story-source" key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.label} · {s.date} ↗</a>)}</>}
+    <details className="ea-fold"><summary>세계정세·산업 전망과 연결해서 읽기</summary><MacroStory ticker={row.ticker} asOf={asOf} /></details>
     <h3>변화는 어디까지 입증됐나</h3><p>{d.story.change}</p><p>{d.evidence}</p>
     <h3>낙관론과 반론, 무엇이 승부를 가르나 <small>분석 가설</small></h3><p>{d.disagreement}</p>
     <h3>좋은 이야기라도 이 가격에 살 만한가</h3><p>{d.priceBridge}</p><p>{d.price}</p>

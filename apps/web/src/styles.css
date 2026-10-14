@@ -687,3 +687,8 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .dossier-events b { display:block; color:#9ae1b2; margin-bottom:5px; }
 .dossier-verdict { background:#b98a630b; border-color:#b98a6355; }
 @media(max-width:650px) { .company-dossier .dossier-lead { font-size:15px; } .dossier-events,.dossier-verdict { padding:14px; } }
+
+.demand-mechanism { max-width:78ch; overflow-wrap:anywhere; }
+.demand-mechanism p { line-height:1.95; }
+.demand-mechanism h4 { line-height:1.7; font-size:16px; }
+.demand-mechanism b { display:block; margin-top:18px; color:var(--text); }

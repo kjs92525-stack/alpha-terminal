@@ -1,5 +1,6 @@
 import { buildEarlyStory } from './early-story.mjs';
 import { financialReview } from './financial-review.mjs';
+import { demandStory } from './demand-stories.mjs';
 
 // Editorial interpretation, not a generated buy recommendation. Facts inherit
 // the dated story/financial review; never attach this thesis to a newer quarter.
@@ -65,7 +66,12 @@ export function companyDossier(row, asOf) {
   const hasCap = typeof cap === 'number' && Number.isFinite(cap) && cap > 0;
   const date = Date.parse(asOf);
   const usablePrice = Number.isFinite(date) && date <= Date.now() && Date.now()-date <= 5*86400000;
-  return { ...dossier, story, report, ready: false,
+  const business = demandStory(row.ticker, asOf);
+  return { ...dossier, story, report, ready: false, business,
+    headline:business?.title ?? dossier.headline,
+    preview:business?.summary ?? dossier.preview,
+    opening:business?.demand ?? dossier.opening,
+    mechanism:business?.product ?? dossier.mechanism,
     verdict: row.status === 'excluded' ? `현재 발굴 조건에서 제외됐습니다. 아래 사업 가설이 제외 사유를 해소하지 않습니다. ${dossier.verdict}` : dossier.verdict,
     priceBridge: !usablePrice ? '가격 기준일이 오래됐거나 유효하지 않아 현재 가격의 요구 성과 비교는 보류합니다.' : !hasCap ? '현재 시총을 확인하지 못해 가격이 요구하는 성과를 계산할 수 없습니다.' : row.ticker === 'ARVN'
       ? `기준 ${asOf} 추정 시총 $${(cap/1e6).toFixed(1)}M과 보고 자금 $${((report.cash+(report.investments??0))/1e6).toFixed(1)}M을 비교하더라도 남은 개발 비용과 계약 배분을 반영해야 합니다. 그 차이만으로 저평가를 판정하지 않습니다.`
