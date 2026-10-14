@@ -1,7 +1,8 @@
 // Independent, absolute score. No normalization against the momentum scanner.
 // This is a research priority, not an upside estimate or probability.
+import { financialReview } from './financial-review.mjs';
 import { quarterlyYoY } from './story.mjs';
-export const EARLY_MODEL = 'early-alpha-v1';
+export const EARLY_MODEL = 'early-alpha-v2';
 export const EARLY_RULES = Object.freeze({ minCap: 1e8, maxCap: 2e9, minPrice: 1, minAdv: 5e5, minBars: 126, maxRet63: 0.5, maxRet21: 0.3, minDrawdown: 0.2, minScore: 40 });
 const DAY = 86400000;
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -79,19 +80,23 @@ export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'n
     components[factor] += points; reasons.push({ factor, points, text });
     for (const p of pointsUsed) evidence.push({ kind: 'financial', title: text, url: validUrl((company?.filings ?? []).find((x) => x.filingDate === p.filed && /^(10-Q|10-K|20-F|40-F)/.test(x.form))?.url) ?? factUrl, publishedAt: p.filed, period: p.end, value: p.value, source, confidence: 'reported' });
   };
+  const review = financialReview(row.ticker ?? row.symbol, asOf, f.revenueQuarterly.at(-1)?.end);
   const yoy = quarterlyYoY(f.revenueQuarterly).slice(-3);
   if (yoy.length >= 2) {
     const last = yoy.at(-1).yoy; const prior = yoy.at(-2).yoy;
-    if (last >= 0.15) add('growth', 10, `분기 매출 YoY +${(last * 100).toFixed(1)}%`, f.revenueQuarterly.filter((p) => Math.abs(Date.parse(p.end) - Date.parse(yoy.at(-1).end)) <= 20 * DAY || Math.abs(Date.parse(p.end) - (Date.parse(yoy.at(-1).end) - 365 * DAY)) <= 20 * DAY));
-    if (last > 0 && last - prior >= 0.05) add('growth', 20, `매출 성장 가속 ${(prior * 100).toFixed(1)}% → ${(last * 100).toFixed(1)}%`, f.revenueQuarterly);
+    if (last >= 0.15) add('growth', review ? Math.min(10, review.growthCap) : 10, `분기 매출 YoY +${(last * 100).toFixed(1)}%`, f.revenueQuarterly.filter((p) => Math.abs(Date.parse(p.end) - Date.parse(yoy.at(-1).end)) <= 20 * DAY || Math.abs(Date.parse(p.end) - (Date.parse(yoy.at(-1).end) - 365 * DAY)) <= 20 * DAY));
+    if (last > 0 && last - prior >= 0.05 && Date.parse(yoy.at(-1).end)-Date.parse(yoy.at(-2).end) <= 110*DAY) add('growth', review ? Math.max(0, review.growthCap - 10) : 20, `매출 성장 가속 ${(prior * 100).toFixed(1)}% → ${(last * 100).toFixed(1)}%`, f.revenueQuarterly.filter((p) => yoy.slice(-2).some((q) => Math.abs(Date.parse(p.end)-Date.parse(q.end))<=20*DAY || Math.abs(Date.parse(p.end)-(Date.parse(q.end)-365*DAY))<=20*DAY)));
   } else warnings.push('전년 동기 매출 비교 데이터 부족');
   const ni = f.netIncomeQuarterly; const latest = ni.at(-1);
+  const profitReview = financialReview(row.ticker ?? row.symbol, asOf, latest?.end);
   const old = latest && ni.find((p) => Math.abs(Date.parse(p.end) - (Date.parse(latest.end) - 365 * DAY)) <= 20 * DAY);
   if (latest && old) {
-    if (latest.value > 0 && old.value <= 0) add('profitability', 25, '전년 동기 대비 분기 흑자 전환', [old, latest]);
-    else if (latest.value < 0 && old.value < 0 && latest.value > old.value * 0.65) add('profitability', 15, '전년 동기 대비 순손실 35% 이상 축소', [old, latest]);
-    else if (old.value > 0 && latest.value > old.value * 1.3) add('profitability', 10, '분기 순이익 30% 이상 성장', [old, latest]);
+    if (latest.value > 0 && old.value <= 0) add('profitability', profitReview ? Math.min(25, profitReview.profitCap) : 10, '전년 동기 대비 분기 흑자 전환', [old, latest]);
+    else if (latest.value < 0 && old.value < 0 && latest.value > old.value * 0.65) add('profitability', profitReview ? Math.min(15, profitReview.profitCap) : 10, '전년 동기 대비 순손실 35% 이상 축소', [old, latest]);
+    else if (old.value > 0 && latest.value > old.value * 1.3) add('profitability', profitReview ? Math.min(10, profitReview.profitCap) : 10, '분기 순이익 30% 이상 성장', [old, latest]);
   } else warnings.push('전년 동기 수익성 비교 데이터 부족');
+  if (review) { warnings.push(review.quality); evidence.push({kind:'quality_review',title:review.quality,url:review.source,publishedAt:review.publishedAt,period:review.period,source:'회사 발표·SEC 원문 검토',confidence:'primary_review'}); }
+  else warnings.push('순이익의 일회성 요인·본업 이익은 원문 미검증 — 수익성 가점 최대 10점');
   const seen = new Set();
   const recentNews = news.filter((n) => {
     const t = Date.parse(n.time); const key = n.url || String(n.headline).toLowerCase().replace(/\W/g, '');
@@ -122,12 +127,13 @@ export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'n
     evidence.push({ kind: 'filing', title: `${x.form} · ${x.label ?? x.category}`, url: validUrl(x.url), publishedAt: x.acceptedAt ?? x.filingDate, source: 'SEC EDGAR', confidence: 'filing_metadata' });
   const riskNews = recentNews.filter((n) => /\b(offering|at-the-market|ATM program|warrants?|convertible notes?|private placement)\b/i.test(n.headline ?? ''));
   for (const n of riskNews) evidence.push({ kind: 'dilution', title: n.headline, url: validUrl(n.url), publishedAt: n.time, source: n.source ?? 'Alpaca news', confidence: 'headline_only' });
+  if (review?.issuance && !riskNews.length && !dilution.length) { add('penalty', -15, `원문 확인: 신규 주식 ${review.issuance.toLocaleString('en-US')}주 실제 발행`); evidence.push({kind:'dilution',title:'ATM 실제 발행 원문 확인',url:review.source,publishedAt:review.publishedAt,period:review.period,source:'SEC 10-Q',confidence:'primary_review'}); }
   if (dilution.length || riskNews.length) add('penalty', -15, `12개월 희석 관련 공시 ${dilution.length}건·뉴스 ${riskNews.length}건 (등록은 실제 발행 확정 아님)`);
   if (f.sharesYoY > 0.1) add('penalty', -10, `주식 수 YoY +${(f.sharesYoY * 100).toFixed(1)}%`);
   if (f.runway !== null && f.runway < 12) add('penalty', -15, `연간/TTM 영업현금흐름 기준 런웨이 약 ${f.runway.toFixed(1)}개월`, [f.cash, f.ocf]);
   if (f.runway !== null && f.runway < 6) excluded.push('현금 런웨이 6개월 미만');
   if (distress.length) excluded.push('12개월 내 위험·중대 공시');
-  const offeringChecked = newsStatus === 'ok' && source === 'SEC' && company?.fetchedAt && Date.parse(asOf) - Date.parse(company.fetchedAt) <= 35 * DAY;
+  const offeringChecked = newsStatus === 'ok' && source === 'SEC' && company?.fetchedAt && Date.parse(company.fetchedAt) <= cutoff && Date.parse(asOf) - Date.parse(company.fetchedAt) <= 35 * DAY;
   if (!offeringChecked) warnings.push('공시·뉴스 수집 불완전 — ATM/워런트/전환사채 위험 미확인');
   warnings.push('뉴스는 최대 5페이지·250건, 공시는 최근 수집분으로 제한되어 오래된 계약·희석 조건이 누락될 수 있음');
   warnings.push('미행사 워런트 수량·행사가·ATM 잔액·전환 조건은 원문 확인 필요');
@@ -138,14 +144,14 @@ export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'n
   const b = m.bars.slice(-63); const recent = b.slice(-21); const earlier = b.slice(0, -21);
   if (b.length === 63 && Math.min(...recent.map((x) => x.low)) >= Math.min(...earlier.map((x) => x.low)) && mean(recent.map((x) => x.volume)) < mean(earlier.map((x) => x.volume))) add('base', 10, '최근 1개월 신저가 없음·거래량 감소 (매집 확정 아님)');
   if (m.ret63 > 0.2) add('penalty', -10, '3개월 +20% 초과 — 선반영 감점');
-  if (!improving && !catalyst) excluded.push('실적 변곡점·구체적 촉매 없음');
+  if (!improving && !catalyst && !review) excluded.push('실적 변곡점·구체적 촉매 없음');
   const latestReport = [...f.revenueQuarterly, ...ni].sort((a, b) => b.end.localeCompare(a.end))[0];
   if (!latestReport || Date.parse(asOf) - Date.parse(latestReport.end) > 200 * DAY) warnings.push('최근 분기 재무 데이터 부족 또는 200일 이상 경과');
   const score = Math.max(0, Math.min(100, Object.values(components).reduce((a, b) => a + b, 0)));
-  const cashSafetyKnown = f.runway !== null || f.cashFlowFresh && f.ocf?.value >= 0;
+  const cashSafetyKnown = f.runway !== null || f.cash && Date.parse(asOf)-Date.parse(f.cash.end)<=200*DAY && f.cashFlowFresh && f.ocf?.value >= 0;
   const status = excluded.length ? 'excluded' : score >= EARLY_RULES.minScore && improving && capBasis === 'reported' && cashSafetyKnown && offeringChecked && latestReport && Date.parse(asOf) - Date.parse(latestReport.end) <= 200 * DAY ? 'candidate' : 'watch';
   return { symbol: row.symbol, ticker: row.ticker ?? row.symbol, name: row.name, sector: row.sector, asOf, model: EARLY_MODEL, score, status, components, reasons, warnings, excluded,
     price: m.price, marketCap: cap, capMethod, capBasis, ret63: m.ret63, drawdown: m.drawdown, adv20: m.adv20,
-    revenueYoY: yoy, evidence, risk: { level: dilution.length || riskNews.length || f.runway !== null && f.runway < 12 ? 'high' : offeringChecked ? 'review' : 'unknown', dilutionFilings: dilution.length, runwayMonths: f.runway, sharesYoY: f.sharesYoY, checked: Boolean(offeringChecked) },
-    newsStatus, fetchedAt: company?.fetchedAt ?? null };
+    revenueYoY: yoy, evidence, qualityReview: review ? {period:review.period,publishedAt:review.publishedAt,source:review.source} : null, risk: { level: review?.issuance || dilution.length || riskNews.length || f.runway !== null && f.runway < 12 ? 'high' : offeringChecked ? 'review' : 'unknown', dilutionFilings: dilution.length, runwayMonths: f.runway, sharesYoY: f.sharesYoY, checked: Boolean(offeringChecked) },
+    reportPeriod:latestReport?.end ?? null, newsStatus, fetchedAt: company?.fetchedAt ?? null };
 }

@@ -52,7 +52,7 @@ export function industryToSector(industry) {
 const REVENUE = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'RevenuesNetOfInterestExpense'];
 const NET_INCOME = ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'];
 const OCF = ['NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'];
-const CASH = ['CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents', 'Cash'];
+const CASH = ['CashAndCashEquivalentsAtCarryingValue', 'Cash'];
 
 const bare = (concept) => String(concept ?? '').replace(/^[a-z-]+_/i, '');
 function pick(section, names) {
@@ -115,10 +115,11 @@ export function quarterlyFlow(rows, field) {
     if (prior.length !== 3) continue;
     const priorSum = prior.reduce((a, q) => a + q.value, 0);
     const v = r[field];
-    const typical = Math.max(...prior.map((q) => Math.abs(q.value)));
+    const duration = r.start ? days(r.start, r.end) : null;
     let q4 = null;
-    if (field === 'rev' ? v > priorSum * 1.15 : Math.abs(v) > typical * 2.2) q4 = v - priorSum; // annual total
-    else if (field === 'rev' && v > 0 && v < typical * 2.2) q4 = v; // already a single quarter
+    if (duration !== null && duration > 300 && duration < 400 && prior.every((q) => q.fy === r.year)) q4 = v - priorSum;
+    else if (duration !== null && duration > 0 && duration <= 110) q4 = v;
+    // Without an explicit period, do not infer duration from magnitude or sign.
     if (q4 === null) continue;
     out.push({ end: r.end, value: q4, filed: r.filed, form: `${r.form} Q4`, fy: r.year });
   }

@@ -1,0 +1,49 @@
+// Primary-source review of a specific reporting period. This is not a complete
+// securities/liability audit and must never imply that financing risk is cleared.
+export const FINANCIAL_REVIEWS = {
+  FF: { period:'2026-06-30', publishedAt:'2026-08-10', source:'https://www.sec.gov/Archives/edgar/data/1337298/000143774926026783/ex_966478.htm',
+    profitCap:0, growthCap:30, cash:34.3e6, investments:null, restricted:null, issuance:null,
+    quality:'흑자는 확인되지만 헤지 시점 효과와 미실현 파생상품 이익이 섞여 반복 이익은 미확인입니다.',
+    liquidity:'보고 현금 $34.3M. 2분기 영업현금흐름 $18.8M에는 고객 자금 지원이 포함됩니다. 세액공제 현금화 예상액은 입금 전까지 현금으로 세지 않습니다.',
+    doubt:'원료 가격과 정책 변화가 이익을 흔들 수 있고, 새 화학 고객의 주문 지속성이 아직 충분히 입증되지 않았습니다.',
+    confirm:'다음 실적에서 신규 고객의 반복 주문, 화학 부문 가동률과 헤지 효과를 제외한 이익·현금흐름이 함께 개선되는지 확인합니다.',
+    invalidate:'반복 주문 감소, 원료비 상승으로 마진 악화, 세액공제 현금화 지연이 발생하면 회복 가설을 재검토합니다.',
+    valuation:'화학·바이오연료 부문을 나눠 정상 이익을 추정해야 합니다. 헤지 효과가 큰 분기 이익을 연간으로 단순 확대하지 않습니다.' },
+  KOPN: { period:'2026-06-27', publishedAt:'2026-08-10', source:'https://www.sec.gov/Archives/edgar/data/771266/000149315226036857/ex99-1.htm',
+    profitCap:0, growthCap:10, cash:24.3e6, investments:null, restricted:26e6, issuance:null,
+    quality:'순이익 $0.9M과 별개로 영업손실 $3.5M이 남았습니다. 투자이익 약 $2.3M과 세금 혜택 $2.1M을 지속적인 본업 이익으로 취급하지 않습니다. 제품 매출은 약 2% 증가했습니다.',
+    liquidity:'현금 및 현금성 자산 $24.3M. 별도의 제한된 현금 $26M 중 $24.2M은 BlueRadios 소송 항소 담보입니다. 제한된 현금은 운영자금으로 더하지 않습니다.',
+    doubt:'시제품 주문 이후 확정 양산 계약·수익성이 불확실하고, 영업적자와 소송 부담이 남아 있습니다.',
+    confirm:'고객의 양산 채택과 구속력 있는 주문 금액·납기, 제품 매출 증가, 영업손실 축소를 확인합니다. 과거 양산 예상 일정이 지났다는 사실만으로 수주 완료를 가정하지 않습니다.',
+    invalidate:'양산 전환 지연, 제품 매출 정체, 불리한 소송 결과나 큰 폭의 추가 증자가 발생하면 가설을 재검토합니다.',
+    valuation:'제품 양산 매출과 마진을 추정하고 개발 지원금·투자이익·세금 혜택을 분리해야 합니다. 계약이 검증되기 전에는 높은 전체 성장률로 적정가를 계산하지 않습니다.' },
+  ICHR: { period:'2026-06-26', publishedAt:'2026-08-04', source:'https://www.sec.gov/Archives/edgar/data/1652535/000165253526000069/ichr-20260626.htm',
+    profitCap:25, growthCap:30, cash:256.456e6, investments:null, restricted:null, issuance:2_478_275,
+    quality:'SEC 10-Q 기준 매출 성장률은 22.7%입니다. 매출총이익률 상승에는 고정비 분산뿐 아니라 전년 구조조정 비용이 반복되지 않은 효과도 있습니다.',
+    liquidity:'현금 $256.456M. 상반기 영업현금흐름은 -$18.792M이며 ATM 발행 순유입 $195.4M이 현금 증가의 주요 원인입니다. 새로 발행된 주식은 2,478,275주입니다.',
+    doubt:'반도체 장비 투자 사이클이 꺾이면 주문이 둔화될 수 있습니다. 자체 부품 확대가 실제 마진으로 이어지는 정도와 고객 의존도를 확인해야 합니다.',
+    confirm:'주문 지속, 실제 매출총이익률, 영업현금흐름과 발행 후 주당 이익이 함께 개선되는지 확인합니다.',
+    invalidate:'장비 주문 둔화, 마진 개선 중단, 운전자금 증가에 따른 현금 소진이 커지면 회복 가설을 재검토합니다.',
+    valuation:'업황 회복기의 정상 이익과 발행 후 주식 수로 평가합니다. 현금 증가를 모두 영업 성과로 간주하거나 아직 달성되지 않은 목표 마진을 확정 이익으로 사용하지 않습니다.' },
+  KODK: { period:'2026-06-30', publishedAt:'2026-08-04', source:'https://investor.kodak.com/news-releases/news-release-details/kodak-reports-second-quarter-2026-financial-results',
+    profitCap:10, growthCap:30, cash:290e6, investments:null, restricted:null, issuance:null,
+    quality:'본업 매출·매출총이익은 개선됐지만 순이익에는 이자비용 감소와 전년 손상차손 차이도 영향을 줬습니다. 연금 수익과 본업 수익을 분리해야 합니다.',
+    liquidity:'현금 $290M. 전년 말 대비 $47M 감소에는 대출 상환 $101M과 재고 증가가 영향을 줬고 연금 자산 회수 $87M이 이를 일부 상쇄했습니다.',
+    doubt:'인쇄 사업의 장기 수요, 소재 사업의 지속 성장, 부채·우선주 등 보통주보다 우선하는 청구권이 가치 평가의 핵심 불확실성입니다.',
+    confirm:'인쇄·소재 부문의 가격과 물량, 정상 영업현금흐름, 부채·우선주 조건을 확인합니다.',
+    invalidate:'일시적인 가격 인상 뒤 물량 감소, 현금 창출 부진, 부채·우선주 부담 증가가 나타나면 전환 가설을 재검토합니다.',
+    valuation:'인쇄·소재의 정상 사업가치에서 총부채·우선주·기타 우선 청구권을 차감해야 합니다. 시총/매출만으로 보통주가 싸다고 판단하지 않습니다.' },
+  ARVN: { period:'2026-06-30', publishedAt:'2026-08-04', source:'https://ir.arvinas.com/news-releases/news-release-details/arvinas-reports-second-quarter-2026-financial-results-and',
+    profitCap:0, growthCap:0, cash:94.3e6, investments:473.6e6, restricted:null, issuance:null,
+    quality:'매출 $249.7M에는 이연수익 인식·라이선스·승인 마일스톤이 포함됩니다. 해당 증가와 회계상 흑자를 반복 제품 매출·본업 흑자 전환으로 점수화하지 않습니다.',
+    liquidity:'현금 $94.3M와 시장성 증권 $473.6M, 합계 $567.9M. 상반기 영업 현금 소진은 $114.3M이며 Rigel 계약 유입 $35M을 반영한 값입니다. 2028년 하반기까지의 자금 전망은 회사 예상입니다.',
+    doubt:'첫 제품 승인이 후속 임상의 성공이나 상업적 수익을 보장하지 않습니다. 경쟁 약물·처방 확산·라이선스 수익 배분과 후속 임상 실패 위험이 남습니다.',
+    confirm:'상업화 이후 실제 회사 귀속 수익, 후속 후보별 임상 결과와 현금 소진을 확인합니다.',
+    invalidate:'임상 효능·안전성 실패, 상업화 부진, 계약 수익의 기대 미달이나 현금 소진 가속 시 가설을 재검토합니다.',
+    valuation:'후보물질별 성공확률을 반영한 사업가치와 현금, 향후 개발 비용·계약상 배분을 합산해야 합니다. 일회성 매출이 큰 P/S나 P/E는 적정가 근거로 사용하지 않습니다.' },
+};
+export function financialReview(ticker, asOf, period) {
+  const r=FINANCIAL_REVIEWS[ticker];
+  if (!r || !Number.isFinite(Date.parse(asOf)) || Date.parse(r.publishedAt)>Date.parse(asOf) || Date.parse(asOf)-Date.parse(r.period)>200*86400000 || period && (!Number.isFinite(Date.parse(period)) || Math.abs(Date.parse(period)-Date.parse(r.period))>20*86400000)) return null;
+  return r;
+}

@@ -660,3 +660,11 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .ea-card-body .ea-story { max-width:78ch; }
 .ea-collapse { width:100%; padding:17px; color:#9ae1b2; background:#213e32; border-top:1px solid var(--border,#293438); border-radius:0 0 11px 11px; cursor:pointer; font-size:13px; }
 .ea-company>.ea-card { scroll-margin-top:20px; }
+.investment-review { margin:18px 0; padding:20px; border:1px solid #725840; border-radius:10px; background:#342b201c; overflow-wrap:anywhere; }
+.investment-review>small { color:#a3aabd; font-size:10px; }
+.investment-review h3 { display:block; color:#e4c398; font-size:18px; margin:12px 0; }
+.investment-review h4 { font-size:12px; margin:18px 0 6px; color:#d5dfd9; }
+.investment-review p { font-size:12px; line-height:1.9; color:#b7bfd0; }
+.investment-review a { color:#9ae1b2; }
+.review-check { margin:14px 0; }.review-check b {font-size:12px;color:#d5dfd9;}.review-check span {color:#e4c398;font-weight:normal;margin-left:8px;}
+@media(max-width:850px){.investment-review{padding:16px;}}
