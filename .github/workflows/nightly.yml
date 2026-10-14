@@ -81,7 +81,7 @@ jobs:
         run: |
           cd data-branch
           # Guard: an existing ledger file must never change.
-          if git rev-parse -q --verify HEAD >/dev/null && git diff --name-only --diff-filter=MD HEAD -- ledger/ | grep -v 'ledger/index.json' | grep -q .; then
+          if git rev-parse -q --verify HEAD >/dev/null && git diff --name-only --diff-filter=MD HEAD -- ledger/ early-alpha/ledger/ | grep -v 'ledger/index.json' | grep -q .; then
             echo "::error::Existing ledger files were modified — refusing to publish."; exit 1
           fi
           git add -A

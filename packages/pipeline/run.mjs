@@ -21,6 +21,7 @@ import { computeFeatures } from './features.mjs';
 import { rankHorizon, selectRecommendations, exclusionReasons, MODEL_VERSION, MID_FACTORS, SHORT_FACTORS, REC_FILTERS } from './ranking.mjs';
 import { makeLedger, evaluateLedgers } from './ledger.mjs';
 import { buildBrief } from './brief.mjs';
+import { runEarlyAlpha } from './early-alpha.mjs';
 
 const BENCH = 'SPY';
 const r4 = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 1e4) / 1e4 : v ?? null);
@@ -509,6 +510,18 @@ export async function runNightly({
   const ledgers = fs.readdirSync(ledgerDir).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().map((f) => readJson(path.join(ledgerDir, f), null)).filter(Boolean);
   const perf = evaluateLedgers(ledgers, (s) => cached.get(s) ?? unpackBars(readJson(path.join(barsDir, `${safeName(s)}.json`), null)), spy);
   writeJson(path.join(outDir, 'performance.json'), { ...perf, ledgers: ledgers.length, benchmark: BENCH });
+
+  // Independent research product: failure never invalidates existing outputs.
+  try {
+    const early = await runEarlyAlpha({ rows, companyBy, getBars: (s) => cached.get(s) ?? unpackBars(readJson(path.join(barsDir, `${safeName(s)}.json`), null)),
+      spyBars: spy, asOf, now, outDir, env, fetchImpl, wait, newsBy });
+    stats.earlyAlpha = early.stats;
+    writeJson(path.join(outDir, 'early-alpha', 'status.json'), { asOf, ok: true, generatedAt: new Date(now).toISOString() });
+  } catch (e) {
+    stats.earlyAlpha = { error: String(e?.message ?? e) };
+    writeJson(path.join(outDir, 'early-alpha', 'status.json'), { asOf, ok: false, error: stats.earlyAlpha.error, generatedAt: new Date(now).toISOString() });
+    log(`EARLY ALPHA failed: ${stats.earlyAlpha.error}`);
+  }
 
   state.lastIndexDate = asOf;
   state.lastRun = new Date().toISOString();

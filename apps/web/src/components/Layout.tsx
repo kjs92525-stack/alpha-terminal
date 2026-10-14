@@ -7,6 +7,7 @@ import type { TickerHit } from '../lib/types';
 export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNode }> = [
   { id: 'dashboard', label: '통합 터미널', code: 'DASHBOARD', icon: <Activity size={16} /> },
   { id: 'discover', label: 'AI 종목발굴', code: 'DISCOVERY', icon: <Sparkles size={16} /> },
+  { id: 'early-alpha', label: 'EARLY ALPHA', code: 'EARLY ALPHA', icon: <Search size={16} /> },
   { id: 'charts', label: '차트 연구실', code: 'CHART LAB', icon: <CandlestickChart size={16} /> },
   { id: 'events', label: '이벤트 레이더', code: 'EVENT RADAR', icon: <Radar size={16} /> },
   { id: 'research', label: '기업 정밀분석', code: 'RESEARCH', icon: <FileSearch size={16} /> },
