@@ -636,3 +636,19 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .ea-evidence article { padding:13px 0; border-bottom:1px solid var(--border,#293438); }.ea-evidence a,.ea-evidence b { display:block; font-size:12px; line-height:1.7; margin-top:6px; overflow-wrap:anywhere; }.ea-evidence a { color:#9ae1b2; }.ea-empty { padding:28px; color:var(--muted,#8a969e); font-size:13px; line-height:1.8; }
 .ea-table-wrap { overflow:auto; }.ea-table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:12px; }.ea-table td,.ea-table th { text-align:left; padding:12px; border-bottom:1px solid var(--border,#293438); }.ea-detail select { color:inherit; background:var(--surface,#141c20); border:1px solid var(--border,#293438); border-radius:6px; padding:8px; }
 @media(max-width:850px) { .ea-workspace { grid-template-columns:1fr; }.ea-list { max-height:450px; }.ea-stats { grid-template-columns:repeat(2,1fr); }.ea-hero { padding:24px; }.ea-hero-right>b { font-size:30px; }.ea-detail { padding:18px; } }
+
+/* Read the business thesis before opening scoring and source dossiers. */
+.ea-story { margin:22px 0; }
+.ea-detail .ea-story-title { display:block; font-size:23px; line-height:1.5; margin:12px 0 18px; color:var(--text,#e6ece8); }
+.ea-story p { font-size:14px; line-height:1.95; color:var(--text,#d5dfd9); }
+.ea-story h3 { font-size:14px; }
+.ea-story-risk { margin:22px 0 12px; padding:16px; border-left:3px solid #b98a63; background:#b98a630b; }
+.ea-story-risk h3 { margin-top:0; color:#e4c398; }
+.ea-story .ea-story-status { font-size:12px; color:var(--muted,#8a969e); }
+.ea-story-source { display:block; font-size:12px; color:#9ae1b2; margin:12px 0; overflow-wrap:anywhere; }
+.ea-fold { border-top:1px solid var(--border,#293438); padding:15px 0; }
+.ea-fold summary { cursor:pointer; font-size:12px; line-height:1.7; color:var(--muted,#8a969e); }
+.ea-fold[open] summary { color:var(--text,#e6ece8); margin-bottom:15px; }
+@media(max-width:850px) { .ea-workspace>.ea-detail { grid-row:1; } .ea-list { max-height:330px; } .ea-story p { font-size:14px; } }
+.ea-story-picker { display:flex; align-items:center; gap:12px; margin:0 0 16px; font-size:12px; color:var(--muted,#8a969e); }
+.ea-story-picker select { min-width:0; max-width:100%; flex:1; padding:12px; background:var(--surface,#141c20); color:var(--text,#e6ece8); border:1px solid var(--border,#293438); border-radius:7px; }
