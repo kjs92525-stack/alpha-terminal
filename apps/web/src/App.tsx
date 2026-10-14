@@ -9,10 +9,12 @@ import { EventRadar } from './pages/EventRadar';
 import { Research } from './pages/Research';
 import { Settings } from './pages/Settings';
 import { Alerts } from './pages/Alerts';
+import { EarlyAlpha } from './pages/EarlyAlpha';
 import { Performance } from './pages/Performance';
 
 const TITLES: Record<string, [string, string]> = {
   dashboard: ['Market Intelligence', 'Discover signals. Validate evidence. Manage risk.'],
+  'early-alpha': ['EARLY ALPHA', '소외된 미국 소형주의 사업 변곡점 · 근거와 희석 위험 · 최초 발굴 성과'],
   discover: ['AI 종목발굴', '매수 자리 스캐너(돌파·눌림목·주봉/월봉 바닥) · 전 종목 야간 랭킹'],
   charts: ['차트 연구실', '지표·시장구조·ICT 신호와 확정 여부'],
   events: ['이벤트 레이더', 'SEC 공시·FDA·희석·런웨이 — 공식 출처와 접수 시각'],
@@ -44,6 +46,7 @@ function Shell() {
             <>
               {page === 'dashboard' && <Dashboard />}
               {page === 'discover' && <Discover />}
+              {page === 'early-alpha' && <EarlyAlpha />}
               {page === 'charts' && <ChartLab />}
               {page === 'events' && <EventRadar />}
               {page === 'research' && <Research />}

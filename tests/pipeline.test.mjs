@@ -254,11 +254,18 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   const dil = latest.mid.find((r) => r.symbol === f1.syms[5]);
   if (dil) assert.ok(dil.f.dilution_365 >= 0);
 
+  const earlyPath = path.join(outDir, 'early-alpha', 'ledger', `${r1.asOf}.json`);
+  const earlyBefore = fs.readFileSync(earlyPath, 'utf8');
+  const early = JSON.parse(fs.readFileSync(path.join(outDir, 'early-alpha', 'latest.json'), 'utf8'));
+  assert.equal(early.asOf, r1.asOf);
+  assert.equal(early.stats.scanned, 24);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(outDir, 'early-alpha', 'status.json'))).ok, true);
   // tamper check: re-running the same day never rewrites the ledger
   const ledgerPath = path.join(outDir, 'ledger', `${r1.asOf}.json`);
   const before = fs.readFileSync(ledgerPath, 'utf8');
   const r1b = await runNightly({ env, cacheDir, outDir, fetchImpl: f1.fetch, now: now1 + 3600000, historyDays: 900, wait: noWait });
   assert.equal(r1b.stats.ledgerWritten, false);
+  assert.equal(fs.readFileSync(earlyPath, 'utf8'), earlyBefore);
   assert.equal(fs.readFileSync(ledgerPath, 'utf8'), before);
   assert.equal(r1b.stats.fullFetches, 0, 'second run is incremental');
   assert.equal(r1b.stats.monthlyFetched, 0, 'monthly history is reused within the week');
