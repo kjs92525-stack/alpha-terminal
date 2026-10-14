@@ -1,12 +1,12 @@
 {
- "startedAt": "2026-10-14T08:34:06.764Z",
+ "startedAt": "2026-10-14T13:00:47.877Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
- "universe": 5265,
- "alpacaRequests": 214,
- "fullFetches": 5,
- "monthlyFetched": 5,
+ "universe": 5267,
+ "alpacaRequests": 215,
+ "fullFetches": 1,
+ "monthlyFetched": 1,
  "asOf": "2026-10-13",
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
  "sec": {
@@ -15,8 +15,8 @@
   "requests": 2
  },
  "finnhub": {
-  "needed": 5265,
-  "cached": 4493,
+  "needed": 5267,
+  "cached": 4492,
   "attempted": 0,
   "fetched": 0,
   "withRevenue": 0,
@@ -24,35 +24,35 @@
   "calls": 0
  },
  "secPublished": {
-  "companyFilesWritten": 0,
+  "companyFilesWritten": 1,
   "recentFilings": 0
  },
- "withFeatures": 5257,
+ "withFeatures": 5262,
  "ranked": {
-  "mid": 2681,
+  "mid": 2680,
   "short": 3539
  },
  "setups": {
-  "scanned": 5257,
-  "candidates": 1761,
+  "scanned": 5262,
+  "candidates": 1762,
   "newsRequests": 200,
   "byStage": {
    "POST_BREAKOUT": 5,
    "NEAR_PIVOT": 35,
-   "BREAKOUT": 1
+   "BREAKOUT": 2
   },
   "byType": {
    "breakout": {
     "POST_BREAKOUT": 5,
     "NEAR_PIVOT": 35,
-    "BREAKOUT": 1
+    "BREAKOUT": 2
    },
    "base": {
-    "IN_BASE": 541
+    "IN_BASE": 542
    },
    "pullback": {
     "AT_SUPPORT": 439,
-    "BOUNCE": 255,
+    "BOUNCE": 254,
     "APPROACHING": 10
    },
    "weekly_bottom": {
@@ -68,24 +68,27 @@
  "sectors": {
   "groups": 37,
   "byPhase": {
-   "EARLY": 1,
-   "BASING": 2,
-   "LEADING": 8,
-   "NEUTRAL": 21,
-   "DOWN": 5
+   "LEADING": 9,
+   "NEUTRAL": 20,
+   "DOWN": 8
   },
-  "grouped": 740
+  "grouped": 739
  },
  "ledgerWritten": false,
  "earlyAlpha": {
-  "scanned": 5257,
-  "eligible": 986,
+  "scanned": 5262,
+  "eligible": 1548,
   "candidates": 0,
+  "researchCandidates": 101,
+  "filingRequests": 30,
+  "filingFailures": 0,
+  "filingMetadata": 30,
+  "unverifiedRisk": 1548,
   "newsRequests": 80,
   "newsFailures": 0,
   "newsFailureCodes": {},
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 220
+ "seconds": 342
 }
