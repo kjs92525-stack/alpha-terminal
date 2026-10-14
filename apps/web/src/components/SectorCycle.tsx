@@ -1,3 +1,4 @@
+import { PHASE_KO } from '../../../../packages/analysis/cycle.mjs';
 import { Fragment, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTerminal } from '../lib/store';
@@ -6,15 +7,15 @@ import { STAGE_KO, TYPE_KO } from '../lib/storyPicks';
 import { fmtEt, fmtPct, fmtPrice, signClass } from '../lib/format';
 import { Loading, PanelHead } from './ui';
 
-const PHASE_LABEL: Record<CyclePhase, string> = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', NEUTRAL: '숨고르기', LATE: '과열·후반', DOWN: '하락' };
+const PHASE_LABEL: Record<CyclePhase,string> = PHASE_KO;
 const PHASE_CLS: Record<CyclePhase, string> = { EARLY: 'up', BASING: 'neutral', LEADING: 'up', NEUTRAL: '', LATE: 'neutral', DOWN: 'down' };
 const PHASE_TIP: Record<CyclePhase, string> = {
-  EARLY: '부진했던 업종(2년간 시장보다 크게 오르지 않음)이 200일선 위로 올라오고 시장보다 강해지는 자리 — 사이클이 돌기 시작하는 곳',
+  EARLY: '큰 반등·이격을 제외하고 200일선 위 전환이 5~63거래일 지속된 가격 조건. 산업 경기의 초입 확정은 아님',
   BASING: '고점에서 20% 이상 내려와 200일선 근처에서 옆으로 기는 업종. 2년간 시장보다 크게 오른 업종(조정 중)은 제외 — 다음 사이클 후보',
   LEADING: '이미 상승 추세가 자리 잡고 시장보다 강한 업종',
   LATE: '200일선보다 30% 이상 위거나 과열 — 추격 주의',
-  NEUTRAL: '고점에서 조금 내려와 방향을 고르는 중 — 뚜렷한 신호 없음',
-  DOWN: '내려가는 200일선 아래, 시장보다 약한 업종',
+  NEUTRAL: '가격 방향을 확인하지 못한 상태. 안정적인 숨고르기나 산업 회복으로 해석하지 않음',
+  DOWN: '200일선 아래에서 가격 방향·상대강도가 약한 업종. 재하락 위험',
 };
 
 export function SectorCycle({ compact = false }: { compact?: boolean }) {
@@ -30,8 +31,8 @@ export function SectorCycle({ compact = false }: { compact?: boolean }) {
 
   return (
     <section className="panel">
-      <PanelHead kicker="SECTOR CYCLE · NIGHTLY" title={compact ? '사이클이 돌기 시작하는 섹터' : '섹터·테마 사이클'} right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
-      {!compact && <p className="pad-box muted small">업종·테마 ETF {data?.groups.length ?? ''}개의 차트로 사이클 국면을 판정하고, 가격 연동 차트 후보를 주가 움직임이 가장 닮은 업종에 묶었습니다. 사업 연결과 투자 근거는 위 산업 스토리에서 별도로 확인합니다. <b>사이클 초입</b>은 긴 하락 뒤 200일선 위로 올라오고 50일선이 고개를 든 업종입니다.</p>}
+      <PanelHead kicker="SECTOR CYCLE · NIGHTLY" title={compact ? '가격 전환을 관찰하는 섹터' : 'ETF 가격 국면 · 산업 경기와 별개'} right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
+      {!compact && <p className="pad-box muted small">업종·테마 ETF {data?.groups.length ?? ''}개의 차트로 사이클 국면을 판정하고, 가격 연동 차트 후보를 주가 움직임이 가장 닮은 업종에 묶었습니다. 사업 연결과 투자 근거는 위 산업 스토리에서 별도로 확인합니다. <b>가격 전환 초기</b>는 큰 반등·이격을 제외하고 전환 지속성을 확인한 차트 조건입니다. 수주·재고·가동률로 산업 회복을 확인한 판정은 아닙니다.</p>}
       {state === 'loading' && <Loading label="섹터 불러오기" />}
       {state === 'missing' && <div className="pad-box muted">아직 야간 수집 결과가 없습니다 (다음 수집 후 표시).</div>}
       {state === 'error' && <div className="pad-box muted">섹터 데이터를 불러오지 못했습니다.</div>}
@@ -71,6 +72,7 @@ export function SectorCycle({ compact = false }: { compact?: boolean }) {
                               <button className="text-link inline" onClick={() => { select(x.symbol); setPage('charts'); }}><b>{x.symbol}</b></button>
                               <span className="muted"> {x.name ?? ''} · ${fmtPrice(x.price)} · {TYPE_KO[x.type as keyof typeof TYPE_KO] ?? x.type} {STAGE_KO[x.stage] ?? x.stage} · 업종 연동 {Math.round(x.corr * 100)}%</span>
                               {x.how && <div className="small">매수타점: {x.how}</div>}
+                              {g.warnings?.map(w=><div className="small muted" key={w}>{w}</div>)}
                               {x.takeaway && <div className="small muted">→ {x.takeaway}</div>}
                             </li>
                           ))}

@@ -692,3 +692,12 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .demand-mechanism p { line-height:1.95; }
 .demand-mechanism h4 { line-height:1.7; font-size:16px; }
 .demand-mechanism b { display:block; margin-top:18px; color:var(--text); }
+
+.industry-evidence { padding:16px; border:1px solid var(--border); border-radius:12px; margin:20px 0; }
+.decision-tools { padding:0 18px; overflow-wrap:anywhere; }
+.decision-tools label { display:flex; flex-direction:column; gap:7px; font-size:12px; color:var(--muted); margin:10px 0; }
+.decision-tools input { min-width:0; width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); }
+.decision-cases,.decision-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.decision-cases article { padding:12px; border:1px solid var(--border); border-radius:8px; }
+.decision-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(max-width:650px) { .decision-cases,.decision-fields { grid-template-columns:1fr; } .decision-tools { padding:0 6px; } }

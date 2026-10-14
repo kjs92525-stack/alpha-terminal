@@ -33,3 +33,8 @@ test('story prompt carries the setup, buy point, numbers, headlines and the anal
   const p = buildStoryPrompt(r, '2026-10-12');
   for (const s of ['ACME', '눌림목', '지지 반등', '오늘 고가 $10.20', '손절 $9.50 (-7.0%)', '2.6R', 'ACME wins Army contract', '→ 개선 중', '시장이 의심하는 이유', '반대 논리', '출처']) assert.ok(p.includes(s), s);
 });
+
+test('review-rejected profit and growth cannot reappear as pick bonuses via stale positive text',()=>{
+ const r=row({symbol:'KOPN',themes:['방산'],reasons:[{kind:'plus',text:'흑자 전환',pts:25},{kind:'plus',text:'매출 성장 가속',pts:20},{kind:'minus',text:'원문 검토에서 가점 제외',pts:-45}],narrative:{lines:['1년 전 적자에서 흑자로 돌아섰습니다.'],takeaway:'본업 미검증',method:'review',quality:{profitBlocked:true,growthBlocked:true}}});
+ const p=storyPicks({asOf:'2026-10-13',candidates:[r]});assert.equal(p.length,1);assert.deepEqual(p[0].why,['테마: 방산']);
+});

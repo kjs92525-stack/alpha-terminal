@@ -1,3 +1,4 @@
+import { DecisionTools } from '../components/DecisionTools';
 import { DemandMechanism } from '../components/DemandMechanism';
 import { demandStory } from '../../../../packages/analysis/demand-stories.mjs';
 import { CompanyDossier } from '../components/CompanyDossier';
@@ -49,6 +50,7 @@ export function Research() {
       {!hasDossier && hasMechanism && <section className="panel pad-box"><DemandMechanism ticker={data.symbol} asOf={m.asOf} /></section>}
       <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
       {!hasDossier && mode!=='mock' && <details className="panel pad-box"><summary>세계정세·산업 전망과 연결해서 읽기</summary><MacroStory ticker={data.symbol} asOf={m.asOf} /></details>}
+      {mode!=='mock'&&<DecisionTools key={data.symbol} ticker={data.symbol} price={m.price} marketCap={m.marketCap} revenue={f?.revenue?.value} adv20={m.adv20Usd} asOf={m.asOf} />}
       <div className="detail-grid">
         <section className="panel">
           <PanelHead kicker="FACTORS" title="팩터 분해" />

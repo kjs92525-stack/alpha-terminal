@@ -1,6 +1,7 @@
 import { SNAPSHOT_BASE } from './snapshot';
 export interface EarlyEvidence { kind: string; title: string; url: string | null; publishedAt: string; period?: string; value?: number; source: string; confidence: string }
 export interface EarlyRow {
+  researchCandidate?:boolean;firstResearchSeen?:string|null;isNewResearch?:boolean;revenueTtm?:number|null;verification?:{financial:string;filings:string;filingsSource:string;filingsCheckedAt:string|null;documents:string;news:string;valuation:string};
   reportPeriod?: string | null; revenueYoY?: Array<{end:string;yoy:number;value:number}>; symbol: string; ticker: string; name: string; sector: string; score: number; status: 'candidate' | 'watch' | 'excluded';
   price: number; marketCap: number; capMethod: string; ret63: number; drawdown: number; adv20: number;
   firstSeen: string | null; isNew: boolean; components: Record<string, number>; reasons: Array<{ factor: string; points: number; text: string }>;
@@ -10,10 +11,11 @@ export interface EarlyRow {
 export interface EarlyOutcome { status: string; return: number | null; excess: number | null; mfe: number | null; mae: number | null; entryDate?: string; exitDate?: string }
 export interface EarlyData {
   asOf: string; model: string; ledgerModel?: string; generatedAt: string; refreshedAt: string; method: string; caveat: string;
-  stats: { scanned: number; eligible: number; candidates: number; newsRequests: number; newsFailures: number; newsBudget: number };
+  stats: { scanned: number; eligible: number; candidates: number; newsRequests: number; newsFailures: number; newsBudget: number; researchCandidates?:number;filingRequests?:number;filingFailures?:number;filingMetadata?:number;unverifiedRisk?:number };
   enrichment?: { generatedAt: string; newsRequests: number; newsFailures: number };
   candidates: EarlyRow[];
-  performance: { method: string; summary: Record<string, { total: number; complete: number; pending: number; missing: number; meanReturn: number | null; meanExcess: number | null; winRate: number | null }>;
+  researchPerformance?:EarlyData['performance'];
+  performance: { method: string; summary: Record<string, { total: number; complete: number; pending: number; missing: number; meanReturn: number | null; meanExcess: number | null; winRate?: number | null }>;
     discoveries: Array<{ symbol: string; name: string; asOf: string; score: number; outcomes: Record<string, EarlyOutcome> }> };
 }
 export async function fetchEarlyAlpha(signal?: AbortSignal): Promise<EarlyData> {

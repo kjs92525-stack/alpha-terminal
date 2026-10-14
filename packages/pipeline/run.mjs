@@ -1,3 +1,4 @@
+import { financialReview } from '../analysis/financial-review.mjs';
 // Nightly pipeline: universe -> bars -> SEC refresh -> features -> rankings -> ledger -> performance.
 // All IO goes through `fetchImpl` and the filesystem dirs, so it runs identically in
 // GitHub Actions and in tests with a mocked fetch.
@@ -10,11 +11,11 @@ import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs'
 import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
 import { makeFinnhubClient, fetchCompany, withFacts } from './finnhub.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
-import { storySignals } from '../analysis/story.mjs';
+import { storySignals, quarterlyYoY } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
 import { resampleWeekly } from '../analysis/indicators.mjs';
 import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs';
-import { earlyMarket } from '../analysis/early-alpha.mjs';
+import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
 import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
 import { throttle } from './http.mjs';
@@ -252,7 +253,9 @@ export async function runNightly({
     const secRec = u.cik ? cache.get(u.cik) : null;
     if (secRec?.facts) return secRec;
     const f = fhRec.get(u.symbol);
-    return f ? { ...f, filings: secRec?.filings ?? [], sic: secRec?.sic ?? null } : secRec;
+    const prior=readJson(path.join(outDir,'companies',`${u.ticker??u.symbol}.json`),null);
+    const oldFilings=(prior?.filingCheck?prior.filings??[]:[]).filter(x=>Date.parse(x.acceptedAt??x.filingDate)<=Date.parse(asOf)+86400000-1);
+    return f ? { ...f, filings: [...(secRec?.filings ?? []),...oldFilings].filter((x,i,a)=>a.findIndex(y=>y.accession===x.accession&&y.form===x.form)===i),filingCheck:prior?.filingCheck, sic: secRec?.sic ?? null } : secRec;
   };
 
   // 4b. publish SEC data for the API (SEC refuses requests from Cloudflare Workers; the API
@@ -423,20 +426,21 @@ export async function runNightly({
       .filter((x, i, arr) => arr.findIndex((y) => y.symbol === x.symbol) === i)
       .slice(0, 8)
       .map((x) => ({ symbol: x.symbol, name: x.name, price: x.price, type: x.type, stage: x.stage, score: x.score, corr: x.group.corr, how: x.plan.how, takeaway: x.narrative?.takeaway ?? null }));
-    groups.push({ etf, name, price: r4(bars.at(-1).close), phase: cp.phase, phaseKo: cp.phaseKo, earlyScore: cp.earlyScore, metrics: Object.fromEntries(Object.entries(cp.metrics).map(([k, v]) => [k, r4(v)])), members });
+    groups.push({ etf, name, price: r4(bars.at(-1).close), phase: cp.phase, phaseKo: cp.phaseKo, earlyScore: cp.earlyScore, model:cp.model, warnings:cp.warnings, metrics: Object.fromEntries(Object.entries(cp.metrics).map(([k, v]) => [k, r4(v)])), members });
   }
   const PHASE_ORDER = { EARLY: 0, BASING: 1, LEADING: 2, NEUTRAL: 3, LATE: 4, DOWN: 5 };
   groups.sort((a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || b.earlyScore - a.earlyScore);
   writeJson(path.join(outDir, 'sectors.json'), {
     asOf, generatedAt: new Date().toISOString(),
-    method: '업종·테마 ETF 자체 차트로 국면 판정: 200일선 대비 위치, 50일선 방향과 200일선 대비, 3·12개월 수익률, 2년 고점 대비 하락폭, SPY 대비 강도. 종목은 최근 약 6개월 일간 수익률 상관이 가장 높은 ETF(시장 전체 상관보다 높을 때만)에 묶음.',
+    model:'price-cycle-v2', method: '산업 실물 경기와 별개인 ETF 가격 국면 판정: 저점 이후 반등·200일선 이격·전환 지속성을 확인. 업종·테마 ETF 자체 차트로 국면 판정: 200일선 대비 위치, 50일선 방향과 200일선 대비, 3·12개월 수익률, 2년 고점 대비 하락폭, SPY 대비 강도. 종목은 최근 약 6개월 일간 수익률 상관이 가장 높은 ETF(시장 전체 상관보다 높을 때만)에 묶음.',
     caveat: 'ETF 국면은 업종 전체의 평균이며 개별 종목과 다를 수 있습니다. 사이클 초입 판정은 실패(재하락)도 흔합니다.',
     groups,
   });
   const sectorStocks = Object.fromEntries(Object.keys(BUSINESS_LINKS).map(ticker => {
     const row=rows.find(r=>r.ticker===ticker || r.symbol===ticker);
     const market=earlyMarket((cached.get(row?.symbol??ticker)??[]),asOf);
-    return [ticker,{price:market.price,ret21:market.ret21,ret63:market.ret63,lastDate:market.lastDate,marketCap:row?.features.mcap??null,source:'야간 기준 종가·프로필 또는 보고 주식 수 추정 시총'}];
+    const company= row ? companyFor(row) : null;const facts=earlyFacts(company,asOf);const yoy=quarterlyYoY(facts.revenueQuarterly).slice(-2);const review=financialReview(ticker,asOf,yoy.at(-1)?.end);
+    return [ticker,{company:yoy.length?{period:yoy.at(-1).end,growth:yoy.at(-1).yoy,priorGrowth:yoy.at(-2)?.yoy??null,source:company?.source??'SEC',quality:review?.quality??'반복 제품 성장·일회성 효과 미검증'}:null,price:market.price,ret21:market.ret21,ret63:market.ret63,lastDate:market.lastDate,marketCap:row?.features.mcap??null,source:'야간 기준 종가·프로필 또는 보고 주식 수 추정 시총'}];
   }));
   writeJson(path.join(outDir,'sector-radar.json'),buildSectorRadar({asOf,groups,stocks:sectorStocks}));
   stats.sectors = { groups: groups.length, byPhase: groups.reduce((m, g) => ((m[g.phase] = (m[g.phase] ?? 0) + 1), m), {}), grouped: [...groupOf.values()].filter(Boolean).length };
@@ -524,6 +528,11 @@ export async function runNightly({
     const early = await runEarlyAlpha({ rows, companyBy, getBars: (s) => cached.get(s) ?? unpackBars(readJson(path.join(barsDir, `${safeName(s)}.json`), null)),
       spyBars: spy, asOf, now, outDir, env, fetchImpl, wait, newsBy });
     stats.earlyAlpha = early.stats;
+    for(const [symbol,record]of companyBy){
+      if(!record?.filingCheck)continue;const ticker=rows.find(r=>r.symbol===symbol)?.ticker??symbol;
+      const file=path.join(outDir,'companies',`${ticker}.json`),body=readJson(file,null);
+      if(body)writeJson(file,{...body,filings:record.filings??body.filings,filingCheck:record.filingCheck});
+    }
     writeJson(path.join(outDir, 'early-alpha', 'status.json'), { asOf, ok: true, generatedAt: new Date(now).toISOString() });
   } catch (e) {
     stats.earlyAlpha = { error: String(e?.message ?? e) };
