@@ -1,5 +1,6 @@
 // Reviewed primary-source industry theses. These are conditional research ideas,
 // not ETF holdings, return-correlation membership, price targets or buy signals.
+import { industrialCycle } from './industrial-cycle.mjs';
 export const SECTOR_STORIES = [
  {id:'grid',name:'전력 인프라·데이터센터 전기·냉각',etfs:['PAVE','XLU'],publishedAt:'2026-02-06',reviewedAt:'2026-10-14',maxAge:365,
   headline:'AI의 병목이 칩에서 전력·배전·냉각으로 넓어진다',
@@ -46,12 +47,13 @@ export function companyMacro(ticker,asOf){
  return {sector:{id:ticker,name:e.name,etfs:[],publishedAt:e.date,reviewedAt:'2026-10-14',headline:e.name,world:e.world,chain:e.chain,leading:e.next,failure:e.risk,sources:[{label:'회사 발표 · 산업 연결은 조건부 해석',date:e.date,url:e.url}],symbols:[ticker]},link:{name:ticker,sector:ticker,date:e.date,link:e.link,fact:'기업 원문과 조건부 산업 해석을 구분합니다.',risk:e.risk,next:e.next,url:e.url}};
 }
 export function buildSectorRadar({asOf,groups=[],stocks={}}){
- const rank={EARLY:0,BASING:1,NEUTRAL:2,DOWN:3,LEADING:4,LATE:5,UNKNOWN:6};
+ const rank={EARLY:0,BASING:1,NEUTRAL:2,LEADING:3,UNKNOWN:4,LATE:5,DOWN:6};
  return {asOf,method:'산업 원문 검토와 ETF 가격 국면을 결합한 관찰 우선순위. 사업 연결은 원문으로 확인하며 가격 상관만으로 공급망을 추정하지 않습니다. 매수·상승 확률 판정이 아닙니다.',ideas:SECTOR_STORIES.map(s=>sectorStory(s.id,asOf)).filter(Boolean).map(s=>{
    const proxies=s.etfs.map(etf=>groups.find(g=>g.etf===etf)).filter(Boolean);
    const anchor=proxies[0];const phase=anchor?.phase??'UNKNOWN';
-   const stance=phase==='EARLY'?'산업 동력·가격 전환 동시 관찰':phase==='BASING'?'수요 동력 확인·가격 전환 대기':phase==='LEADING'||phase==='LATE'?'수요 확대 중·가격 초입 아님':phase==='DOWN'?'수요 가설 유지·하락 전환 위험':'산업 동력 관찰·가격 초입 미확인';
-   return {...s,proxies,phase,stance,priority:rank[phase],related:s.symbols.map(ticker=>{
+   const stance=phase==='EARLY'?'가격 전환 초기·산업 방향 별도 검증':phase==='BASING'?'가격 기반 형성·수주 지표 확인 대기':phase==='LEADING'||phase==='LATE'?'가격 상승 진행·가격 초입 아님':phase==='DOWN'?'가격 하락 위험·산업 근거 별도 검토':'가격 방향 미확인·산업 근거 확인';
+   const industry=industrialCycle(s.id,asOf,Object.fromEntries(s.symbols.filter(t=>stocks[t]).map(t=>[t,stocks[t]])));
+   return {...s,proxies,phase,stance,industry,priority:rank[phase],related:s.symbols.map(ticker=>{
      const link=businessLink(ticker,asOf);if(!link)return null;
      const q=stocks[ticker]??{};const cap=q.marketCap;const hot=Number.isFinite(q.ret63)&&q.ret63>.5||Number.isFinite(q.ret21)&&q.ret21>.3;
      const fresh=q.lastDate&&Number.isFinite(Date.parse(q.lastDate))&&Date.parse(q.lastDate)<=Date.parse(asOf)&&Date.parse(asOf)-Date.parse(q.lastDate)<=4*DAY;

@@ -19,14 +19,14 @@ export function storyPicks(data: Setups | null, limit = 8): StoryPick[] {
   for (const row of data.candidates) {
     if (!(BUY_AREA.has(row.stage) || (row.stage === 'IN_BASE' && (row.plan?.entryType === 'zone' || row.plan?.entryType === 'limit'))) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
     if (row.plan.rMultiple == null || row.plan.rMultiple < 1.5) continue; // target too close to be worth the risk
-    const text = row.reasons.map((r) => r.text).join(' ');
+    const text = row.reasons.filter(r=>r.kind==='plus'&&r.pts>0).map((r) => r.text).join(' ');
     const lines = row.narrative?.lines.join(' ') ?? '';
     const why: string[] = [];
     let bonus = 0;
-    const narrowing = /적자가 \d+% 줄었/.test(lines) || /적자 폭 절반/.test(text);
+    const narrowing = !row.narrative?.quality?.profitBlocked && (/적자가 \d+% 줄었/.test(lines) || /적자 폭 절반/.test(text));
     const widening = /적자가 \d+% 늘었/.test(lines);
-    const accel = /가속/.test(text);
-    const turned = /흑자 전환/.test(text) || /흑자로 돌아섰/.test(lines);
+    const accel = !row.narrative?.quality?.growthBlocked && /가속/.test(text);
+    const turned = !row.narrative?.quality?.profitBlocked && (/흑자 전환/.test(text) || /흑자로 돌아섰/.test(lines));
     const doubted = /의심/.test(text);
     const surge = /관심 급증/.test(text);
     if (narrowing) { why.push('적자지만 개선 중'); bonus += 15; }

@@ -10,7 +10,7 @@
 //   NEUTRAL 숨고르기     — a modest pullback or sideways drift without a clear direction
 //   DOWN   하락          — clearly below the 200-day with the 50-day under it
 
-import { sma, rsi } from './indicators.mjs';
+import { sma, rsi, resampleWeekly } from './indicators.mjs';
 
 export const SECTOR_ETFS = [
   ['XLK', '기술'], ['SMH', '반도체'], ['IGV', '소프트웨어'], ['XLC', '커뮤니케이션'],
@@ -24,7 +24,7 @@ export const SECTOR_ETFS = [
   ['UFO', '우주'], ['QTUM', '양자·차세대 컴퓨팅'], ['BOTZ', '로봇·AI'], ['BLOK', '블록체인'], ['ARKK', '혁신 성장'],
 ];
 
-export const PHASE_KO = { EARLY: '사이클 초입', BASING: '바닥 다지기', LEADING: '상승 주도', LATE: '과열·후반', NEUTRAL: '숨고르기', DOWN: '하락' };
+export const PHASE_KO = { EARLY: '가격 전환 초기', BASING: '가격 기반 형성', LEADING: '상승 진행', LATE: '가격 과열', NEUTRAL: '방향 미확인', DOWN: '하락 위험' };
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const ret = (c, n) => (c.length > n && c[c.length - 1 - n] > 0 ? c[c.length - 1] / c[c.length - 1 - n] - 1 : null);
@@ -53,22 +53,24 @@ export function cyclePhase(bars, spy) {
   const rs3m = ret(rsSeries, 63);
   const rs12m = ret(rsSeries, 252);
   const rs24m = ret(rsSeries, 504);
-  const weekly = c.filter((_, i) => i % 5 === (n - 1) % 5);
+  const weekly = resampleWeekly(bars).map(b=>b.close);
   const rsiW = rsi(weekly, 14).at(-1);
-  const m = { vs200, ma50vs200, ma50Slope, ma200Slope, ddFromHigh, offLow, ret3m, ret12m, ret24m, rs3m, rs12m, rs24m, rsiW };
+  const above200Days = (()=>{let k=0;for(let i=n-1;i>=0&&s200[i]&&c[i]>s200[i];i--)k++;return k;})();
+  const m = { vs200, ma50vs200, ma50Slope, ma200Slope, ddFromHigh, offLow, ret3m, ret12m, ret24m, rs3m, rs12m, rs24m, rsiW, above200Days };
 
   // a group that already ran (beat the market by 15%p+ over two years, or up 50%+) is pulling
   // back, not bottoming; a laggard that rose with a rising market still counts as early
   // (a rebound off a deep low can be up a lot over 12 months and still be early)
   const ranAlready = isNum(ret24m) ? ret24m >= 0.5 || (rs24m ?? 0) >= 0.15 : (ret12m ?? 0) >= 0.1;
+  const extended = offLow>0.4 || vs200>0.15 || (ret3m??0)>0.3;
   let phase;
   if (vs200 > 0.3 || (isNum(rsiW) && rsiW > 75 && ddFromHigh < 0.05)) phase = 'LATE';
   // turning up after a flat/weak stretch, now outperforming the market
-  else if (!ranAlready && vs200 > 0 && ma50Slope > 0 && (rs3m ?? 0) > 0 && ((ret12m ?? 0) < 0.1 || ddFromHigh > 0.2) && ma50vs200 < 0.15) phase = 'EARLY';
-  else if (vs200 > 0 && ma50vs200 > 0.03 && (ret12m ?? 0) > 0.15) phase = 'LEADING';
+  else if (!ranAlready && !extended && above200Days>=5 && above200Days<=63 && vs200 > 0 && ma50Slope > 0 && (rs3m ?? 0) > 0 && ((ret12m ?? 0) < 0.1 || ddFromHigh > 0.2) && ma50vs200 < 0.15) phase = 'EARLY';
+  else if (vs200>0 && ma50Slope>0 && (extended||above200Days>63) || vs200 > 0 && ma50vs200 > 0.03 && (ret12m ?? 0) > 0.15) phase = 'LEADING';
   // well off the highs, moving sideways around the 200-day, and no big run behind it
-  else if (!ranAlready && ddFromHigh >= 0.2 && Math.abs(vs200) < 0.1) phase = 'BASING';
-  else if (vs200 < -0.05 && ma50vs200 < -0.02) phase = 'DOWN';
+  else if (vs200 < -0.05 && (ma50Slope<0 || (rs3m??0)<-0.05)) phase = 'DOWN';
+  else if (!ranAlready && !extended && ddFromHigh >= 0.2 && Math.abs(vs200) < 0.1 && ma50Slope>=-0.01) phase = 'BASING';
   else phase = 'NEUTRAL';
 
   // early-cycle score: how much room (off the highs) and how fresh the turn is
@@ -78,7 +80,8 @@ export function cyclePhase(bars, spy) {
     + (ma50Slope > 0 ? 10 : 0)
     + (isNum(ret12m) && ret12m < 0.1 ? 5 : 0)
     - (ranAlready ? 20 : 0);
-  return { phase, phaseKo: PHASE_KO[phase], earlyScore: early, metrics: m };
+  return { model:'price-cycle-v2', phase, phaseKo: PHASE_KO[phase], earlyScore: Math.max(0,Math.min(100,early-(extended?15:0))), metrics: m,
+    warnings:[...(extended?['저점 이후 반등 또는 200일선 이격이 큼 — 가격 초입으로 분류하지 않음']:[]),'가격 국면이며 산업 수주·재고·가동률의 회복 판정과 별개'] };
 }
 
 /** Correlation of daily returns over the last `days` aligned bars. */

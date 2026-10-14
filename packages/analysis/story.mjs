@@ -31,8 +31,14 @@ export const THEMES = [
   ['로봇·자율주행', /\b(robot\w*|humanoid|autonomous|robotaxi)\b/i],
 ];
 
-export function storySignals({ fundamentals: f, filings = [], news = [], asOf, ticker }) {
-  const asOfMs = Date.parse(asOf);
+export function storySignals({ fundamentals, filings = [], news = [], asOf, ticker }) {
+  const asOfMs = Date.parse(asOf)+DAY-1;
+  const visible=p=>Number.isFinite(Date.parse(p.end)) && Date.parse(p.end)<=asOfMs && (!p.filed || Date.parse(p.filed)<=asOfMs);
+  const f=fundamentals?{...fundamentals,revenueQuarterly:(fundamentals.revenueQuarterly??[]).filter(visible).sort((a,b)=>a.end.localeCompare(b.end)),netIncomeQuarterly:(fundamentals.netIncomeQuarterly??[]).filter(visible).sort((a,b)=>a.end.localeCompare(b.end))}:null;
+  if(fundamentals?.revenue&&!visible(fundamentals.revenue))f.revenueGrowth=null;
+  if(fundamentals?.cash&&!visible(fundamentals.cash))f.runwayMonths=null;
+  news=news.filter(n=>Number.isFinite(Date.parse(n.time))&&Date.parse(n.time)<=asOfMs&&asOfMs-Date.parse(n.time)<=60*DAY);
+  filings=filings.filter(f=>Number.isFinite(Date.parse(f.acceptedAt??f.filingDate))&&Date.parse(f.acceptedAt??f.filingDate)<=asOfMs);
   const reasons = [];
   let score = 0;
   const add = (pts, text, kind = 'plus') => { score += pts; reasons.push({ kind, text, pts }); };
@@ -44,7 +50,7 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf, t
     const latest = g[g.length - 1].yoy;
     const earlier = g[0].yoy;
     if (latest > 0.15) add(10, `최근 분기 매출 +${(latest * 100).toFixed(0)}% (전년 동기 대비)`);
-    if (latest - earlier > 0.05 && latest > 0 && g.every((q,i)=>!i || Date.parse(q.end)-Date.parse(g[i-1].end)<=110*DAY && q.yoy>g[i-1].yoy)) add(20, `매출 성장 가속: ${(earlier * 100).toFixed(0)}% → ${(latest * 100).toFixed(0)}% (${g.length}개 분기)`);
+    if (latest - earlier > 0.05 && latest >= 0.15 && earlier>=0 && g.every((q,i)=>!i || Date.parse(q.end)-Date.parse(g[i-1].end)<=110*DAY && q.yoy>g[i-1].yoy)) add(20, `매출 성장 가속: ${(earlier * 100).toFixed(0)}% → ${(latest * 100).toFixed(0)}% (${g.length}개 분기)`);
     else if (latest - earlier < -0.1) add(-10, `매출 성장 둔화: ${(earlier * 100).toFixed(0)}% → ${(latest * 100).toFixed(0)}%`, 'minus');
   } else if (isNum(f?.revenueGrowth) && f.revenueGrowth > 0.2) {
     add(8, `연간 매출 +${(f.revenueGrowth * 100).toFixed(0)}% (분기 데이터 부족)`);
@@ -87,7 +93,7 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf, t
 
   // 4. "doubted while improving" (10): negative headline share with improving fundamentals
   const neg = news.filter((n) => n.sentiment === 'negative').length;
-  const improving = reasons.some((r) => r.kind === 'plus' && /가속|흑자|순이익|축소/.test(r.text));
+  const improving = reasons.some((r) => r.kind === 'plus' && /가속/.test(r.text)) && (!reviewed || reviewed.growthCap>=20) || reasons.some(r=>r.kind==='plus'&&/흑자|순이익|축소/.test(r.text)) && (!reviewed || reviewed.profitCap>0);
   if (news.length >= 5 && neg / news.length >= 0.3 && improving) add(10, `부정적 기사 비중 ${Math.round((neg / news.length) * 100)}%인데 실적은 개선 중 — 시장이 의심하는 성장`);
 
   // 5. risks (penalties)
@@ -99,7 +105,7 @@ export function storySignals({ fundamentals: f, filings = [], news = [], asOf, t
   const distress = filings.filter((x) => (x.category === 'DISTRESS' || x.importance === 'critical') && within(x, 365));
   if (distress.length) add(-25, `위험 공시: ${distress[0].label}`, 'minus');
 
-  const narrative = narrate({ f, yoy: g, ni, news: news.filter((n) => Date.parse(n.time) <= asOfMs + DAY), themes, dilution: dil.length, distress: distress.length });
+  const narrative = narrate({ f, yoy: g, ni, news, themes, dilution: dil.length, distress: distress.length, review:reviewed });
   return { storyScore: Math.max(0, Math.min(100, score)), reasons, themes, revenueYoY: g, newsCount: { week: recent.length, weeklyAvg: weeklyBase }, narrative };
 }
 
@@ -111,7 +117,7 @@ const mmdd = (iso) => { const d = new Date(iso); return `${d.getUTCMonth() + 1}/
  * where the business is now, what is changing, what the market is saying, the risks, and a
  * one-line takeaway. Every sentence restates a value that is shown elsewhere with its source.
  */
-export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }) {
+export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0, review=null }) {
   const lines = [];
   // 1. profit now vs a year ago
   const lastQ = ni.at(-1);
@@ -146,7 +152,7 @@ export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }
     const b = yoy.at(-1).yoy;
     const consecutive = yoy.every((q, i) => !i || Date.parse(q.end)-Date.parse(yoy[i-1].end)<=110*DAY);
     const accelerating = consecutive && yoy.every((q,i)=>!i || q.yoy>yoy[i-1].yoy);
-    growth = accelerating && b - a > 0.05 ? 'accel' : b - a < -0.1 ? 'decel' : 'steady';
+    growth = accelerating && b>=0.15 && a>=0 && b - a > 0.05 && (!review || review.growthCap>=20) ? 'accel' : b - a < -0.1 ? 'decel' : 'steady';
     const path = yoy.map((q) => pct(q.yoy)).join(' → ');
     lines.push(growth === 'accel' ? `매출 성장률이 ${yoy.length}개 분기 연속 빨라지고 있습니다 (전년 대비 ${path}).`
       : growth === 'decel' ? `매출 성장률은 느려지는 중입니다 (전년 대비 ${path}).`
@@ -168,20 +174,22 @@ export function narrate({ f, yoy, ni, news, themes, dilution = 0, distress = 0 }
   if (dilution) lines.push(`최근 6개월 신주 발행 관련 공시 ${dilution}건 — 주주 몫이 희석될 수 있습니다.`);
   if (distress) lines.push('최근 1년 내 위험 공시가 있어 주의가 필요합니다.');
   // takeaway
+  if(review?.profitCap===0){profit='unverified';lines.push(review.quality);}
   const improving = growth === 'accel' || profit === 'loss-narrowing' || profit === 'turned';
   let takeaway;
-  if (!lastQ && !yoy.length) takeaway = '실적 데이터가 없어 차트와 뉴스만으로 판단해야 합니다.';
+  if (profit==='unverified') takeaway='회계상 순이익과 본업 반복 이익을 분리해야 합니다. 흑자 전환·이익 모멘텀으로 판정하지 않습니다.';
+  else if (!lastQ && !yoy.length) takeaway = '실적 데이터가 없어 차트와 뉴스만으로 판단해야 합니다.';
   else if (profit === 'loss-narrowing' && growth === 'accel') takeaway = '적자지만 매출이 빨라지고 적자가 줄고 있어, 흑자 전환이 확인되면 재평가될 수 있는 유형입니다.';
   else if (profit === 'loss' && growth === 'accel') takeaway = '적자지만 매출은 빨라지는 중입니다 — 적자가 줄어드는지는 아직 확인되지 않았습니다.';
   else if (profit === 'loss-narrowing') takeaway = '아직 적자지만 개선 중입니다 — 다음 분기에 적자가 더 줄어드는지가 관건입니다.';
-  else if (profit === 'turned') takeaway = '흑자 전환 초기입니다 — 이익이 다음 분기에도 이어지는지 확인이 필요합니다.';
+  else if (profit === 'turned') takeaway = '보고 순이익의 흑자 전환입니다. 일회성 효과와 본업 반복 이익을 원문에서 확인해야 합니다.';
   else if ((profit === 'profit-growing' || profit === 'profit') && growth === 'accel') takeaway = '이미 흑자에 성장도 빨라지는 실적 모멘텀형입니다.';
-  else if (profit === 'profit-falling') takeaway = growth === 'accel' ? '매출은 빨라지지만 이익은 1년 전보다 크게 줄었습니다 — 성장이 이익으로 이어지는지 확인이 필요합니다.' : '이익이 1년 전보다 크게 줄었습니다 — 실적 뒷받침이 약합니다.';
+  else if (profit === 'profit-falling') takeaway = growth === 'accel' ? '매출은 빨라지지만 이익은 1년 전보다 크게 줄었습니다 — 성장이 이익으로 이어지는지 확인이 필요합니다.' : '이익은 1년 전보다 크게 줄었습니다 — 실적 뒷받침이 약합니다.';
   else if (growth === 'decel') takeaway = '성장이 느려지는 중이라, 차트가 좋아도 실적 뒷받침은 약합니다.';
   else if (profit === 'loss-widening') takeaway = '적자가 커지는 중이라, 스토리보다 위험이 큽니다.';
   else takeaway = improving ? '실적이 개선되는 흐름입니다.' : '실적에 뚜렷한 변화는 아직 보이지 않습니다.';
   if (doubted && improving) takeaway += ' 시장의 의심과 실적 개선이 엇갈리는 구간입니다.';
-  return { lines, takeaway, method: '규칙 기반 자동 요약 — 위 숫자·뉴스 제목만으로 작성 (AI 해석 아님)' };
+  return { lines, takeaway,quality:{profitBlocked:review?.profitCap===0,growthBlocked:Boolean(review&&review.growthCap<20)}, method: '규칙 기반 자동 요약 — 보고 수치·원문 품질 검토·뉴스 제목을 구분 (AI 해석 아님·매수 판정 아님)' };
 }
 
 function fmtUsd(v) {

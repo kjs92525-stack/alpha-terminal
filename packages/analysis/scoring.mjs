@@ -197,10 +197,10 @@ export function evidence(m) {
   if (isNum(m.sma50) && isNum(m.price)) add(m.price > m.sma50 ? '+' : '-', 'trend', `종가 ${m.price > m.sma50 ? '>' : '<'} 50일 이평 (${m.sma50.toFixed(2)})`);
   if (isNum(m.sma200) && isNum(m.price)) add(m.price > m.sma200 ? '+' : '-', 'trend', `종가 ${m.price > m.sma200 ? '>' : '<'} 200일 이평 (${m.sma200.toFixed(2)})`);
   if (isNum(m.rsi14)) add(m.rsi14 > 75 || m.rsi14 < 35 ? '-' : '+', 'trend', `RSI(14) ${m.rsi14.toFixed(1)}${m.rsi14 > 75 ? ' — 과열' : m.rsi14 < 30 ? ' — 과매도' : ''}`);
-  if (isNum(m.revenueGrowth)) add(m.revenueGrowth >= 0 ? '+' : '-', 'quality', `연간 매출 성장률 ${pct(m.revenueGrowth)} (SEC XBRL, 최근 회계연도)`);
+  if (isNum(m.revenueGrowth)) add(m.revenueGrowth >= 0 ? '+' : '-', 'quality', `보고 매출 성장률 ${pct(m.revenueGrowth)} (연간/TTM 기간·출처 확인 필요)`);
   if (isNum(m.netMargin)) add(m.netMargin >= 0 ? '+' : '-', 'quality', `순이익률 ${pct(m.netMargin)}`);
   if (isNum(m.runwayMonths)) add(m.runwayMonths >= 18 ? '+' : '-', 'quality', `현금 런웨이 약 ${m.runwayMonths.toFixed(0)}개월 (연간 영업현금흐름 기준)`);
-  if (isNum(m.sharesYoY)) add(m.sharesYoY <= 0.03 ? '+' : '-', 'quality', `유통주식수 1년 변화 ${pct(m.sharesYoY)}`);
+  if (isNum(m.sharesYoY)) add(m.sharesYoY <= 0.03 ? '+' : '-', 'quality', `발행주식수 1년 변화 ${pct(m.sharesYoY)} (유통물량과 다름)`);
   if (m.dilutionFilings365d > 0) add('-', 'risk', `최근 1년 희석 관련 공시 ${m.dilutionFilings365d}건 (S-1/S-3/424B/8-K 3.02)`);
   if (isNum(m.priceToSales)) add(m.priceToSales <= 5 ? '+' : '-', 'valuation', `P/S ${m.priceToSales.toFixed(1)}배`);
   if (isNum(m.priceToEarnings)) add(m.priceToEarnings <= 25 ? '+' : '-', 'valuation', `P/E ${m.priceToEarnings.toFixed(1)}배`);

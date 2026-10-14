@@ -8,8 +8,8 @@ const spy = series(Array.from({ length: 600 }, (_, i) => 400 + i * 0.2));
 test('long slide then back above a turning 200-day = early cycle; steady leader = leading; slide = down', () => {
   const early = [];
   for (let i = 0; i < 300; i++) early.push(100 - i * 0.15); // 100 -> 55
-  for (let i = 0; i < 200; i++) early.push(55 + 3 * Math.sin(i / 10)); // base
-  for (let i = 0; i < 100; i++) early.push(55 + i * 0.12); // turn up to ~67
+  for (let i = 0; i < 260; i++) early.push(55 + 3 * Math.sin(i / 10)); // base
+  for (let i = 0; i < 40; i++) early.push(55 + i * 0.12); // turn up to ~67
   const e = cyclePhase(series(early), spy);
   assert.equal(e.phase, 'EARLY', JSON.stringify(e.metrics));
 
@@ -38,7 +38,7 @@ test('stocks are attached to the ETF they track beyond the market, not to everyt
   assert.equal(bestGroup(marketOnly, { SMH, XBI }, SPY), null);
 });
 
-test('modest pullback near highs is a pause, not a bottom; weak-year turnaround outperforming is early', () => {
+test('modest pullback is not a bottom; a long-running turnaround is no longer a fresh price turn', () => {
   const spyUp = series(Array.from({ length: 600 }, (_, i) => 400 + i * 0.1));
   // up 50% over two years, then a 9% dip just under the 200-day: a pause
   const pause = Array.from({ length: 560 }, (_, i) => 60 + i * 0.06).concat(Array.from({ length: 40 }, (_, i) => 93.6 - i * 0.22));
@@ -47,7 +47,7 @@ test('modest pullback near highs is a pause, not a bottom; weak-year turnaround 
   assert.notEqual(p.phase, 'BASING');
   // flat-to-down year, then a sharp 3-month rally beating the market (IGV 2026-like)
   const turn = Array.from({ length: 460 }, (_, i) => 100 - i * 0.05).concat(Array.from({ length: 140 }, (_, i) => 77 + i * 0.06 + 1.5 * Math.sin(i / 6)));
-  assert.equal(cyclePhase(series(turn), spyUp).phase, 'EARLY');
+  assert.equal(cyclePhase(series(turn), spyUp).phase, 'LEADING');
 });
 
 test('a group that doubled and then pulled back 25% is not a bottom (gold miners 2026-like)', () => {

@@ -1,0 +1,2 @@
+export interface IndustrialCycle {stage:string;label:string;observations:Array<{kind:string;label:string;value:string;date:string;url:string}>;companies:Array<{ticker:string;period:string;growth:number|null;priorGrowth:number|null;source:string;quality:string}>;missing:string[];note:string}
+export function industrialCycle(id:string,asOf:string,stocks?:Record<string,{company?:{period:string;growth:number|null;priorGrowth:number|null;source:string;quality:string}}>):IndustrialCycle;
