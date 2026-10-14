@@ -1,4 +1,6 @@
 import { DecisionTools } from '../components/DecisionTools';
+import { BusinessStory } from '../components/BusinessStory';
+import { businessStory } from '../../../../packages/analysis/business-stories.mjs';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { fetchEarlyAlpha, type EarlyData, type EarlyRow } from '../lib/earlyAlpha';
@@ -21,7 +23,7 @@ function Evidence({ row, asOf }: { row: EarlyRow; asOf: string }) {
   const dossier = companyDossier(row, asOf);
   return <section className="ea-detail" aria-label={`${row.ticker} 사업 스토리`}>
     <div className="ea-detail-heading"><div><small>REVALUATION DOSSIER</small><h2>{row.ticker} <span>{row.name}</span></h2></div><button className="ea-button" onClick={() => { select(row.ticker); setPage('research'); }}>기업 분석 <ArrowUpRight size={14} /></button></div>
-    {dossier ? <CompanyDossier row={row} asOf={asOf} /> : <>
+    {dossier ? <CompanyDossier row={row} asOf={asOf} /> : businessStory(row.ticker,asOf) ? <><BusinessStory row={row} asOf={asOf} /><MacroStory ticker={row.ticker} asOf={asOf} /></> : <>
     <div className="ea-story">
       <small>{story.reviewed ? `회사 원문 확인 · 발표 ${story.publishedAt} · 검토 ${story.reviewedAt}` : '자동 요약 · 사업 맥락 검증 대기'}</small>
       <h3 className="ea-story-title">{story.title}</h3>
@@ -53,6 +55,7 @@ function CompanyCard({ row, asOf, expanded, onToggle }: { row: EarlyRow; asOf: s
   const cardRef = useRef<HTMLButtonElement>(null);
   const contentId = `ea-story-${row.symbol}`;
   const dossier = companyDossier(row, asOf);
+  const business=businessStory(row.ticker,asOf);
   const collapse = () => {
     onToggle();
     requestAnimationFrame(() => {
@@ -65,9 +68,9 @@ function CompanyCard({ row, asOf, expanded, onToggle }: { row: EarlyRow; asOf: s
       <div className="ea-card-top"><b>{row.ticker} {row.isNew && <em>NEW · 검증 후보</em>}{row.isNewResearch && <em>NEW · 연구</em>}</b><strong>{row.score}<small>/100 발굴</small></strong></div>
       <p>{row.name}</p><small>{statusLabel[row.status]} · 연구 최초 {row.firstResearchSeen??'없음'} · 검증 최초 {row.firstSeen??'대기'}</small>
       <div className="ea-card-metrics"><span>시총 {usd(row.marketCap)}</span><span>3개월 {pct(row.ret63)}</span><span>고점 -{(row.drawdown * 100).toFixed(0)}%</span></div>
-      <p className="ea-card-story-title">{dossier?.headline ?? buildEarlyStory(row, asOf).title}</p>
-      <p className="ea-card-preview">{dossier?.preview ?? '자동 점수에서 신호를 찾았지만, 고객·제품·계약과 정상 이익을 연결하는 기업 분석은 아직 검증되지 않았습니다.'}</p>
-      <span className="ea-card-coverage">{dossier ? '기업별 투자 논리 전문 · 가격 검증 미완성' : '사업 스토리 검증 대기 · 점수만으로 매수 판단 불가'}</span>
+      <p className="ea-card-story-title">{dossier?.headline ?? business?.headline ?? buildEarlyStory(row, asOf).title}</p>
+      <p className="ea-card-preview">{dossier?.preview ?? business?.preview ?? '기업별 사업 자료를 확보하지 못했습니다. 제품·고객을 확인하기 전에는 일반 산업 테마를 이 회사의 스토리로 붙이지 않습니다.'}</p>
+      <span className="ea-card-coverage">{dossier ? '기업별 투자 논리 전문 · 가격 검증 미완성' : business ? '기업별 사업 설명·수익 경로 · 최신 실적 가설은 검증 필요' : '사업 스토리 검증 대기 · 점수만으로 매수 판단 불가'}</span>
       <span className="ea-risk-label">희석 위험 {row.risk.level === 'high' ? '높음' : row.risk.level === 'unknown' ? '미확인' : '원문 검토 필요'}</span>
       <span className="ea-card-action">{expanded ? '스토리 접기 ▴' : '스토리 펼쳐 읽기 ▾'}</span>
     </button>
@@ -85,12 +88,15 @@ export function EarlyAlpha() {
   const [tracking,setTracking]=useState('research');
   const perf=tracking==='research'&&data?.researchPerformance?data.researchPerformance:data?.performance;
   const summary = perf?.summary[horizon];
+  const researchRows=data?.candidates.filter(r=>r.researchCandidate)??[];
+  const businessCovered=researchRows.filter(r=>businessStory(r.ticker,data!.asOf)||companyDossier(r,data!.asOf)).length;
   const age = data ? Math.floor((Date.now() - Date.parse(data.asOf)) / 86400000) : 0;
   return <div className="ea-page">
     <div className="ea-hero"><div><span className="ea-kicker">BEFORE THE CONSENSUS</span><h2>기업의 변화가<br />가격보다 먼저.</h2><p>매출 가속 · 수익성 전환 · 계약과 상업화<br />이미 급등한 종목을 제외하는 독립 발굴 엔진</p></div><div className="ea-hero-right"><b>EARLY<br />ALPHA<span>↗</span></b><button className="ea-button" disabled={loading} onClick={() => setRefresh((v) => v + 1)}><RefreshCw size={14} /> {loading ? '불러오는 중' : '새로고침'}</button></div></div>
     {error && <div className="ea-risk" role="alert">{error}</div>}
     {loading && <p role="status">야간 발굴 결과를 불러오는 중…</p>}
     {data && <><div className="ea-meta">기준 {data.asOf} · {data.model}{data.ledgerModel && data.ledgerModel !== data.model && ' (현재 재검토 점수·최초 원장 별도 보존)'} · 최초 기록 {data.generatedAt} · 갱신 {data.refreshedAt}{age > 4 && <strong> · 오래된 데이터</strong>}</div>
+      <div className="ea-meta">발굴 후보 사업 스토리 {businessCovered} / {researchRows.length} · 고객·제품 → 수요 → 수익·주당 가치 → 실패 조건을 기업별로 읽습니다. 새로 들어온 미등록 기업에는 확인 전 테마를 붙이지 않습니다.</div>
       <div className="ea-stats"><div><span>검사 종목</span><b>{data.stats.scanned.toLocaleString()}</b></div><div><span>연구 발굴 / 검증 후보</span><b>{data.stats.researchCandidates??0} / {data.stats.candidates}</b></div><div><span>기준일 신규 연구</span><b>{data.candidates.filter((r) => r.isNewResearch||r.isNew).length}</b></div><div><span>뉴스 확인 / 실패</span><b>{data.enrichment?.newsRequests ?? data.stats.newsRequests} / {data.enrichment?.newsFailures ?? data.stats.newsFailures}</b></div></div>
       <div className="ea-meta">연구 발굴은 실적 신호를 찾은 검증 대기 단계입니다. 공시·현금·가치 확인 전에는 매수 검증 완료가 아닙니다. 공시 목록 조회 {data.stats.filingRequests??0}건 / 실패 {data.stats.filingFailures??0}건 · 위험 미검증 {data.stats.unverifiedRisk??'집계 대기'}개</div>
       <SectorRadar />
