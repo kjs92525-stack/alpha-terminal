@@ -1,3 +1,4 @@
+import { MacroStory } from '../components/MacroStory';
 import { InvestmentReviewPanel } from '../components/InvestmentReview';
 import { ExternalLink, Star } from 'lucide-react';
 import { useAnalysis, useTerminal } from '../lib/store';
@@ -38,6 +39,7 @@ export function Research() {
       </section>
 
       <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
+      <section className="pad-box"><MacroStory ticker={data.symbol} asOf={m.asOf} /></section>
       <div className="detail-grid">
         <section className="panel">
           <PanelHead kicker="FACTORS" title="팩터 분해" />
