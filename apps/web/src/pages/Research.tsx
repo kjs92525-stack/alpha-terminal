@@ -1,3 +1,5 @@
+import { DemandMechanism } from '../components/DemandMechanism';
+import { demandStory } from '../../../../packages/analysis/demand-stories.mjs';
 import { CompanyDossier } from '../components/CompanyDossier';
 import { companyDossier } from '../../../../packages/analysis/company-dossier.mjs';
 import { MacroStory } from '../components/MacroStory';
@@ -20,6 +22,7 @@ export function Research() {
   const f = data.fundamentals;
   const storyRow = {ticker:data.symbol,name:data.name ?? data.symbol,status:'watch',evidence:[],reasons:[],risk:{level:'unknown',checked:false},marketCap:m.marketCap,reportPeriod:f?.revenueQuarterly.at(-1)?.end,demo:mode==='mock'};
   const hasDossier = Boolean(companyDossier(storyRow,m.asOf));
+  const hasMechanism = mode!=='mock' && Boolean(demandStory(data.symbol,m.asOf));
   return (
     <>
       <section className="panel">
@@ -43,8 +46,9 @@ export function Research() {
       </section>
 
       {hasDossier && <section className="panel pad-box"><CompanyDossier row={storyRow} asOf={m.asOf} /></section>}
+      {!hasDossier && hasMechanism && <section className="panel pad-box"><DemandMechanism ticker={data.symbol} asOf={m.asOf} /></section>}
       <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
-      {!hasDossier && mode!=='mock' && <section className="pad-box"><MacroStory ticker={data.symbol} asOf={m.asOf} /></section>}
+      {!hasDossier && mode!=='mock' && <details className="panel pad-box"><summary>세계정세·산업 전망과 연결해서 읽기</summary><MacroStory ticker={data.symbol} asOf={m.asOf} /></details>}
       <div className="detail-grid">
         <section className="panel">
           <PanelHead kicker="FACTORS" title="팩터 분해" />
