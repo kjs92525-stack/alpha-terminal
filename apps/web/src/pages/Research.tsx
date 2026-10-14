@@ -2,6 +2,7 @@ import { DecisionTools } from '../components/DecisionTools';
 import { DemandMechanism } from '../components/DemandMechanism';
 import { demandStory } from '../../../../packages/analysis/demand-stories.mjs';
 import { CompanyDossier } from '../components/CompanyDossier';
+import { BusinessStory } from '../components/BusinessStory';
 import { companyDossier } from '../../../../packages/analysis/company-dossier.mjs';
 import { MacroStory } from '../components/MacroStory';
 import { InvestmentReviewPanel } from '../components/InvestmentReview';
@@ -47,6 +48,7 @@ export function Research() {
       </section>
 
       {hasDossier && <section className="panel pad-box"><CompanyDossier row={storyRow} asOf={m.asOf} /></section>}
+      {!hasDossier && mode!=='mock' && <BusinessStory row={storyRow} asOf={m.asOf} />}
       {!hasDossier && hasMechanism && <section className="panel pad-box"><DemandMechanism ticker={data.symbol} asOf={m.asOf} /></section>}
       <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
       {!hasDossier && mode!=='mock' && <details className="panel pad-box"><summary>세계정세·산업 전망과 연결해서 읽기</summary><MacroStory ticker={data.symbol} asOf={m.asOf} /></details>}
