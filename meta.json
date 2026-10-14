@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-13T23:15:44.247Z",
+ "startedAt": "2026-10-13T23:48:27.403Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
@@ -16,10 +16,10 @@
  },
  "finnhub": {
   "needed": 5262,
-  "cached": 3497,
+  "cached": 3996,
   "attempted": 500,
   "fetched": 499,
-  "withRevenue": 260,
+  "withRevenue": 245,
   "errors": [
    "QCRH: Finnhub HTTP 500"
   ],
@@ -79,5 +79,5 @@
   "grouped": 740
  },
  "ledgerWritten": false,
- "seconds": 1947
+ "seconds": 1896
 }
