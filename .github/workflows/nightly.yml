@@ -36,6 +36,9 @@ jobs:
       ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      # Release refresh reuses the latest fundamentals cache so the first screen
+      # is ready promptly; scheduled/manual runs keep the normal API budget.
+      FINNHUB_MAX_CALLS: ${{ github.event_name == 'push' && '0' || '1500' }}
     steps:
       - name: Check secrets
         id: check

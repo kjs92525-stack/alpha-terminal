@@ -21,7 +21,7 @@ export function EarlyAlpha() {
   const [data, setData] = useState<EarlyData | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(true); const [refresh, setRefresh] = useState(0);
   const [filter, setFilter] = useState('candidate'); const [q, setQ] = useState(''); const [symbol, setSymbol] = useState(''); const [horizon, setHorizon] = useState('63');
   useEffect(() => { const controller = new AbortController(); setLoading(true); setError('');
-    fetchEarlyAlpha(controller.signal).then(setData).catch((e) => { if (!controller.signal.aborted) { setData(null); setError(e.message); } }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    fetchEarlyAlpha(controller.signal).then((next) => { setData(next); setFilter((current) => current === 'candidate' && !next.candidates.some((r) => r.status === 'candidate') && next.candidates.some((r) => r.status === 'watch') ? 'watch' : current); }).catch((e) => { if (!controller.signal.aborted) { setData(null); setError(e.message); } }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [refresh]);
   const rows = (data?.candidates ?? []).filter((r) => (filter === 'all' || filter === 'new' && r.isNew || r.status === filter) && `${r.symbol} ${r.name}`.toLowerCase().includes(q.toLowerCase()));

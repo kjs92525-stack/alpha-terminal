@@ -4,7 +4,7 @@ EARLY ALPHA finds small-cap business inflections independently of the existing c
 
 ## Eligibility and model
 
-Default universe: estimated market cap $100M–$2B, price >= $1, 20-session dollar volume >= $500K, 126 sessions of prices, recent close <= 4 calendar days old, 52-week high drawdown >= 20%. SPACs are excluded. A 63-session rally >50% or 21-session rally >30% is excluded; 63-session gains >20% receive a 10-point penalty. Market cap uses reported shares no more than 180 days old times adjusted close; splits and recent issues can distort this estimate. Undated vendor profile market caps are not silently substituted.
+Default universe: estimated market cap $100M–$2B, price >= $1, 20-session dollar volume >= $500K, 126 sessions of prices, recent close <= 4 calendar days old, 52-week high drawdown >= 20%. SPACs are excluded. A 63-session rally >50% or 21-session rally >30% is excluded; 63-session gains >20% receive a 10-point penalty. Market cap uses reported shares no more than 180 days old times adjusted close; splits and recent issues can distort this estimate. When reported shares are unavailable, dated Finnhub profile shares collected on/before asOf and <=45 days old can estimate size for watch screening. The collection date, method and warning are displayed; these rows can never become confirmed candidates. Future/undated/stale collections remain excluded.
 
 Absolute, explainable score (not upside/probability):
 
@@ -50,3 +50,5 @@ Each symbol is tracked once at first discovery, entry at the next SPY session's 
 `#early-alpha` adds a responsive dedicated workspace: candidate/new/watch/excluded tabs, search, factor breakdown, evidence links and provenance, risk warnings, last source collection time, stale-data warning, and first-discovery performance. Data errors and first-run empty states are explicit; no fake fallback stocks. Existing Research is accessible per ticker.
 
 Validation: deterministic scoring, future-data rejection, hot-stock exclusion, news deduplication/LOI/nonbinding/negation handling, dilution/runway, incomplete data, immutable reruns, first discovery, exact benchmark-date matching, MFE/MAE, missing denominator, news budgets/pagination; existing full test suite, API/frontend typechecks and production build. Live API results require the repository's secrets and nightly execution after merge. Local tests use synthetic fixtures and do not assert today's live recommendations.
+
+Release activation: a main push affecting the EARLY ALPHA engine or nightly workflow refreshes the full cached universe immediately. The release run sets FINNHUB_MAX_CALLS=0 to reuse the latest collected fundamentals; scheduled/manual runs retain 1500 calls. If SEC is blocked, profile-size watch candidates remain visible with incomplete-dilution warnings, and the initial UI opens the watch tab when no confirmed candidates exist.

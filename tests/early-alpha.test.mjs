@@ -153,3 +153,18 @@ test('unknown or stale cash safety cannot be promoted to candidate', () => {
   c.facts.cash = point('2023-12-31', 1e9, '2024-02-01'); c.facts.operatingCashFlow = point('2023-12-31', 1e9, '2024-02-01');
   assert.equal(score({ company: c }).status, 'watch');
 });
+
+
+test('dated Finnhub profile size can screen watch candidates when SEC is unavailable', () => {
+  const c = structuredClone(company); c.source = 'Finnhub';
+  c.facts.sharesOutstanding = { value: 50e6, form: 'profile', filed: null, end: '2099-01-01' };
+  const r = score({ company: c });
+  assert.equal(r.marketCap, 500e6); assert.equal(r.capBasis, 'vendor_profile');
+  assert.equal(r.status, 'watch'); assert.equal(r.risk.checked, false);
+  assert.ok(r.warnings.some((w) => /프로필 추정치/.test(w)));
+  // Collection time, not the regenerated profile end date, controls visibility.
+  c.fetchedAt = '2026-10-13T01:00:00Z';
+  assert.equal(score({ company: c }).status, 'excluded');
+  c.fetchedAt = '2026-08-01T01:00:00Z';
+  assert.equal(score({ company: c }).status, 'excluded');
+});

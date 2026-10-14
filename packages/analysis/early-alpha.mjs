@@ -43,7 +43,16 @@ export function earlyEligibility(row, company, bars, asOf, rules = EARLY_RULES) 
   // Shares multiplied by adjustment=all close can mismatch after a split.
   // Expose the estimation; do not use an undated vendor market cap.
   const sharesFresh = f.shares && Date.parse(asOf) - Date.parse(f.shares.end) <= 180 * DAY;
-  const cap = sharesFresh ? f.shares.value * m.price : null;
+  const cutoff = Date.parse(asOf) + DAY - 1;
+  const collected = Date.parse(company?.fetchedAt);
+  const profileShares = company?.facts?.sharesOutstanding;
+  const profileFresh = company?.source === 'Finnhub' && profileShares?.form === 'profile'
+    && num(profileShares.value) && Number.isFinite(collected) && collected <= cutoff && cutoff - collected <= 45 * DAY;
+  const cap = sharesFresh ? f.shares.value * m.price : profileFresh ? profileShares.value * m.price : null;
+  const capBasis = sharesFresh ? 'reported' : profileFresh ? 'vendor_profile' : 'missing';
+  const capMethod = capBasis === 'vendor_profile'
+    ? `Finnhub 프로필 주식 수 × 기준 종가 (수집 ${company.fetchedAt}, 보고일 미확인·최대 45일 지연)`
+    : '최근 보고 주식 수 × 조정 종가 (분할·최근 발행 시 오차 가능)';
   const excluded = [];
   if (!num(cap)) excluded.push('시가총액 데이터 부족 또는 주식 수 180일 이상 경과');
   else if (cap < rules.minCap || cap > rules.maxCap) excluded.push('시가총액 $100M–$2B 범위 밖');
@@ -54,15 +63,16 @@ export function earlyEligibility(row, company, bars, asOf, rules = EARLY_RULES) 
   if (m.ret63 > rules.maxRet63 || m.ret21 > rules.maxRet21) excluded.push('이미 급등: 3개월 +50% 또는 1개월 +30% 초과');
   if (!(m.drawdown >= rules.minDrawdown)) excluded.push('52주 고점 대비 하락폭 20% 미만');
   if (row.sector === 'Blank Check') excluded.push('SPAC 제외');
-  return { market: m, facts: f, cap, excluded };
+  return { market: m, facts: f, cap, capBasis, capMethod, excluded };
 }
 
 export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'not_checked', asOf }) {
-  const { market: m, facts: f, cap, excluded } = earlyEligibility(row, company, bars, asOf);
+  const { market: m, facts: f, cap, capBasis, capMethod, excluded } = earlyEligibility(row, company, bars, asOf);
   const cutoff = Date.parse(asOf) + DAY - 1;
   const source = company?.source ?? 'SEC';
   const factUrl = company?.cik ? `https://www.sec.gov/edgar/browse/?CIK=${Number(company.cik)}` : `https://finnhub.io/`;
   const reasons = []; const warnings = [];
+  if (capBasis === 'vendor_profile') warnings.push('시가총액은 수집 시점 프로필 추정치 — 보고 주식 수와 최근 발행 규모 원문 확인 필요');
   const components = { growth: 0, profitability: 0, catalyst: 0, neglect: 0, value: 0, base: 0, penalty: 0 };
   const evidence = [];
   const add = (factor, points, text, pointsUsed = []) => {
@@ -133,9 +143,9 @@ export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'n
   if (!latestReport || Date.parse(asOf) - Date.parse(latestReport.end) > 200 * DAY) warnings.push('최근 분기 재무 데이터 부족 또는 200일 이상 경과');
   const score = Math.max(0, Math.min(100, Object.values(components).reduce((a, b) => a + b, 0)));
   const cashSafetyKnown = f.runway !== null || f.cashFlowFresh && f.ocf?.value >= 0;
-  const status = excluded.length ? 'excluded' : score >= EARLY_RULES.minScore && improving && cashSafetyKnown && offeringChecked && latestReport && Date.parse(asOf) - Date.parse(latestReport.end) <= 200 * DAY ? 'candidate' : 'watch';
+  const status = excluded.length ? 'excluded' : score >= EARLY_RULES.minScore && improving && capBasis === 'reported' && cashSafetyKnown && offeringChecked && latestReport && Date.parse(asOf) - Date.parse(latestReport.end) <= 200 * DAY ? 'candidate' : 'watch';
   return { symbol: row.symbol, ticker: row.ticker ?? row.symbol, name: row.name, sector: row.sector, asOf, model: EARLY_MODEL, score, status, components, reasons, warnings, excluded,
-    price: m.price, marketCap: cap, capMethod: '최근 보고 주식 수 × 조정 종가 (분할·최근 발행 시 오차 가능)', ret63: m.ret63, drawdown: m.drawdown, adv20: m.adv20,
+    price: m.price, marketCap: cap, capMethod, capBasis, ret63: m.ret63, drawdown: m.drawdown, adv20: m.adv20,
     revenueYoY: yoy, evidence, risk: { level: dilution.length || riskNews.length || f.runway !== null && f.runway < 12 ? 'high' : offeringChecked ? 'review' : 'unknown', dilutionFilings: dilution.length, runwayMonths: f.runway, sharesYoY: f.sharesYoY, checked: Boolean(offeringChecked) },
     newsStatus, fetchedAt: company?.fetchedAt ?? null };
 }
