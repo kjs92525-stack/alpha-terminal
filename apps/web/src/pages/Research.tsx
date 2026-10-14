@@ -1,3 +1,5 @@
+import { CompanyDossier } from '../components/CompanyDossier';
+import { companyDossier } from '../../../../packages/analysis/company-dossier.mjs';
 import { MacroStory } from '../components/MacroStory';
 import { InvestmentReviewPanel } from '../components/InvestmentReview';
 import { ExternalLink, Star } from 'lucide-react';
@@ -16,6 +18,8 @@ export function Research() {
   const s = data.score;
   const m = s.metrics;
   const f = data.fundamentals;
+  const storyRow = {ticker:data.symbol,name:data.name ?? data.symbol,status:'watch',evidence:[],reasons:[],risk:{level:'unknown',checked:false},marketCap:m.marketCap,reportPeriod:f?.revenueQuarterly.at(-1)?.end,demo:mode==='mock'};
+  const hasDossier = Boolean(companyDossier(storyRow,m.asOf));
   return (
     <>
       <section className="panel">
@@ -38,8 +42,9 @@ export function Research() {
         {data.warnings.map((w) => <ErrorBox key={w} error={w} />)}
       </section>
 
+      {hasDossier && <section className="panel pad-box"><CompanyDossier row={storyRow} asOf={m.asOf} /></section>}
       <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
-      <section className="pad-box"><MacroStory ticker={data.symbol} asOf={m.asOf} /></section>
+      {!hasDossier && mode!=='mock' && <section className="pad-box"><MacroStory ticker={data.symbol} asOf={m.asOf} /></section>}
       <div className="detail-grid">
         <section className="panel">
           <PanelHead kicker="FACTORS" title="팩터 분해" />

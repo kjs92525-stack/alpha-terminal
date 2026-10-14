@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { fetchEarlyAlpha, type EarlyData, type EarlyRow } from '../lib/earlyAlpha';
 import { SectorRadar } from '../components/SectorRadar';
+import { CompanyDossier } from '../components/CompanyDossier';
+import { companyDossier } from '../../../../packages/analysis/company-dossier.mjs';
 import { MacroStory } from '../components/MacroStory';
 import { InvestmentReviewPanel } from '../components/InvestmentReview';
 import { useTerminal } from '../lib/store';
@@ -14,9 +16,10 @@ function Evidence({ row, asOf }: { row: EarlyRow; asOf: string }) {
   const { select, setPage } = useTerminal();
   const story = buildEarlyStory(row, asOf);
   const evidence = representativeEvidence(row, asOf);
+  const dossier = companyDossier(row, asOf);
   return <section className="ea-detail" aria-label={`${row.ticker} 사업 스토리`}>
     <div className="ea-detail-heading"><div><small>REVALUATION DOSSIER</small><h2>{row.ticker} <span>{row.name}</span></h2></div><button className="ea-button" onClick={() => { select(row.ticker); setPage('research'); }}>기업 분석 <ArrowUpRight size={14} /></button></div>
-    <InvestmentReviewPanel input={{ticker:row.ticker,asOf,price:row.price,marketCap:row.marketCap,status:row.status,reportPeriod:row.reportPeriod ?? row.revenueYoY?.at(-1)?.end,risk:row.risk,excluded:row.excluded}} />
+    {dossier ? <CompanyDossier row={row} asOf={asOf} /> : <>
     <div className="ea-story">
       <small>{story.reviewed ? `회사 원문 확인 · 발표 ${story.publishedAt} · 검토 ${story.reviewedAt}` : '자동 요약 · 사업 맥락 검증 대기'}</small>
       <h3 className="ea-story-title">{story.title}</h3>
@@ -29,6 +32,10 @@ function Evidence({ row, asOf }: { row: EarlyRow; asOf: string }) {
       <p className="ea-story-status">{story.status}{story.stale && ' 기존 사업 맥락은 재검토가 필요해 자동 요약으로 표시합니다.'}</p>
       {story.sources.map((source) => <a className="ea-story-source" key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.label} ↗</a>)}
     </div>
+    </>}
+    <details className="ea-fold" open={dossier ? undefined : true}><summary>재무 검증 상세 · 현금·희석·가치의 미확인 항목</summary>
+    <InvestmentReviewPanel input={{ticker:row.ticker,asOf,price:row.price,marketCap:row.marketCap,status:row.status,reportPeriod:row.reportPeriod ?? row.revenueYoY?.at(-1)?.end,risk:row.risk,excluded:row.excluded}} />
+    </details>
     <details className="ea-fold"><summary>발굴 점수와 선정 조건 · {row.score}/100 (투자 확신 아님)</summary>
     <p>{row.capMethod} · 재무 수집 {row.fetchedAt ?? '미확인'} · 뉴스 {row.enrichmentStatus ? `${row.enrichmentStatus} (재조회)` : row.newsStatus}</p>
     <div className="ea-factors">{Object.entries(row.components).map(([key, score]) => <div key={key}><span>{labels[key]}</span><b className={score < 0 ? 'ea-negative' : ''}>{score > 0 ? '+' : ''}{score}</b></div>)}</div>
@@ -42,6 +49,7 @@ function Evidence({ row, asOf }: { row: EarlyRow; asOf: string }) {
 function CompanyCard({ row, asOf, expanded, onToggle }: { row: EarlyRow; asOf: string; expanded: boolean; onToggle: () => void }) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const contentId = `ea-story-${row.symbol}`;
+  const dossier = companyDossier(row, asOf);
   const collapse = () => {
     onToggle();
     requestAnimationFrame(() => {
@@ -54,7 +62,9 @@ function CompanyCard({ row, asOf, expanded, onToggle }: { row: EarlyRow; asOf: s
       <div className="ea-card-top"><b>{row.ticker} {row.isNew && <em>NEW</em>}</b><strong>{row.score}<small>/100 발굴</small></strong></div>
       <p>{row.name}</p><small>{statusLabel[row.status]} · 최초 후보 {row.firstSeen ?? '없음'}</small>
       <div className="ea-card-metrics"><span>시총 {usd(row.marketCap)}</span><span>3개월 {pct(row.ret63)}</span><span>고점 -{(row.drawdown * 100).toFixed(0)}%</span></div>
-      <p>{buildEarlyStory(row, asOf).title}</p>
+      <p className="ea-card-story-title">{dossier?.headline ?? buildEarlyStory(row, asOf).title}</p>
+      <p className="ea-card-preview">{dossier?.preview ?? '자동 점수에서 신호를 찾았지만, 고객·제품·계약과 정상 이익을 연결하는 기업 분석은 아직 검증되지 않았습니다.'}</p>
+      <span className="ea-card-coverage">{dossier ? '기업별 투자 논리 전문 · 가격 검증 미완성' : '사업 스토리 검증 대기 · 점수만으로 매수 판단 불가'}</span>
       <span className="ea-risk-label">희석 위험 {row.risk.level === 'high' ? '높음' : row.risk.level === 'unknown' ? '미확인' : '원문 검토 필요'}</span>
       <span className="ea-card-action">{expanded ? '스토리 접기 ▴' : '스토리 펼쳐 읽기 ▾'}</span>
     </button>

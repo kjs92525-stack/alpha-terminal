@@ -78,3 +78,9 @@ EARLY ALPHA and Discover include a sector story radar; Research and reviewed com
 The nightly job writes sector-radar.json from actual ETF phases and six companies' collected price/market-cap data. Industrial forecasts do not override ETF phase: LEADING/LATE explicitly are not price-cycle entry; NEUTRAL/DOWN remain unconfirmed. Proxy ETFs are broad and do not represent an identical subindustry. Related companies are selected from reviewed business disclosure, not inferred from return correlation. Large caps, microcaps, stale/missing quotes and prior sharp rallies retain visible warnings. Quotes use dated adjusted closes and estimated caps; no fair value is inferred.
 
 Source facts and interpretations are dated and expire: sector sources 180/365 days, company links 180 days. Unknown businesses get no invented supply-chain link. The sector/company source library is editorial; daily automatic updates cover prices/phase and warnings, not new primary-source deep verification. Before the first radar snapshot, UI derives phases from sectors.json and explicitly leaves company quotes missing. Existing correlation-only SectorCycle candidates are labelled price-linked chart candidates.
+
+### 기업별 투자 논리 전문
+
+FF·KOPN·ICHR·KODK·ARVN은 점수보다 사업 논리를 먼저 읽도록 기업별 전문을 제공합니다. 산업 수요가 주문·납품·현금으로 이어지는 경로, 확인된 사실과 조건부 해석, 낙관론과 반론, 현재 시총이 요구하는 가상 정상 이익, 다음 판단 조건을 연결합니다. 실제 시장 할인 원인을 조사한 것처럼 표현하지 않습니다. 원문·보고기간·편집 검토일과 경쟁력·계약·가치 검증의 공백을 표시합니다.
+
+현재 시총/15는 추가 희석이 없는 가상의 P/E 15배 역산 예시이며 이익 전망·적정 배수·목표가가 아닙니다. ARVN은 임상/계약별 현금흐름 프레임을 사용합니다. 오래된 가격의 역산은 보류하며 새 보고기간·후속 재무 공시·편집 유효기간 종료·데모 모드에서는 전문을 표시하지 않습니다. 기타 자동 발굴 종목에는 기업 스토리 검증 대기를 명시합니다. 전 종목 자동 심층 분석이나 매수 검증 완료를 뜻하지 않습니다.
