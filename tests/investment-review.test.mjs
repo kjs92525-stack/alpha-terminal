@@ -59,7 +59,7 @@ test('model revision updates displayed scores while preserving immutable origina
     const row=score('FF');const args={outDir:dir,asOf,generatedAt:asOf,getBars:()=>[],spyBars:[]};
     publishEarlyAlpha({...args,candidates:[{...row,status:'candidate',score:90}]});
     const file=path.join(dir,'early-alpha','ledger',asOf+'.json');const old=JSON.parse(fs.readFileSync(file));old.model='early-alpha-v1';fs.writeFileSync(file,JSON.stringify(old));const before=fs.readFileSync(file,'utf8');
-    const latest=publishEarlyAlpha({...args,candidates:[{...row,status:'watch',score:40}],stats:{candidates:0}});
-    assert.equal(fs.readFileSync(file,'utf8'),before);assert.equal(latest.candidates[0].score,40);assert.equal(latest.candidates[0].isNew,false);assert.equal(latest.performance.discoveries[0].score,90);assert.equal(latest.model,EARLY_MODEL);
+    const latest=publishEarlyAlpha({...args,candidates:[{...row,status:'watch',score:40},{...row,symbol:'NEW',ticker:'NEW',status:'watch',score:20}],stats:{candidates:0}});
+    assert.equal(fs.readFileSync(file,'utf8'),before);assert.equal(latest.candidates[0].score,40);assert.equal(latest.candidates[0].isNew,false);assert.equal(latest.candidates.length,2);assert.equal(latest.candidates[1].isNew,false);assert.equal(latest.performance.discoveries[0].score,90);assert.equal(latest.model,EARLY_MODEL);
   }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
