@@ -4,13 +4,14 @@ export interface EarlyRow {
   symbol: string; ticker: string; name: string; sector: string; score: number; status: 'candidate' | 'watch' | 'excluded';
   price: number; marketCap: number; capMethod: string; ret63: number; drawdown: number; adv20: number;
   firstSeen: string | null; isNew: boolean; components: Record<string, number>; reasons: Array<{ factor: string; points: number; text: string }>;
-  warnings: string[]; excluded: string[]; evidence: EarlyEvidence[]; fetchedAt: string | null; newsStatus: string;
+  warnings: string[]; excluded: string[]; evidence: EarlyEvidence[]; fetchedAt: string | null; newsStatus: string; enrichmentStatus?: string;
   risk: { level: string; runwayMonths: number | null; sharesYoY: number | null; dilutionFilings: number; checked: boolean };
 }
 export interface EarlyOutcome { status: string; return: number | null; excess: number | null; mfe: number | null; mae: number | null; entryDate?: string; exitDate?: string }
 export interface EarlyData {
   asOf: string; model: string; generatedAt: string; refreshedAt: string; method: string; caveat: string;
   stats: { scanned: number; eligible: number; candidates: number; newsRequests: number; newsFailures: number; newsBudget: number };
+  enrichment?: { generatedAt: string; newsRequests: number; newsFailures: number };
   candidates: EarlyRow[];
   performance: { method: string; summary: Record<string, { total: number; complete: number; pending: number; missing: number; meanReturn: number | null; meanExcess: number | null; winRate: number | null }>;
     discoveries: Array<{ symbol: string; name: string; asOf: string; score: number; outcomes: Record<string, EarlyOutcome> }> };

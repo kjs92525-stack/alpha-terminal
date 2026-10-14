@@ -129,7 +129,7 @@ export function scoreEarlyAlpha({ row, company, bars, news = [], newsStatus = 'n
   if (distress.length) excluded.push('12개월 내 위험·중대 공시');
   const offeringChecked = newsStatus === 'ok' && source === 'SEC' && company?.fetchedAt && Date.parse(asOf) - Date.parse(company.fetchedAt) <= 35 * DAY;
   if (!offeringChecked) warnings.push('공시·뉴스 수집 불완전 — ATM/워런트/전환사채 위험 미확인');
-  warnings.push('뉴스는 최대 5페이지·500건, 공시는 최근 수집분으로 제한되어 오래된 계약·희석 조건이 누락될 수 있음');
+  warnings.push('뉴스는 최대 5페이지·250건, 공시는 최근 수집분으로 제한되어 오래된 계약·희석 조건이 누락될 수 있음');
   warnings.push('미행사 워런트 수량·행사가·ATM 잔액·전환 조건은 원문 확인 필요');
   if (f.runway === null && !(f.ocf?.value >= 0)) warnings.push('현금 런웨이 데이터 부족');
   const improving = components.growth >= 15 || components.profitability >= 15;
