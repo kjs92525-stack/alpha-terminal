@@ -140,6 +140,7 @@ test('news pagination is bounded and its end excludes future coverage; incomplet
     calls++;
     const u = new URL(url);
     assert.equal(u.searchParams.get('end'), '2026-10-12T23:59:59.999Z');
+    assert.equal(u.searchParams.get('limit'), '50', 'Alpaca News maximum page size is 50');
     if (calls > 1) assert.equal(u.searchParams.get('page_token'), `page${calls}`);
     return Response.json({ news: [{ created_at: asOf, headline: 'Company wins supply contract', url: 'https://example.com/news' }], next_page_token: `page${calls + 1}` });
   } });
@@ -167,4 +168,23 @@ test('dated Finnhub profile size can screen watch candidates when SEC is unavail
   assert.equal(score({ company: c }).status, 'excluded');
   c.fetchedAt = '2026-08-01T01:00:00Z';
   assert.equal(score({ company: c }).status, 'excluded');
+});
+
+
+test('successful same-day news retry enriches evidence without rewriting scores or discovery history', () => {
+ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'early-news-retry-'));
+ try {
+  const args = { outDir: dir, asOf, generatedAt: asOf, getBars: () => bars, spyBars: bars };
+  const frozen = score({ newsStatus: 'error' });
+  publishEarlyAlpha({ ...args, candidates: [frozen], stats: { newsRequests: 1, newsFailures: 1 } });
+  const file = path.join(dir, 'early-alpha', 'ledger', `${asOf}.json`); const before = fs.readFileSync(file, 'utf8');
+  const fresh = score({ news: [{ time: asOf, headline: 'Company wins supply contract', url: 'https://example.com/contract' }] });
+  const latest = publishEarlyAlpha({ ...args, candidates: [fresh], stats: { newsRequests: 1, newsFailures: 0 } });
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  assert.equal(latest.candidates[0].score, frozen.score); assert.equal(latest.candidates[0].status, 'watch');
+  assert.equal(latest.candidates[0].enrichmentStatus, 'ok');
+  assert.ok(latest.candidates[0].evidence.some((e) => e.kind === 'catalyst'));
+  assert.equal(latest.enrichment.newsFailures, 0); assert.equal(latest.stats.newsFailures, 1);
+  assert.equal(latest.performance.discoveries.length, 0);
+ } finally { fs.rmSync(dir, {recursive:true,force:true}); }
 });
