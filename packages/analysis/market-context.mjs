@@ -34,9 +34,11 @@ export function parseBlsCpi(html,now=Date.now()){
  const nyHour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(new Date(noon)));
  const published=noon+(8-nyHour)*3600000+30*60000;if(!finite(published)||published>now||now-published>45*86400000)return null;
  const intro=text.split(/CONSUMER PRICE INDEX\s*[-–—]/i)[1]?.split(/Table A\./i)[0];if(!intro)return null;
- const period=intro.match(/^\s*([A-Z]+)\s+(\d{4})/),headlineM=intro.match(/CPI-U\) increased ([\d.]+) percent on a seasonally adjusted basis/i),headlineY=intro.match(/all items index increased ([\d.]+) percent before seasonal adjustment/i),coreM=intro.match(/index for all items less food and energy rose ([\d.]+) percent in/i),coreY=intro.match(/all items less food and energy index rose ([\d.]+) percent over the year/i);
- if(!period||![headlineM,headlineY,coreM,coreY].every(x=>x&&finite(Number(x[1]))))return null;
- return {publishedAt:new Date(published).toISOString(),period:`${period[2]}-${String(MONTHS.findIndex(x=>x.toUpperCase()===period[1])+1).padStart(2,'0')}`,headlineMonthly:Number(headlineM[1]),headlineAnnual:Number(headlineY[1]),coreMonthly:Number(coreM[1]),coreAnnual:Number(coreY[1]),source:'미국 노동통계국(BLS)',url:`https://www.bls.gov/news.release/archives/cpi_${String(month+1).padStart(2,'0')}${date[2].padStart(2,'0')}${date[3]}.htm`};
+ // BLS words a change as increased/rose, decreased/declined/fell, or "was unchanged" (0).
+ const chg=(subject,tail)=>{const m=intro.match(new RegExp(subject+' (?:(increased|rose|decreased|declined|fell) ([\\d.]+) percent|(?:was )?(unchanged))'+tail,'i'));if(!m)return null;if(m[3])return 0;const v=Number(m[2]);return finite(v)?(/^(decreased|declined|fell)$/i.test(m[1])?-v:v):null;};
+ const period=intro.match(/^\s*([A-Z]+)\s+(\d{4})/),headlineM=chg('CPI-U\\)',' (?:in \\w+ )?on a seasonally adjusted basis'),headlineY=chg('all items index',' before seasonal adjustment'),coreM=chg('index for all items less food and energy',' in'),coreY=chg('all items less food and energy index',' over the');
+ if(!period||[headlineM,headlineY,coreM,coreY].some(x=>x===null))return null;
+ return {publishedAt:new Date(published).toISOString(),period:`${period[2]}-${String(MONTHS.findIndex(x=>x.toUpperCase()===period[1])+1).padStart(2,'0')}`,headlineMonthly:headlineM,headlineAnnual:headlineY,coreMonthly:coreM,coreAnnual:coreY,source:'미국 노동통계국(BLS)',url:`https://www.bls.gov/news.release/archives/cpi_${String(month+1).padStart(2,'0')}${date[2].padStart(2,'0')}${date[3]}.htm`};
 }
 export const FRED_CPI='https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL,CPIAUCNS,CPILFESL,CPILFENS';
 // Fallback when bls.gov refuses the runner: FRED's copy of the BLS indexes. Changes are computed from

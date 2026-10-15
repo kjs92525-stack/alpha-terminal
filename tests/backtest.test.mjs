@@ -65,3 +65,26 @@ test('report structure, groups, case study and honest limits', () => {
   assert.ok(rep.limits.length >= 3);
   assert.deepEqual(summarize([], 20), { n: 0 });
 });
+
+test('floor turn: first turn in the lower half of a long base, point-in-time, stop under the swing low', async () => {
+  const { findFloorTurnEvents, simulateFloorTurn } = await import('../packages/pipeline/backtest.mjs');
+  const make = (tail) => {
+    const bars = basePath().slice(0, 540);
+    let t = bars.at(-1).time;
+    const push = (c, v, o = c) => { t += 86400; bars.push({ time: t, open: o, high: Math.max(o, c) * 1.005, low: Math.min(o, c) * 0.995, close: c, volume: v }); };
+    for (let i = 0; i < 60; i++) push(43 + i * 0.01, 1e6);
+    push(45.5, 4e6, 43.8);
+    for (const c of tail) push(c, 1.5e6);
+    return bars;
+  };
+  const up = make(Array.from({ length: 130 }, (_, i) => 46 + i * 0.05)), down = make([46, ...Array(129).fill(30)]);
+  const a = findFloorTurnEvents(up), b = findFloorTurnEvents(down);
+  assert.equal(a.length, 1);
+  assert.equal(a[0].index, 600);
+  assert.equal(b[0].index, a[0].index); // future bars do not change the signal
+  assert.ok(a[0].posInBase <= 0.5 && a[0].stop < 43);
+  const spy = new Map(spyFor(up).map((x) => [x.time, x]));
+  const win = simulateFloorTurn(up, a[0], spy), loss = simulateFloorTurn(down, b[0], new Map(spyFor(down).map((x) => [x.time, x])));
+  assert.ok(win.toPivot > 0.1 && win.results[60].ret > 0 && !win.results[60].stopped);
+  assert.ok(loss.results[20].stopped && loss.results[20].ret < 0);
+});

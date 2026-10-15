@@ -1,4 +1,4 @@
-// Historical test of the base-breakout setup (chart rules only).
+// Historical test of the base-breakout setup (chart rules only), plus the floor-turn research rule.
 //
 // For every stock and every day, finds the bars where detectSetup() would have said
 // BREAKOUT using only data up to that bar, then simulates the trade the scanner
@@ -102,6 +102,58 @@ export function summarize(trades, h) {
 }
 
 /**
+ * Floor turn: the first sign of a turn while still in the lower half of a long base, long before
+ * the base high (often 20-70% away) is broken. At bar i, with a qualifying base ending at i-1:
+ * prior close in the lower half of the base, close above a flat-or-rising 50-day average, close
+ * above the prior 20-bar high on >=1.5x volume, and the last 20 bars holding above the base low.
+ * Stop = lowest low of the last 20 bars minus 1%. Research rule, not yet a scanner rule.
+ */
+export const FLOOR_TURN = { maxPosInBase: 0.5, swing: 20, volMult: 1.5, maSlopeBars: 10, maxRisk: 0.2 };
+export function findFloorTurnEvents(bars, rules = SETUP_RULES, ft = FLOOR_TURN) {
+  const n = bars.length;
+  const closes = bars.map((b) => b.close);
+  const ma50 = sma(closes, 50), vol50 = sma(bars.map((b) => b.volume), 50);
+  const events = [];
+  let cooldownUntil = -1;
+  for (let i = 300; i < n; i++) {
+    if (i < cooldownUntil) continue;
+    const b = bars[i];
+    if (!(ma50[i] > 0) || !(ma50[i - ft.maSlopeBars] > 0) || b.close <= ma50[i] || ma50[i] < ma50[i - ft.maSlopeBars]) continue;
+    if (!(vol50[i - 1] > 0) || b.volume / vol50[i - 1] < ft.volMult) continue;
+    const prior = bars.slice(i - ft.swing, i);
+    if (b.close <= Math.max(...prior.map((x) => x.high))) continue;
+    const base = findBase(bars, i - 1, rules);
+    if (!base || !(base.high > base.low)) continue;
+    const pos = (bars[i - 1].close - base.low) / (base.high - base.low);
+    if (pos > ft.maxPosInBase) continue;
+    const swingLow = Math.min(...bars.slice(i - ft.swing + 1, i + 1).map((x) => x.low));
+    if (swingLow <= base.low) continue;
+    events.push({ index: i, base, posInBase: pos, stop: swingLow * 0.99, volMult: b.volume / vol50[i - 1] });
+    cooldownUntil = i + 40;
+  }
+  return events;
+}
+
+export function simulateFloorTurn(bars, ev, spyByTime, ft = FLOOR_TURN) {
+  const entryIdx = ev.index + 1;
+  if (entryIdx >= bars.length) return null;
+  const entry = bars[entryIdx].open, stop = ev.stop;
+  if (!(entry > stop) || (entry - stop) / entry > ft.maxRisk) return null;
+  const tt = trendTemplate(bars.slice(0, ev.index + 1));
+  const out = { time: bars[ev.index].time, entry, stop, riskPct: (entry - stop) / entry, baseMonths: Math.round(ev.base.window / 21), depth: ev.base.depth, posInBase: ev.posInBase, toPivot: ev.base.high / entry - 1, volMult: ev.volMult, trendOk: tt.passed >= 6, results: {} };
+  const spyEntry = spyByTime.get(bars[entryIdx].time)?.open;
+  for (const h of HORIZONS) {
+    const last = entryIdx + h - 1;
+    if (last >= bars.length) { out.results[h] = null; continue; }
+    let exit = bars[last].close, stopped = false;
+    for (let j = entryIdx; j <= last; j++) { const x = bars[j]; if (x.low <= stop) { exit = Math.min(x.open, stop); stopped = true; break; } }
+    const ret = exit / entry - 1, spyExit = spyByTime.get(bars[last].time)?.close;
+    out.results[h] = { ret, r: ret / ((entry - stop) / entry), stopped, spy: spyEntry && spyExit ? spyExit / spyEntry - 1 : null };
+  }
+  return out;
+}
+
+/**
  * barsBySymbol: { SYMBOL: Bar[] } (adjusted daily), spy: Bar[].
  * Returns the report object (also usable in tests).
  */
@@ -144,6 +196,14 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
         story: factsBySymbol?.[symbol] ? storyAsOf(factsBySymbol[symbol], new Date(t.time * 1000).toISOString().slice(0, 10)) : null });
     }
   }
+  const turns = [];
+  for (const [symbol, bars] of Object.entries(barsBySymbol)) {
+    if (!bars || bars.length < 400) continue;
+    for (const ev of findFloorTurnEvents(bars)) {
+      const t = simulateFloorTurn(bars, ev, spyByTime);
+      if (t) turns.push({ symbol, ...t, story: factsBySymbol?.[symbol] ? storyAsOf(factsBySymbol[symbol], new Date(t.time * 1000).toISOString().slice(0, 10)) : null });
+    }
+  }
   const groups = {
     all: trades,
     trendTemplateOk: trades.filter((t) => t.trendOk),
@@ -157,6 +217,12 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
       storyNotImproving: trades.filter((t) => t.story?.known && !t.story.improving),
       storyImprovingTrendOk: trades.filter((t) => t.story?.known && t.story.improving && t.trendOk),
     } : {}),
+    floorTurn: turns,
+    ...(factsBySymbol ? {
+      floorTurnStoryKnown: turns.filter((t) => t.story?.known),
+      floorTurnStoryImproving: turns.filter((t) => t.story?.known && t.story.improving),
+      floorTurnStoryNotImproving: turns.filter((t) => t.story?.known && !t.story.improving),
+    } : {}),
   };
   const report = {};
   for (const [g, ts] of Object.entries(groups)) report[g] = Object.fromEntries(HORIZONS.map((h) => [`${h}d`, summarize(ts, h)]));
@@ -167,6 +233,9 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
     method: '각 거래일까지의 데이터만으로 BREAKOUT 판정 → 다음 거래일 시가 매수, 계획 손절가 이탈 시 손절(갭은 시가 체결), 아니면 h거래일 후 종가 청산. SPY 대비.',
     limits: [factsBySymbol ? '실적 조건은 매수일까지 공시된 분기만 사용 — 재무 자료가 약 3년치라 2024년 하반기 이후 돌파만 비교 가능' : '스토리 점수는 과거 시점 데이터가 없어 미검증 (차트 규칙만 검증)', '현재 상장 종목만 사용 → 상장폐지 종목 누락으로 결과가 좋게 나올 수 있음 (생존 편향)', '수수료·슬리피지 미반영 (손절 갭만 반영)'],
     trades: trades.length,
+    floorTurns: turns.length,
+    floorTurnRules: FLOOR_TURN,
+    floorTurnCases: Object.fromEntries(caseStudies.map((s) => [s, turns.filter((t) => t.symbol === s).map((t) => ({ date: fmtDate(t.time), entry: t.entry, stop: t.stop, toPivot: t.toPivot, results: t.results }))])),
     symbols: Object.keys(barsBySymbol).length,
     report,
     caseStudies: Object.fromEntries(caseStudies.map((s) => [s, trades.filter((t) => t.symbol === s).map((t) => ({ date: fmtDate(t.time), entry: t.entry, stop: t.stop, baseMonths: t.baseMonths, results: t.results }))])),
