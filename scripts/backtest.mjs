@@ -57,4 +57,4 @@ const report = runBreakoutBacktest(all, spy, { caseStudies: CASES, factsBySymbol
 fs.mkdirSync(path.join(outDir, 'backtest'), { recursive: true });
 fs.writeFileSync(path.join(outDir, 'backtest', 'breakouts.json'), JSON.stringify(report, null, 1));
 log(`done: ${report.trades} trades`);
-console.log(JSON.stringify({ all: report.report.all, floorTurn: report.report.floorTurn, floorTurnImproving: report.report.floorTurnStoryImproving, floorTurnCases: report.floorTurnCases, caseStudies: report.caseStudies, nearMisses: report.caseNearMisses }, null, 1));
+console.log(JSON.stringify({ all: report.report.all, floorTurn: report.report.floorTurn, floorTurnImproving: report.report.floorTurnStoryImproving, floorTurnCases: report.floorTurnCases, storyEvents: report.storyEvents, events: Object.fromEntries(Object.entries(report.report).filter(([k]) => k.startsWith("event")).map(([k, v]) => [k, v["60d"]])), caseStudies: report.caseStudies, nearMisses: report.caseNearMisses }, null, 1));
