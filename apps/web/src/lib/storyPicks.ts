@@ -1,3 +1,4 @@
+import { businessStory } from '../../../../packages/analysis/business-stories.mjs';
 // "스토리 확인 추천": scanner candidates whose chart is at a buy area AND whose numbers or news
 // hint at a story worth checking (turnaround, accelerating growth, doubted while improving,
 // sudden attention, theme). Pure ranking over setups.json — no extra data or API calls.
@@ -15,7 +16,7 @@ export interface StoryPick { row: SetupRow; priority: number; why: string[]; hoo
 
 export type DiscoveryMode='early'|'watch'|'legacy';
 export function earlyIssues(row:SetupRow,asOf:string,mode:DiscoveryMode='early'):string[]{
- const issues:string[]=[];const type=row.type??'breakout',q=row.narrative?.quality;
+ const issues:string[]=[];if(businessStory(row.symbol,asOf)?.model==='treasury')issues.push('자산 보유형 · 주당 NAV 원문 검증 필요');const type=row.type??'breakout',q=row.narrative?.quality;
  if(!row.plan||![row.plan.entry,row.plan.stop,row.plan.target,row.plan.riskPct,row.plan.rMultiple].every(v=>typeof v==='number'&&Number.isFinite(v))||row.plan.stop>=row.plan.entry||row.plan.target<=row.plan.entry||row.plan.riskPct! <= 0||row.plan.riskPct! > 0.15||row.plan.rMultiple! < 1.5)issues.push('진입·무효화·보상 가정 부족');
  if(row.priceAsOf!==asOf)issues.push('당일 종가 미확인');
  if(row.ret1==null||row.ret5==null||!Number.isFinite(row.ret1)||!Number.isFinite(row.ret5))issues.push('최근 급등 확인 자료 부족');

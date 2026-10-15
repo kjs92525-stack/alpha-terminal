@@ -51,3 +51,5 @@ test('structured signals prevent loss-narrowing and profit-turnaround being clai
 test('a short squeeze from a depressed level and stale last prints cannot masquerade as early accumulation',()=>{
  const data={asOf:'2026-10-14',candidates:[earlyRow({symbol:'GAP',ret1:0.3,ret5:0.1,ret21:-0.1}),earlyRow({symbol:'HALT',priceAsOf:'2026-10-09'})]};assert.equal(storyPicks(data).length,0);
 });
+
+test('holding-company reported profit is not an operating growth inflection without NAV review',()=>{assert.equal(storyPicks({asOf:'2026-10-14',candidates:[earlyRow({symbol:'CNNE'})]}).length,0);});
