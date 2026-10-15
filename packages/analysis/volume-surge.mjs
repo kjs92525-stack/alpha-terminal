@@ -5,7 +5,8 @@ const DAY = 86400000;
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 
-export const SURGE_RULES = { minMult: 3, minDollarVolume: 10e6, minPrice: 1, lookbackDays: 50, recentSessions: 3 };
+// minPriorDollarVolume keeps out shells whose normal trading is so thin that any print is a "1000x" surge
+export const SURGE_RULES = { minMult: 3, minDollarVolume: 10e6, minPrice: 2, minPriorDollarVolume: 2e6, lookbackDays: 50, recentSessions: 3 };
 
 /** Latest session (within the last few) whose volume is minMult× the prior 50-session average. */
 export function detectVolumeSurge(bars, rules = SURGE_RULES) {
@@ -15,7 +16,8 @@ export function detectVolumeSurge(bars, rules = SURGE_RULES) {
     const prior = bars.slice(i - rules.lookbackDays, i);
     const avg = mean(prior.map((b) => b.volume));
     const b = bars[i];
-    if (!(avg > 0) || b.volume / avg < rules.minMult || b.close < rules.minPrice || b.close * b.volume < rules.minDollarVolume) continue;
+    const priorDollar = mean(prior.map((x) => x.close * x.volume));
+    if (!(avg > 0) || b.volume / avg < rules.minMult || b.close < rules.minPrice || b.close * b.volume < rules.minDollarVolume || !(priorDollar >= rules.minPriorDollarVolume)) continue;
     const prev = bars[i - 1].close;
     const yearAgo = bars.slice(Math.max(0, i - 252), i);
     const hi = Math.max(...yearAgo.map((x) => x.high)), lo = Math.min(...yearAgo.map((x) => x.low));
@@ -30,7 +32,7 @@ export function detectVolumeSurge(bars, rules = SURGE_RULES) {
       : ret63 !== null && ret63 < -0.25 ? 'downtrend' : 'mid_range';
     return {
       date: new Date(b.time * 1000).toISOString().slice(0, 10), sessionsAgo: n - 1 - i,
-      volMult: Math.round((b.volume / avg) * 10) / 10, dollarVolume: Math.round(b.close * b.volume), close: b.close, ret1, gap: b.open / prev - 1,
+      volMult: Math.round((b.volume / avg) * 10) / 10, dollarVolume: Math.round(b.close * b.volume), priorDollarVolume: Math.round(priorDollar), close: b.close, ret1, gap: b.open / prev - 1,
       closePos, ret63, fromHigh: b.close / hi - 1, fromLow: b.close / lo - 1, context,
       after: i < n - 1 ? bars[n - 1].close / b.close - 1 : 0,
     };
@@ -51,8 +53,13 @@ const CAUSES = [
 ];
 export const CAUSE_KO = Object.fromEntries([...CAUSES.map(([k, ko]) => [k, ko]), ['unexplained', '확인된 이유 없음']]);
 
+// market-wrap / "why is X moving" headlines name no cause; they are listed last and never classify
+const ROUNDUP = /(^(nasdaq|dow|s&p 500|u\.?s\.? stocks|stocks|wall street)\b.{0,40}\b(dips?|jumps?|falls?|rises?|slides?|surges?|tumbles?|gains?|climbs?|drops?|edges?)\b|\bstocks? moving\b|\bmovers?\b|\btop (gainers|losers)\b|^why (is|are) .{0,60}\b(stock|shares)\b|\bwhat'?s going on with\b|\b(mid-?day|pre-?market|after-?hours?) (session|movers|update)\b)/i;
+export const isRoundup = (headline) => ROUNDUP.test(String(headline ?? ''));
+
 export function classifyCause(headline) {
   const h = String(headline ?? '');
+  if (isRoundup(h)) return null;
   for (const [key, , re] of CAUSES) if (re.test(h)) return key;
   return null;
 }
@@ -78,13 +85,15 @@ const CONTEXT_KO = { after_run: '이미 3개월 +50% 넘게 오른 뒤', new_hig
 export function explainSurge({ surge, news = null, filings = [], asOf }) {
   const day = Date.parse(surge.date);
   const near = (t) => Number.isFinite(t) && t >= day - 3 * DAY && t <= Math.min(day + 2 * DAY, Date.parse(asOf) + DAY);
-  const heads = (news ?? []).filter((n) => near(Date.parse(n.time))).map((n) => ({ date: String(n.time).slice(0, 10), headline: n.headline, url: n.url ?? null, cause: classifyCause(n.headline) }));
+  const heads = (news ?? []).filter((n) => near(Date.parse(n.time))).map((n) => ({ date: String(n.time).slice(0, 10), headline: n.headline, url: n.url ?? null, cause: classifyCause(n.headline), roundup: isRoundup(n.headline) }))
+    .sort((a, b) => Number(a.roundup) - Number(b.roundup) || Number(!a.cause) - Number(!b.cause));
   const docs = (filings ?? []).filter((f) => near(Date.parse(f.filingDate))).map((f) => ({ date: f.filingDate, form: f.form, label: f.label ?? null, url: f.url ?? null }));
   const counts = {};
   for (const h of heads) if (h.cause) counts[h.cause] = (counts[h.cause] ?? 0) + 1;
   // most specific cause first (deal / financing / filing-backed news outrank opinions)
   const order = CAUSES.map(([k]) => k);
   const cause = Object.keys(counts).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0] ?? 'unexplained';
+  heads.sort((a, b) => Number(b.cause === cause) - Number(a.cause === cause)); // the headline behind the label first
   const up = surge.ret1 > 0;
   const tone = surge.context === 'after_run' && (!up || surge.closePos < 0.3) ? '오른 뒤 큰 거래량에 약하게 마감 — 차익 실현·분산 가능성을 경계합니다.'
     : surge.context === 'near_low' && up && surge.closePos > 0.6 ? '저점 부근에서 큰 거래량과 함께 강하게 마감 — 바닥에서 수요가 들어왔을 수 있으나 하루로 전환을 확정하지 않습니다.'

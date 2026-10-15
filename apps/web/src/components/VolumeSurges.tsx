@@ -31,7 +31,7 @@ export function VolumeSurges() {
         </summary>
         <div className="discovery-reading">
           <h3>무슨 일이 있었나</h3>
-          {x.headlines.length ? x.headlines.map((h) => <p key={h.headline}>{h.date} · {h.headline}{h.url && <> <a href={h.url} target="_blank" rel="noreferrer">기사 ↗</a></>}</p>) : <p>{x.newsChecked ? '급증일 전후 3일 안에 수집된 기사가 없습니다.' : '이 종목은 이번 실행에서 뉴스를 수집하지 못했습니다 — 이유가 없다는 뜻이 아닙니다.'}</p>}
+          {x.headlines.length ? x.headlines.map((h) => <p key={h.headline} className={h.roundup ? 'muted small' : undefined}>{h.date} · {h.roundup ? '(여러 종목 모음 기사 — 이유 아님) ' : ''}{h.headline}{h.url && <> <a href={h.url} target="_blank" rel="noreferrer">기사 ↗</a></>}</p>) : <p>{x.newsChecked ? '급증일 전후 3일 안에 수집된 기사가 없습니다.' : '이 종목은 이번 실행에서 뉴스를 수집하지 못했습니다 — 이유가 없다는 뜻이 아닙니다.'}</p>}
           {x.filings.map((f) => <p key={`${f.form}${f.date}`}>{f.date} · 공시 {f.form}{f.label ? ` (${f.label})` : ''}{f.url && <> <a href={f.url} target="_blank" rel="noreferrer">원문 ↗</a></>}</p>)}
           <h3>이 이유가 주가에 닿는 경로</h3><p>{x.read}</p>
           <h3>가격과 거래량이 말하는 것</h3>

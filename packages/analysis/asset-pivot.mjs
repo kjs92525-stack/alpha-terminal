@@ -6,7 +6,7 @@ const DAY = 86400000;
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const DEMAND = /\b(agreements?|contracts?|deals?|leases?|award(?:ed|s)?|orders?|offtake|colocation|hosting|cloud services?|capacity|purchase orders?|partnership)\b/i;
 const FINANCING = /\b(offering|notes|convertible|loan|credit facility|financing|private placement|at-the-market|ATM program|debt|raises?|priced)\b/i;
-const ACQUISITION = /\b(to acquire|acquired by|acquisition of|merger|to be acquired|take[- ]private|buyout)\b/i;
+const ACQUISITION = /\b(to acquire|acquired by|acquisition of|merger|to be acquired|take[- ]private|buyout|go(?:es|ing)? private)\b|\btake\b.{0,40}\bprivate\b/i;
 const AMOUNT = /\$\s?(\d+(?:\.\d+)?)\s?(billion|bn|b|million|mn|m)\b/i;
 
 export function headlineAmount(headline) {

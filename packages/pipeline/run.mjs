@@ -401,7 +401,9 @@ export async function runNightly({
     const s = detectVolumeSurge((cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec));
     if (s) surgeRows.push({ r, s });
   }
-  surgeRows.sort((a, b) => b.s.volMult * Math.log10(b.s.dollarVolume) - a.s.volMult * Math.log10(a.s.dollarVolume));
+  // cap the multiple so one thin print cannot outrank a large, liquid name with a real event
+  const surgeRank = (x) => Math.min(x.volMult, 15) * Math.log10(x.dollarVolume);
+  surgeRows.sort((a, b) => surgeRank(b.s) - surgeRank(a.s));
   const surgeTop = surgeRows.slice(0, Number(env.SURGE_MAX || 60));
   let surgeNewsRequests = 0;
   for (const { r } of surgeTop) {
@@ -419,7 +421,7 @@ export async function runNightly({
   });
   writeJson(path.join(outDir, 'volume-surges.json'), {
     asOf, generatedAt: new Date().toISOString(), rules: SURGE_RULES,
-    method: '최근 3거래일 안에 거래량이 직전 50거래일 평균의 3배 이상(거래대금 $10M 이상, $1 이상)인 종목. 이유는 급증일 전후(-3일~+2일) 뉴스 제목·공시로 분류하고, 찾지 못하면 "확인된 이유 없음"으로 둡니다.',
+    method: '최근 3거래일 안에 거래량이 직전 50거래일 평균의 3배 이상(당일 거래대금 $10M 이상, 평소 하루 거래대금 $2M 이상, 주가 $2 이상)인 종목. 이유는 급증일 전후(-3일~+2일) 뉴스 제목·공시로 분류하고, 찾지 못하면 "확인된 이유 없음"으로 둡니다.',
     caveat: '거래량은 무언가 바뀌었다는 신호일 뿐 방향을 알려주지 않습니다. 이유 분류는 기사 제목 기준이라 원문 확인 전에는 단서입니다. 매수 추천이 아닙니다.',
     stats: { detected: surgeRows.length, shown: surges.length, newsRequests: surgeNewsRequests },
     items: surges,

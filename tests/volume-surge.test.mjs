@@ -52,3 +52,27 @@ test('context: a surge after a big run that closes weak reads as possible distri
   assert.equal(s.context, 'after_run');
   assert.match(explainSurge({ surge: s, news: [], asOf: s.date }).tone, /분산/);
 });
+
+test('thin shells and market-wrap headlines do not dominate', async () => {
+  const { isRoundup } = await import('../packages/analysis/volume-surge.mjs');
+  // normal trading ~$0.5M a day: any big print would be a "1000x" surge — skipped
+  const thin = [];
+  for (let i = 0; i < 200; i++) thin.push({ time: t0 + i * 86400, open: 3, high: 3.1, low: 2.9, close: 3, volume: 150e3 });
+  thin.push({ time: t0 + 200 * 86400, open: 3, high: 6, low: 3, close: 5.5, volume: 60e6 });
+  assert.equal(detectVolumeSurge(thin), null);
+  assert.ok(isRoundup("12 Industrials Stocks Moving In Tuesday's After-Market Session"));
+  assert.ok(isRoundup('Why Is SkyAI Stock Surging Monday?'));
+  assert.equal(classifyCause("12 Health Care Stocks Moving In Tuesday's Pre-Market Session"), null);
+  const s = detectVolumeSurge(bars({ last: { open: 10.2, high: 11.6, low: 10.1, close: 11.5, volume: 5e6 } }));
+  const e = explainSurge({ surge: s, news: [{ time: `${s.date}T10:00:00Z`, headline: '10 Stocks Moving In Wednesday\'s Pre-Market Session' }, { time: `${s.date}T12:00:00Z`, headline: 'X reports record quarterly revenue' }], asOf: s.date });
+  assert.equal(e.cause, 'earnings');
+  assert.equal(e.headlines[0].roundup, false, 'the specific headline comes first');
+});
+
+test('index-level wraps are not a company cause; the headline behind the label is listed first', () => {
+  assert.equal(classifyCause('Nasdaq Dips Over 400 Points; Bank of America Shares Tumble After Q3 Results'), null);
+  const s = detectVolumeSurge(bars({ last: { open: 10.2, high: 11.6, low: 10.1, close: 11.5, volume: 5e6 } }));
+  const e = explainSurge({ surge: s, news: [{ time: `${s.date}T09:00:00Z`, headline: 'Broker raises price target on X' }, { time: `${s.date}T12:00:00Z`, headline: 'FDA approves X therapy' }], asOf: s.date });
+  assert.equal(e.cause, 'regulatory');
+  assert.match(e.headlines[0].headline, /FDA/);
+});
