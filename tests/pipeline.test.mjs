@@ -244,6 +244,11 @@ test('nightly pipeline end-to-end: outputs, incremental re-run, immutable ledger
   assert.ok(Array.isArray(setups.candidates) && setups.stats && setups.caveat);
   const sectors = JSON.parse(fs.readFileSync(path.join(outDir, 'sectors.json'), 'utf8'));
   assert.ok(Array.isArray(sectors.groups) && sectors.method);
+  const market=JSON.parse(fs.readFileSync(path.join(outDir,'market-brief/latest.json'),'utf8'));
+  assert.equal(market.asOf,r1.asOf);assert.equal(market.model,'market-brief-v1');
+  assert.notEqual(market.decision.state,'SELECTIVE','small fixture breadth cannot imply a healthy whole market');
+  assert.equal(market.breadth,null);
+  assert.ok(fs.existsSync(path.join(outDir,'market-breadth.json')));
   assert.deepEqual(Object.keys(setups.stats.byType).sort(), ['base', 'breakout', 'monthly_bottom', 'pullback', 'weekly_bottom']);
   for (const c of setups.candidates) assert.ok(c.type && c.stage && (!c.plan || typeof c.plan.how === 'string'), JSON.stringify(c).slice(0, 200));
   assert.ok(state.monthlyCalls >= 1, 'long monthly history fetched');
@@ -392,7 +397,7 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   const outDir = path.join(tmp, 'out');
   const state = { days: 560, calls: [] };
   const f = e2eFetch(state);
-  let fhCalls = 0;
+  let fhCalls = 0,marketNewsCalls=0;
   const reported = (i) => ({ cik: 1000 + i, data: Array.from({ length: 8 }, (_, k) => {
     const end = new Date(Date.UTC(2024, 3 * k + 3, 0)).toISOString().slice(0, 10);
     const start = new Date(Date.parse(end) - 90 * 86400000).toISOString().slice(0, 10);
@@ -406,8 +411,9 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
     if (u.hostname.endsWith('sec.gov')) return new Response('Forbidden', { status: 403 });
     if (u.hostname === 'paper-api.alpaca.markets') return Response.json(f.syms.map((s) => ({ symbol: s, name: `${s} Inc`, exchange: 'NASDAQ', tradable: true })));
     if (u.hostname === 'finnhub.io') {
-      fhCalls++;
       assert.equal(init.headers['X-Finnhub-Token'], 'fh');
+      if(u.pathname.endsWith('/news')){marketNewsCalls++;return Response.json([]);}
+      fhCalls++;
       const i = f.syms.indexOf(u.searchParams.get('symbol'));
       if (u.pathname.endsWith('/profile2')) return Response.json({ name: `${u.searchParams.get('symbol')} Corp`, finnhubIndustry: ['Semiconductors', 'Biotechnology', 'Banking', 'Software'][i % 4], shareOutstanding: 100, marketCapitalization: 5000 });
       if (u.searchParams.get('freq') === 'annual') return Response.json({ data: [] });
@@ -420,6 +426,7 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   const r = await runNightly({ env, cacheDir, outDir, fetchImpl, now, historyDays: 900, wait: noWait });
   assert.equal(r.stats.finnhub.attempted, 10, 'call budget respected (3 calls per company)');
   assert.equal(fhCalls, 30);
+  assert.equal(marketNewsCalls,1,'general briefing news uses a separate single call');
   assert.equal(r.stats.finnhub.withRevenue, 10);
   const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
   assert.ok(latest.mid.length > 0, 'mid-term ranking restored');
@@ -431,10 +438,11 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   assert.equal(comp.source, 'Finnhub');
   assert.equal(comp.facts.revenueQuarterly.length, 8);
   // next night: the next 10 companies, cached ones not refetched
-  fhCalls = 0;
+  fhCalls = 0;marketNewsCalls=0;
   const r2 = await runNightly({ env, cacheDir, outDir, fetchImpl, now: now + 3600000, historyDays: 900, wait: noWait });
   assert.equal(r2.stats.finnhub.attempted, 10);
   assert.equal(r2.stats.finnhub.cached, 10);
   assert.equal(fhCalls, 30);
+  assert.equal(marketNewsCalls,1);
   fs.rmSync(tmp, { recursive: true, force: true });
 });

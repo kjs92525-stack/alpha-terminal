@@ -10,6 +10,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'packages/analysis/market-brief.mjs'
+      - 'packages/pipeline/market-brief.mjs'
       - 'packages/analysis/cycle.mjs'
       - 'packages/analysis/industrial-cycle.mjs'
       - 'packages/analysis/early-alpha.mjs'

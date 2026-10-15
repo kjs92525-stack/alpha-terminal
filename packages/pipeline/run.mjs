@@ -25,6 +25,8 @@ import { rankHorizon, selectRecommendations, exclusionReasons, MODEL_VERSION, MI
 import { makeLedger, evaluateLedgers } from './ledger.mjs';
 import { buildBrief } from './brief.mjs';
 import { runEarlyAlpha } from './early-alpha.mjs';
+import { MARKET_ETFS,marketBreadth } from '../analysis/market-brief.mjs';
+import { publishMarketBrief } from './market-brief.mjs';
 
 const BENCH = 'SPY';
 const r4 = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 1e4) / 1e4 : v ?? null);
@@ -79,7 +81,7 @@ export async function runNightly({
   // 2. bars (incremental, split-safe)
   const barsDir = path.join(cacheDir, 'bars');
   // sector / theme ETFs are fetched with the stocks: they define the cycle groups
-  const symbols = [...new Set([BENCH, ...SECTOR_ETFS.map(([e]) => e), ...universe.map((u) => u.symbol)])];
+  const symbols = [...new Set([BENCH, ...MARKET_ETFS, ...SECTOR_ETFS.map(([e]) => e), ...universe.map((u) => u.symbol)])];
   const cached = new Map(symbols.map((s) => [s, unpackBars(readJson(path.join(barsDir, `${safeName(s)}.json`), null))]));
   const end = new Date(now - 20 * 60000).toISOString();
   const fullStart = new Date(now - historyDays * 86400000).toISOString().slice(0, 10);
@@ -89,10 +91,12 @@ export async function runNightly({
   const incStart = lastTimes.length ? new Date((Math.min(...lastTimes) - 10 * 86400) * 1000).toISOString().slice(0, 10) : fullStart;
   const alpaca = { keyId: env.ALPACA_KEY_ID, secretKey: env.ALPACA_SECRET_KEY, fetchImpl, wait, feed: env.ALPACA_FEED || 'sip' };
   let requests = 0;
+  const observedFeeds=new Set();
   const needFull = [...fresh];
   if (known.length) {
     const r = await fetchDailyBars({ ...alpaca, symbols: known, start: incStart, end, onBatch: (d, t) => log(`bars inc ${d}/${t}`) });
     requests += r.requests;
+    observedFeeds.add(r.feed);
     for (const s of known) {
       const m = mergeBars(cached.get(s), r.bars[s] ?? []);
       if (m.needsFull) needFull.push(s); else cached.set(s, m.bars);
@@ -101,6 +105,7 @@ export async function runNightly({
   if (needFull.length) {
     const r = await fetchDailyBars({ ...alpaca, symbols: needFull, start: fullStart, end, onBatch: (d, t) => log(`bars full ${d}/${t}`) });
     requests += r.requests;
+    observedFeeds.add(r.feed);
     for (const s of needFull) cached.set(s, r.bars[s] ?? []);
   }
   const minTime = Date.parse(fullStart) / 1000;
@@ -143,6 +148,13 @@ export async function runNightly({
   const asOf = new Date(closed.at(-1).time * 1000).toISOString().slice(0, 10);
   stats.asOf = asOf;
   log(`asOf ${asOf}`);
+  // Independent EOD market risk overlay; no changes to rankings or ledgers.
+  try {
+    const breadth=marketBreadth({symbols:universe.map(u=>u.symbol),getBars:s=>cached.get(s),asOf,now});
+    writeJson(path.join(outDir,'market-breadth.json'),breadth);
+    const brief=await publishMarketBrief({barsBy:Object.fromEntries(MARKET_ETFS.map(s=>[s,cached.get(s)??[]])),breadth,asOf,outDir,env,fetchImpl,now,source:`Alpaca ${[...observedFeeds].join('/')||'캐시'} · adjustment=all · 지연 종가`});
+    stats.marketBrief={state:brief.decision.state,sample:breadth.sample,missing:brief.missing};
+  } catch(e) {stats.marketBrief={error:String(e?.message??e).slice(0,200)};}
 
   // 4. SEC refresh (changed filers from daily indices since last run)
   const changed = new Set();

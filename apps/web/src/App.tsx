@@ -11,8 +11,11 @@ import { Settings } from './pages/Settings';
 import { Alerts } from './pages/Alerts';
 import { EarlyAlpha } from './pages/EarlyAlpha';
 import { Performance } from './pages/Performance';
+import { MarketBrief } from './pages/MarketBrief';
+import { MarketGate } from './components/MarketGate';
 
 const TITLES: Record<string, [string, string]> = {
+  'market-brief':['매일 시황 브리핑','시장부터 확인하는 신규 진입 환경 · 근거·재개 조건·데이터 최신성'],
   dashboard: ['Market Intelligence', 'Discover signals. Validate evidence. Manage risk.'],
   'early-alpha': ['EARLY ALPHA', '소외된 미국 소형주의 사업 변곡점 · 근거와 희석 위험 · 최초 발굴 성과'],
   discover: ['AI 종목발굴', '매수 자리 스캐너(돌파·눌림목·주봉/월봉 바닥) · 전 종목 야간 랭킹'],
@@ -44,6 +47,8 @@ function Shell() {
           </div>
           {!ready ? <Loading label="API 연결 확인" /> : (
             <>
+              {['dashboard','discover','early-alpha','research'].includes(page)&&<MarketGate />}
+              {page==='market-brief'&&<MarketBrief />}
               {page === 'dashboard' && <Dashboard />}
               {page === 'discover' && <Discover />}
               {page === 'early-alpha' && <EarlyAlpha />}
