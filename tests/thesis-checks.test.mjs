@@ -39,3 +39,14 @@ test('unknown is never counted as met or as safe; stale or blocked numbers do no
   assert.equal(thesisChecks({ ...base, provisional: true }, '2026-10-14').state, 'watch', 'forming weekly/monthly bar is not a confirmed turn');
   assert.equal(thesisChecks({ ...base, revenueYoY: [...base.revenueYoY, { end: '2026-12-31', yoy: 0.5 }] }, '2026-10-14').promote[0].observed.includes('2026-06-30'), true, 'future periods ignored');
 });
+
+test('build-out phase: widening loss is judged on cash after capex and dilution, not dropped by itself', () => {
+  const widening = { ...base, netIncomeQ: [{ end: '2025-06-30', value: -2e6 }, { end: '2026-06-30', value: -9e6 }] };
+  const pivot = { investmentPhase: true, capex: { ttm: 150e6, prior: 40e6 }, fundedMonths: 33, selfFunded: false };
+  assert.equal(thesisChecks(widening, '2026-10-14').state, 'drop');
+  const t = thesisChecks({ ...widening, assetPivot: pivot }, '2026-10-14');
+  assert.notEqual(t.state, 'drop');
+  assert.match(t.drop.find((d) => /설비/.test(d.label) && /18개월/.test(d.label)).observed, /33개월/);
+  assert.equal(thesisChecks({ ...widening, assetPivot: { ...pivot, fundedMonths: 10 } }, '2026-10-14').state, 'drop');
+  assert.equal(thesisChecks({ ...widening, assetPivot: pivot, funding: { runwayMonths: 30, sharesYoY: 0.4 } }, '2026-10-14').state, 'drop', 'heavy dilution still drops');
+});

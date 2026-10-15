@@ -16,6 +16,7 @@ import { detectPullback, detectHtfBottomClosed, mergeMonthly, PULLBACK_RULES, BO
 import { resampleWeekly } from '../analysis/indicators.mjs';
 import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs';
 import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
+import { assetPivotSignals } from '../analysis/asset-pivot.mjs';
 import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
 import { throttle } from './http.mjs';
@@ -413,6 +414,8 @@ export async function runNightly({
       // reported quarterly net income (only periods up to the snapshot date) for the automatic thesis checks
       netIncomeQ:(companyBy.get(r.symbol)?.facts?.netIncomeQuarterly??[]).filter(q=>q?.end&&Date.parse(q.end)/1000<=asOfSec&&Number.isFinite(q.value)).slice(-5).map(q=>({end:q.end,value:Math.round(q.value)})),
       narrative: story.narrative,
+      // IREN-type asset pivots: large contract headlines / capex build-out and how it is funded
+      assetPivot: assetPivotSignals({ news: newsBy.has(r.symbol) ? newsBy.get(r.symbol) : null, facts: companyBy.get(r.symbol)?.facts ?? null, mcap: r.features.mcap ?? null, asOf }),
       news: news.slice(0, 5).map((n) => ({ time: n.time, headline: n.headline, url: n.url, sentiment: n.sentiment, tags: n.tags })),
       newsChecked: newsBy.has(r.symbol),
     });

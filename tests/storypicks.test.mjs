@@ -53,3 +53,18 @@ test('a short squeeze from a depressed level and stale last prints cannot masque
 });
 
 test('holding-company reported profit is not an operating growth inflection without NAV review',()=>{assert.equal(storyPicks({asOf:'2026-10-14',candidates:[earlyRow({symbol:'CNNE'})]}).length,0);});
+
+test('asset-pivot tab: loss-making company with a large contract and funded build-out passes; buyouts and thin cash do not', async () => {
+  const { earlyIssues } = await import('../apps/web/src/lib/storyPicks.ts');
+  const pv = { pivot: true, newsChecked: true, material: 1, contracts: [{ date: '2026-10-01', headline: 'Signs $1.5 billion AI cloud contract', url: null, amount: 1.5e9, ratio: 0.5 }], financing: [], acquisition: null, capex: { ttm: 150e6, prior: 40e6, growth: 3.75, toRevenue: 0.75, end: '2026-06-30' }, investmentPhase: true, fundedMonths: 33, selfFunded: false };
+  const ok = row({ symbol: 'PIV', type: 'breakout', stage: 'NEAR_PIVOT', priceAsOf: '2026-10-14', ret1: 0.01, ret5: 0.03, ret21: 0.05, ret63: 0.1, assetPivot: pv,
+    narrative: { lines: ['적자가 커졌습니다'], takeaway: 't', method: 'm' } });
+  assert.deepEqual(earlyIssues(ok, '2026-10-14', 'pivot'), []);
+  assert.ok(earlyIssues(ok, '2026-10-14', 'early').includes('현재 분기 실적 개선 근거 부족'), 'the plain early-turn list still needs reported improvement');
+  const picks = storyPicks({ asOf: '2026-10-14', candidates: [ok] }, 8, 'pivot');
+  assert.equal(picks[0]?.row.symbol, 'PIV');
+  assert.ok(picks[0].why.some((w) => /대형 계약/.test(w)));
+  assert.ok(earlyIssues({ ...ok, assetPivot: { ...pv, fundedMonths: 9 } }, '2026-10-14', 'pivot').includes('설비투자 포함 현금 18개월 미만·미확인'));
+  assert.ok(earlyIssues({ ...ok, assetPivot: { ...pv, pivot: false, acquisition: { headline: 'to be acquired' } } }, '2026-10-14', 'pivot').includes('인수·합병 기사 — 사업 전환 아님'));
+  assert.ok(earlyIssues({ ...ok, ret63: 0.8 }, '2026-10-14', 'pivot').includes('63일 +35%·21일 +20% 초과'), 'no chasing after the move');
+});

@@ -52,7 +52,7 @@ export interface SetupPlan {
   entryType?: 'buy-stop' | 'limit' | 'zone' | 'market' | null; how?: string | null; riskPct: number | null; rMultiple: number | null; note: string | null;
 }
 export interface SetupRow {
-  priceAsOf?:string;ret1?:number|null;ret5?:number|null;ret63?:number|null;ret21?:number|null;provisional?:boolean;netIncomeQ?:Array<{end:string;value:number}>;htfBasis?:'closed'|'closed_confirmed'|'forming';htfNote?:string|null;storySignals?:{revenueAcceleration:boolean;profitTurnaround:boolean;lossNarrowing:boolean};funding?:{runwayMonths:number|null;sharesYoY:number|null;source:string};
+  priceAsOf?:string;ret1?:number|null;ret5?:number|null;ret63?:number|null;ret21?:number|null;provisional?:boolean;netIncomeQ?:Array<{end:string;value:number}>;assetPivot?:import('../../../../packages/analysis/asset-pivot.d.mts').AssetPivot;htfBasis?:'closed'|'closed_confirmed'|'forming';htfNote?:string|null;storySignals?:{revenueAcceleration:boolean;profitTurnaround:boolean;lossNarrowing:boolean};funding?:{runwayMonths:number|null;sharesYoY:number|null;source:string};
   type?: SetupType; symbol: string; name: string | null; sector: string; price: number; mcap: number | null; adv20: number | null; stage: SetupStage;
   // breakout
   pivot?: number | null; distanceToPivot?: number | null; extension?: number | null; barsSinceBreakout?: number | null; posInBase?: number | null; breakoutVolMult?: number | null;
@@ -81,6 +81,7 @@ export interface Backtest {
   generatedAt: string; method: string; limits: string[]; trades: number; symbols: number;
   report: Record<string, Record<string, BtSummary>>;
   caseStudies: Record<string, Array<{ date: string; entry: number; stop: number; baseMonths: number; results: Record<string, { ret: number; r: number; stopped: boolean; spy: number | null } | null> }>>;
+  caseNearMisses?: Record<string, Array<{ date: string; close: number; volMult: number; why: string[] }>>;
 }
 export const fetchSetups = () => get<Setups>('setups.json');
 export const fetchBacktest = () => get<Backtest>('backtest/breakouts.json');
