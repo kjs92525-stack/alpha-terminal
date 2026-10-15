@@ -13,6 +13,7 @@
 
 import fs from 'node:fs';
 import { storyAsOf } from '../analysis/story-pit.mjs';
+import { storyEvents, storyEventGroups } from './story-events.mjs';
 import path from 'node:path';
 import { sma } from '../analysis/indicators.mjs';
 import { findBase, explainBase, tradePlan, trendTemplate, relativeStrength, SETUP_RULES } from '../analysis/setups.mjs';
@@ -94,7 +95,7 @@ export function summarize(trades, h) {
     winRate: rs.filter((r) => r.ret > 0).length / rs.length,
     stoppedRate: rs.filter((r) => r.stopped).length / rs.length,
     avgReturn: avg(rets), medianReturn: pct(rets, 0.5),
-    avgR: avg(rs.map((r) => r.r)),
+    avgR: avg(rs.map((r) => r.r).filter((r) => typeof r === 'number' && Number.isFinite(r))),
     avgExcessVsSpy: avg(excess),
     bigWinners: rs.filter((r) => r.ret >= 0.5).length / rs.length,
     p10: pct(rets, 0.1), p90: pct(rets, 0.9),
@@ -204,6 +205,11 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
       if (t) turns.push({ symbol, ...t, story: factsBySymbol?.[symbol] ? storyAsOf(factsBySymbol[symbol], new Date(t.time * 1000).toISOString().slice(0, 10)) : null });
     }
   }
+  // business-change event study (no chart rule), only where filings are cached
+  const events = [];
+  if (factsBySymbol) for (const [symbol, bars] of Object.entries(barsBySymbol)) {
+    if (bars?.length >= 400 && factsBySymbol[symbol]) for (const ev of storyEvents(bars, factsBySymbol[symbol], spyByTime)) events.push({ symbol, ...ev });
+  }
   const groups = {
     all: trades,
     trendTemplateOk: trades.filter((t) => t.trendOk),
@@ -223,6 +229,7 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
       floorTurnStoryImproving: turns.filter((t) => t.story?.known && t.story.improving),
       floorTurnStoryNotImproving: turns.filter((t) => t.story?.known && !t.story.improving),
     } : {}),
+    ...(events.length ? storyEventGroups(events) : {}),
   };
   const report = {};
   for (const [g, ts] of Object.entries(groups)) report[g] = Object.fromEntries(HORIZONS.map((h) => [`${h}d`, summarize(ts, h)]));
@@ -234,6 +241,8 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
     limits: [factsBySymbol ? '실적 조건은 매수일까지 공시된 분기만 사용 — 재무 자료가 약 3년치라 2024년 하반기 이후 돌파만 비교 가능' : '스토리 점수는 과거 시점 데이터가 없어 미검증 (차트 규칙만 검증)', '현재 상장 종목만 사용 → 상장폐지 종목 누락으로 결과가 좋게 나올 수 있음 (생존 편향)', '수수료·슬리피지 미반영 (손절 갭만 반영)'],
     trades: trades.length,
     floorTurns: turns.length,
+    storyEvents: events.length,
+    storyEventMethod: '분기 매출 공시 다음 거래일 시가 매수 → h거래일 후 종가, 손절 없음, SPY 대비. 공시일까지 알려진 분기만으로 실적 개선 판정. 52주 범위 하단 1/3 = 바닥권, 상단 20% = 고점권. 주가 $2 이상·20일 평균 거래대금 $100만 이상.',
     floorTurnRules: FLOOR_TURN,
     floorTurnCases: Object.fromEntries(caseStudies.map((s) => [s, turns.filter((t) => t.symbol === s).map((t) => ({ date: fmtDate(t.time), entry: t.entry, stop: t.stop, toPivot: t.toPivot, results: t.results }))])),
     symbols: Object.keys(barsBySymbol).length,
