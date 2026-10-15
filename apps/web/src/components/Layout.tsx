@@ -5,6 +5,7 @@ import { load, save } from '../lib/storage';
 import type { TickerHit } from '../lib/types';
 
 export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNode }> = [
+  { id:'market-brief',label:'매일 시황 브리핑',code:'MARKET BRIEF',icon:<Activity size={16} /> },
   { id: 'dashboard', label: '통합 터미널', code: 'DASHBOARD', icon: <Activity size={16} /> },
   { id: 'discover', label: 'AI 종목발굴', code: 'DISCOVERY', icon: <Sparkles size={16} /> },
   { id: 'early-alpha', label: 'EARLY ALPHA', code: 'EARLY ALPHA', icon: <Search size={16} /> },
