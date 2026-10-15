@@ -21,6 +21,7 @@ export function thesisChecks(row, asOf) {
   const fresh = (end) => Boolean(end) && Date.parse(asOf) - Date.parse(end) <= 200 * DAY && Date.parse(end) <= Date.parse(asOf);
   const lastRev = rev.at(-1), prevRev = rev.at(-2), lastNi = ni.at(-1), agoNi = lastNi ? yearAgo(ni, lastNi.end) : null;
   const plan = row?.plan, f = row?.funding ?? {};
+  const pivot = row?.assetPivot ?? null, build = Boolean(pivot?.investmentPhase && pivot.capex);
   const item = (label, met, observed) => ({ label, met, observed });
 
   const promote = [
@@ -42,11 +43,15 @@ export function thesisChecks(row, asOf) {
     item('매출이 역성장으로 돌아섰거나 직전 분기보다 10%p 넘게 둔화',
       lastRev && fresh(lastRev.end) ? lastRev.yoy < 0 || (prevRev ? prevRev.yoy - lastRev.yoy > 0.1 : false) : null,
       lastRev ? `매출 YoY ${pct(lastRev.yoy)}${prevRev ? ` ← ${pct(prevRev.yoy)}` : ''}` : '분기 매출 자료 없음'),
-    item('적자가 1년 전 같은 분기보다 커짐',
-      lastNi && agoNi && fresh(lastNi.end) ? lastNi.value < 0 && lastNi.value < agoNi.value : null,
-      lastNi && agoNi ? `순이익 ${usd(lastNi.value)} ← ${usd(agoNi.value)}` : '비교할 분기 순이익 없음'),
+    // a build-out (capex at least doubled) widens losses by design: judge it on cash and dilution instead
+    item(build ? '적자 확대 — 설비 투자 확대기라 아래 현금·희석 기준으로 대신 판단' : '적자가 1년 전 같은 분기보다 커짐',
+      build ? false : lastNi && agoNi && fresh(lastNi.end) ? lastNi.value < 0 && lastNi.value < agoNi.value : null,
+      `${lastNi && agoNi ? `순이익 ${usd(lastNi.value)} ← ${usd(agoNi.value)}` : '비교할 분기 순이익 없음'}${build ? ` · 설비투자 1년 ${usd(pivot.capex.ttm)}${finite(pivot.capex.prior) ? ` (1년 전 ${usd(pivot.capex.prior)})` : ''}` : ''}`),
     item('주식 수가 1년 새 15% 넘게 늘어남 (희석)', finite(f.sharesYoY) ? f.sharesYoY > 0.15 : null, finite(f.sharesYoY) ? `주식 수 ${pct(f.sharesYoY)}` : '최근 주식 수 변화 미확인'),
-    item('현금으로 버틸 기간 12개월 미만', finite(f.runwayMonths) ? f.runwayMonths < 12 : null, finite(f.runwayMonths) ? `약 ${f.runwayMonths.toFixed(0)}개월` : '런웨이 미확인 (흑자이거나 자료 없음)'),
+    build
+      ? item('설비투자까지 포함해 현금으로 버틸 기간 18개월 미만', pivot.selfFunded ? false : finite(pivot.fundedMonths) ? pivot.fundedMonths < 18 : null,
+        pivot.selfFunded ? '영업현금으로 설비투자를 충당 중' : finite(pivot.fundedMonths) ? `약 ${pivot.fundedMonths}개월 (영업현금 − 설비투자 기준)` : '현금·설비투자 자료 미확인')
+      : item('현금으로 버틸 기간 12개월 미만', finite(f.runwayMonths) ? f.runwayMonths < 12 : null, finite(f.runwayMonths) ? `약 ${f.runwayMonths.toFixed(0)}개월` : '런웨이 미확인 (흑자이거나 자료 없음)'),
   ];
   const state = drop.some((d) => d.met === true) ? 'drop' : promote.every((p) => p.met === true) ? 'review' : 'watch';
   const unknown = [...promote, ...drop].filter((x) => x.met === null).length;

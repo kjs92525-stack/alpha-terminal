@@ -249,7 +249,6 @@ function BacktestBox({ bt }: { bt: Backtest | null }) {
   if (!bt) {
     return <div className="pad-box muted small">과거 검증(백테스트): 아직 실행 전 — GitHub Actions → <b>Breakout backtest</b> 실행 시 2016년 이후 같은 규칙의 실제 성과가 여기에 표시됩니다.</div>;
   }
-  const pltr = bt.caseStudies.PLTR ?? [];
   return (
     <div className="pad-box">
       <h4 style={{ margin: '0 0 6px' }}>과거 검증 — 같은 차트 규칙을 {bt.symbols.toLocaleString()}개 종목에 적용 (거래 {bt.trades.toLocaleString()}건)</h4>
@@ -277,11 +276,22 @@ function BacktestBox({ bt }: { bt: Backtest | null }) {
           </tbody>
         </table>
       </div>
-      {!!pltr.length && (
-        <p className="small">
-          <b>PLTR 사례:</b>{' '}
-          {pltr.map((t) => `${t.date} 진입 $${fmtPrice(t.entry)} (바닥 ${t.baseMonths}개월) → 60일 ${t.results['60'] ? fmtPct(t.results['60'].ret) + (t.results['60'].stopped ? ' 손절' : '') : '진행 중'}, 120일 ${t.results['120'] ? fmtPct(t.results['120'].ret) : '진행 중'}`).join(' · ')}
-        </p>
+      {Object.keys(bt.caseStudies).length > 0 && (
+        <details className="small">
+          <summary>과거 사례 — 이 규칙이 실제로 잡았나 ({Object.keys(bt.caseStudies).join(' · ')})</summary>
+          {Object.entries(bt.caseStudies).map(([sym, trades]) => {
+            const miss = bt.caseNearMisses?.[sym] ?? [];
+            return (
+              <p key={sym}>
+                <b>{sym}:</b>{' '}
+                {trades.length
+                  ? trades.map((t) => `${t.date} 진입 $${fmtPrice(t.entry)} (바닥 ${t.baseMonths}개월) → 60일 ${t.results['60'] ? fmtPct(t.results['60'].ret) + (t.results['60'].stopped ? ' 손절' : '') : '진행 중'}, 120일 ${t.results['120'] ? fmtPct(t.results['120'].ret) : '진행 중'}`).join(' · ')
+                  : '규칙이 잡은 돌파 없음'}
+                {!!miss.length && <><br /><span className="muted">놓친 거래량 돌파: {miss.slice(-3).map((m) => `${m.date} $${fmtPrice(m.close)} (거래량 ${m.volMult}배) — ${m.why[m.why.length - 1] ?? ''}`).join(' · ')}</span></>}
+              </p>
+            );
+          })}
+        </details>
       )}
       <p className="footnote">{bt.method} 한계: {bt.limits.join(' / ')} · 생성 {fmtEt(bt.generatedAt)} <a className="text-link inline" href="https://github.com/kjs92525-stack/alpha-terminal/tree/data/backtest" target="_blank" rel="noreferrer">원본 <ExternalLink size={10} /></a></p>
     </div>

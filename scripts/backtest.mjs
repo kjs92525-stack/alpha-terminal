@@ -17,7 +17,8 @@ const limit = Number(arg('limit', 0));
 const start = arg('start', '2016-01-01');
 const log = (m) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}`);
 
-const CASES = ['PLTR', 'RGTI', 'QUBT', 'IONQ'];
+// long-base winners, plus loss-making asset pivots (power/data-center capacity re-used for AI compute)
+const CASES = ['PLTR', 'RGTI', 'QUBT', 'IONQ', 'IREN', 'CIFR', 'WULF', 'APLD'];
 // SEC refuses GitHub runners; fall back to Alpaca's active US equities
 let listed;
 try {
@@ -45,7 +46,7 @@ const all = loadBarsDir(cacheDir);
 const spy = all.SPY;
 delete all.SPY;
 log(`running backtest on ${Object.keys(all).length} symbols`);
-const report = runBreakoutBacktest(all, spy);
+const report = runBreakoutBacktest(all, spy, { caseStudies: CASES });
 fs.mkdirSync(path.join(outDir, 'backtest'), { recursive: true });
 fs.writeFileSync(path.join(outDir, 'backtest', 'breakouts.json'), JSON.stringify(report, null, 1));
 log(`done: ${report.trades} trades`);

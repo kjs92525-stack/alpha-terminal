@@ -53,6 +53,8 @@ const REVENUE = ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenue
 const NET_INCOME = ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'];
 const OCF = ['NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'];
 const CASH = ['CashAndCashEquivalentsAtCarryingValue', 'Cash'];
+// purchases of property/equipment (reported as a positive outflow); records cached before this field have none
+const CAPEX = ['PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsToAcquireProductiveAssets', 'PaymentsForCapitalImprovements'];
 
 const bare = (concept) => String(concept ?? '').replace(/^[a-z-]+_/i, '');
 function pick(section, names) {
@@ -73,7 +75,7 @@ export function compactReported(reported, annual = null) {
     .filter((d) => /^(10-Q|10-K|20-F|40-F)/.test(d.form ?? '') && d.endDate)
     .map((d) => ({
       form: d.form, year: d.year ?? null, start: isoDay(d.startDate) || null, end: isoDay(d.endDate), filed: isoDay(d.filedDate) || null,
-      rev: pick(d.report?.ic, REVENUE), ni: pick(d.report?.ic, NET_INCOME), ocf: pick(d.report?.cf, OCF), cash: pick(d.report?.bs, CASH),
+      rev: pick(d.report?.ic, REVENUE), ni: pick(d.report?.ic, NET_INCOME), ocf: pick(d.report?.cf, OCF), cash: pick(d.report?.bs, CASH), capex: (() => { const v = pick(d.report?.cf, CAPEX); return v === null ? null : Math.abs(v); })(),
     }))
     .sort((a, b) => a.end.localeCompare(b.end));
 }
@@ -137,6 +139,7 @@ export function fundamentalsFromCompact(rows, profile) {
   let rev = quarterlyFlow(rows, 'rev');
   const ni = quarterlyFlow(rows, 'ni');
   const ocf = quarterlyFlow(rows, 'ocf');
+  const capex = quarterlyFlow(rows, 'capex');
   // a negative derived revenue quarter means the period guess was wrong — don't use the series
   if (rev.some((q) => q.value < 0)) rev = [];
   const cashPts = rows.filter((r) => typeof r.cash === 'number').map((r) => ({ end: r.end, value: r.cash, filed: r.filed, form: r.form }));
@@ -144,6 +147,8 @@ export function fundamentalsFromCompact(rows, profile) {
   const revTtmPrior = rev.length >= 8 ? ttm(rev.slice(0, -4)) : null;
   const niTtm = ttm(ni);
   const ocfTtm = ttm(ocf);
+  const capexTtm = ttm(capex);
+  const capexTtmPrior = capex.length >= 8 ? ttm(capex.slice(0, -4)) : null;
   const cash = cashPts.at(-1) ?? null;
   const sharesM = profile?.shareOutstanding;
   const shares = typeof sharesM === 'number' && sharesM > 0 ? { end: new Date().toISOString().slice(0, 10), value: sharesM * 1e6, filed: null, form: 'profile' } : null;
@@ -157,6 +162,8 @@ export function fundamentalsFromCompact(rows, profile) {
     netIncome: niTtm,
     netMargin: niTtm && revTtm && revTtm.value > 0 ? niTtm.value / revTtm.value : null,
     operatingCashFlow: ocfTtm,
+    capexTtm,
+    capexTtmPrior,
     cash,
     shortTermInvestments: null,
     liquidAssets: cash?.value ?? null,
