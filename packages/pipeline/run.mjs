@@ -9,7 +9,8 @@ import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
 import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
 import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
-import { makeFinnhubClient, fetchCompany, withFacts, fetchEarningsCalendar } from './finnhub.mjs';
+import { makeFinnhubClient, fetchCompany, withFacts, fetchEarningsCalendar, fetchEdgeData } from './finnhub.mjs';
+import { insiderSignal, dilutionSignal, analystTrend } from '../analysis/edge-signals.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals, quarterlyYoY } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottomClosed, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
@@ -467,6 +468,25 @@ export async function runNightly({
     });
   }
   setups.sort((a, b) => b.score - a.score);
+  // 6b-3. information-edge evidence (insider buying, dilution filings, analyst trend) for the names
+  //       the discovery lists can show first, then the best-scored; 3 Finnhub calls per symbol
+  const edgeStats = { status: env.FINNHUB_API_KEY ? 'ok' : 'not_configured', symbols: 0, errors: 0 };
+  if (env.FINNHUB_API_KEY) {
+    const listed = setups.filter((x) => ['early', 'pivot', 'watch'].some((m) => !earlyIssues(x, asOf, m).length)).map((x) => x.symbol);
+    const order = [...new Set([...listed, ...setups.map((x) => x.symbol)])].slice(0, Number(env.EDGE_MAX || 60));
+    const fhEdge = makeFinnhubClient({ apiKey: env.FINNHUB_API_KEY, fetchImpl, wait, minIntervalMs: Number(env.FINNHUB_MIN_INTERVAL_MS ?? 1100) });
+    const edgeBy = new Map();
+    for (const sym of order) {
+      try {
+        const d = await fetchEdgeData(fhEdge, sym, asOf);
+        edgeBy.set(sym, { checkedAt: new Date().toISOString(), insider: insiderSignal(d.insider, asOf), dilution: dilutionSignal(d.filings, asOf), analyst: analystTrend(d.recommendation), errors: d.errors });
+        if (d.errors.length) edgeStats.errors++;
+      } catch (e) { edgeBy.set(sym, { checkedAt: new Date().toISOString(), insider: null, dilution: null, analyst: null, errors: [String(e.message)] }); edgeStats.errors++; if (e.fatal) break; }
+    }
+    edgeStats.symbols = edgeBy.size;
+    for (const x of setups) x.edge = edgeBy.get(x.symbol) ?? null;
+  }
+  stats.edge = edgeStats;
   const count = (arr) => arr.reduce((m, x) => ((m[x.stage] = (m[x.stage] ?? 0) + 1), m), {});
   stats.setups = {
     scanned: rows.length, candidates: setups.length, newsRequests,

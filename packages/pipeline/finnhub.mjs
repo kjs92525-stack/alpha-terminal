@@ -220,3 +220,13 @@ export async function fetchEarningsCalendar(client, from, to) {
   }
   return out;
 }
+
+/** Insider transactions, SEC filing list and analyst recommendation trend for one symbol (3 calls). */
+export async function fetchEdgeData(client, symbol, asOf) {
+  const sym = encodeURIComponent(symbol), from = new Date(Date.parse(asOf) - 200 * 86400000).toISOString().slice(0, 10);
+  const out = { insider: null, filings: null, recommendation: null, errors: [] };
+  try { const j = await client.json(`/stock/insider-transactions?symbol=${sym}&from=${from}&to=${asOf}`); out.insider = Array.isArray(j?.data) ? j.data : null; if (!out.insider) out.errors.push('insider schema'); } catch (e) { out.errors.push(`insider: ${e.message}`); }
+  try { const j = await client.json(`/stock/filings?symbol=${sym}&from=${from}&to=${asOf}`); out.filings = Array.isArray(j) ? j.map((f) => ({ form: f.form, filingDate: String(f.filedDate ?? '').slice(0, 10), url: /^https:\/\/(www\.)?sec\.gov\//.test(f.reportUrl ?? '') ? f.reportUrl : null })) : null; if (!out.filings) out.errors.push('filings schema'); } catch (e) { out.errors.push(`filings: ${e.message}`); }
+  try { const j = await client.json(`/stock/recommendation?symbol=${sym}`); out.recommendation = Array.isArray(j) ? j : null; } catch (e) { out.errors.push(`recommendation: ${e.message}`); }
+  return out;
+}

@@ -76,3 +76,9 @@ test('index-level wraps are not a company cause; the headline behind the label i
   assert.equal(e.cause, 'regulatory');
   assert.match(e.headlines[0].headline, /FDA/);
 });
+
+test('insider purchase headlines are their own cause', () => {
+  assert.equal(classifyCause('Dreamland Form4 Filing Shows CEO Seto Wai Yue Acquires 1.5M Shares, Increasing Direct Holdings'), 'insider');
+  assert.equal(classifyCause('Director buys 20,000 shares of X'), 'insider');
+  assert.equal(classifyCause('X prices $50 million offering'), 'financing');
+});

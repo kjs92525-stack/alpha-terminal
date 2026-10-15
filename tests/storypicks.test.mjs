@@ -77,3 +77,14 @@ test('earnings inside 5 sessions holds the entry; an unchecked calendar is not r
   assert.ok(earlyIssues({ ...base, earningsChecked: false, earnings: null }, '2026-10-14', 'early').includes('실적 발표일 미확인'));
   assert.ok(!earlyIssues({ ...base, earningsChecked: false }, '2026-10-14', 'legacy').includes('실적 발표일 미확인'), 'legacy list is unchanged');
 });
+
+test('insider buying cluster lifts a pick; a fresh offering is flagged', () => {
+  const data = { asOf: '2026-10-14', candidates: [
+    row({ symbol: 'INS', reasons: [{ kind: 'plus', text: '흑자 전환', pts: 25 }], edge: { checkedAt: '2026-10-14T00:00:00Z', insider: { days: 90, buyers: 3, buyValue: 400000, sellValue: 0, cluster: true, recent: [] }, dilution: { days: 180, count: 0, shelf: false, offering: false, recent: [] }, analyst: null, errors: [] } }),
+    row({ symbol: 'DIL', chartScore: 75, reasons: [{ kind: 'plus', text: '흑자 전환', pts: 25 }], edge: { checkedAt: '2026-10-14T00:00:00Z', insider: null, dilution: { days: 180, count: 1, shelf: false, offering: true, recent: [{ form: '424B5', date: '2026-10-01', url: null }] }, analyst: null, errors: [] } }),
+  ] };
+  const picks = storyPicks(data, 8, 'legacy');
+  assert.equal(picks[0].row.symbol, 'INS');
+  assert.ok(picks[0].why.some((w) => /내부자 매수 3명/.test(w)));
+  assert.ok(picks.find((p) => p.row.symbol === 'DIL').why.includes('⚠ 최근 발행 공시(424B)'));
+});
