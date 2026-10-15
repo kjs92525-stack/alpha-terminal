@@ -85,6 +85,8 @@ export interface Backtest {
 }
 export const fetchSetups = () => get<Setups>('setups.json');
 export const fetchBacktest = () => get<Backtest>('backtest/breakouts.json');
+export interface EdgeEvents { generatedAt: string; method: string; limits: string[]; symbols: number; errors: number; events: number; firstEventDate: string | null; report: Record<string, Record<string, BtSummary>> }
+export const fetchEdgeEvents = () => get<EdgeEvents>('backtest/edge-events.json');
 
 export type CyclePhase = 'EARLY' | 'BASING' | 'LEADING' | 'LATE' | 'NEUTRAL' | 'DOWN';
 export interface SectorGroup {

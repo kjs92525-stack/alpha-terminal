@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { useTerminal } from '../lib/store';
-import { fetchBacktest, fetchSetups, NoSnapshotError, SECTOR_KO, type Backtest, type SetupRow, type Setups, type SetupStage, type SetupType } from '../lib/snapshot';
+import { fetchBacktest, fetchEdgeEvents, fetchSetups, type EdgeEvents, NoSnapshotError, SECTOR_KO, type Backtest, type SetupRow, type Setups, type SetupStage, type SetupType } from '../lib/snapshot';
 import { fmtEt, fmtPct, fmtPrice, fmtUsd, heatColor, signClass } from '../lib/format';
 import { ErrorBox, Loading, PanelHead } from './ui';
 import { buildStoryPrompt } from '../lib/storyPicks';
@@ -54,10 +54,12 @@ export function SetupScanner() {
   const [stage, setStage] = useState<SetupStage | 'all'>('all');
   const [storyOnly, setStoryOnly] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const [ee, setEe] = useState<EdgeEvents | null>(null);
 
   useEffect(() => {
     fetchSetups().then(setData).catch((e) => (e instanceof NoSnapshotError ? setMissing(true) : setErr(e.message)));
     fetchBacktest().then(setBt).catch(() => setBt(null));
+    fetchEdgeEvents().then(setEe).catch(() => setEe(null));
   }, []);
 
   const T = TYPES.find((t) => t.key === type)!;
@@ -203,6 +205,7 @@ export function SetupScanner() {
         </>
       )}
       {type === 'breakout' && <BacktestBox bt={bt} />}
+      {type === 'breakout' && <EdgeEventBox ee={ee} />}
     </section>
   );
 }
@@ -294,6 +297,33 @@ function BacktestBox({ bt }: { bt: Backtest | null }) {
         </details>
       )}
       <p className="footnote">{bt.method} 한계: {bt.limits.join(' / ')} · 생성 {fmtEt(bt.generatedAt)} <a className="text-link inline" href="https://github.com/kjs92525-stack/alpha-terminal/tree/data/backtest" target="_blank" rel="noreferrer">원본 <ExternalLink size={10} /></a></p>
+    </div>
+  );
+}
+
+const EDGE_KO: Record<string, string> = { insiderCluster: '내부자 매수 묶음 (공개 다음 날)', insiderMultiBuyers: '내부자 2명 이상', insiderOver1M: '내부자 매수 $100만 이상', insiderNearLow: '내부자 매수 + 52주 바닥권', insiderRevAccel: '내부자 매수 + 매출 가속', insiderNotImproving: '내부자 매수 + 실적 개선 없음', offering424B: '증자 설명서(424B) 제출', offeringNotImproving: '증자 + 실적 개선 없음', offeringImproving: '증자 + 실적 개선', shelfRegistration: '증권 등록(S-3·S-1 등)' };
+
+function EdgeEventBox({ ee }: { ee: EdgeEvents | null }) {
+  if (!ee) return <div className="pad-box muted small">정보 우위 신호 과거 검증: 아직 실행 전 — GitHub Actions → <b>Edge event study</b>를 실행하면 내부자 매수·증자 공시 뒤의 실제 성과가 여기에 표시됩니다.</div>;
+  return (
+    <div className="pad-box">
+      <h4 style={{ margin: '0 0 6px' }}>정보 우위 신호 과거 검증 — {ee.symbols.toLocaleString()}개 종목, 사건 {ee.events.toLocaleString()}건{ee.firstEventDate ? ` (${ee.firstEventDate}부터)` : ''}</h4>
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead><tr><th>사건</th><th>건수(120일)</th><th>20일 SPY 대비</th><th>60일 SPY 대비</th><th>120일 SPY 대비</th><th>120일 승률</th><th>120일 중앙값</th></tr></thead>
+          <tbody>
+            {Object.entries(ee.report).map(([g, h]) => (
+              <tr key={g}>
+                <td>{EDGE_KO[g] ?? g}</td><td>{h['120d']?.n ?? 0}</td>
+                {(['20d', '60d', '120d'] as const).map((k) => <td key={k} className={signClass(h[k]?.avgExcessVsSpy)}>{fmtPct(h[k]?.avgExcessVsSpy)}</td>)}
+                <td>{fmtPct(h['120d']?.winRate, 0).replace('+', '')}</td>
+                <td className={signClass(h['120d']?.medianReturn)}>{fmtPct(h['120d']?.medianReturn)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="footnote">{ee.method} 한계: {ee.limits.join(' / ')} · 조회 실패 {ee.errors}종목 · 생성 {fmtEt(ee.generatedAt)}</p>
     </div>
   );
 }

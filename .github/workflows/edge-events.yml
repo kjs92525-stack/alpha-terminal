@@ -1,0 +1,52 @@
+# Event study of insider clusters and offering/shelf filings (DESIGN P4). Manual only.
+# Reuses the Breakout backtest bar cache; publishes backtest/edge-events.json to the data branch.
+name: Edge event study
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max symbols (2 Finnhub calls each, ~2.2 s per symbol on first run)'
+        default: '2400'
+permissions:
+  contents: write
+concurrency:
+  group: data-branch-writer
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+    steps:
+      - name: Check secrets
+        run: |
+          if [ -z "$FINNHUB_API_KEY" ]; then echo "::error::FINNHUB_API_KEY 없음 — Settings → Secrets and variables → Actions에 등록하세요."; exit 1; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore backtest bars
+        uses: actions/cache/restore@v4
+        with:
+          path: .backtest-cache
+          key: backtest-cache-none
+          restore-keys: backtest-cache-
+      - uses: actions/cache@v4
+        with:
+          path: .edge-cache
+          key: edge-cache-${{ github.run_id }}
+          restore-keys: edge-cache-
+      - name: Check out data branch
+        run: |
+          git fetch origin data --depth=1
+          git worktree add -B data data-branch origin/data
+      - run: node scripts/edge-event-study.mjs --bars .backtest-cache/bars --cache .edge-cache --out data-branch --limit "${{ github.event.inputs.limit || '2400' }}"
+      - name: Publish
+        run: |
+          cd data-branch
+          git add backtest/edge-events.json
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "backtest: edge events $(date -u +%F)"
+          git pull --rebase -q origin data || true
+          git push origin data
