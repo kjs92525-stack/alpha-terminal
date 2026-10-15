@@ -21,7 +21,7 @@ export function TopPicks() {
   const riskUsd = Number(read('alpha:acct', '10000')) * Number(read('alpha:riskpct', '1')) / 100;
   return <section className="panel story-picks">
     <PanelHead kicker="TODAY'S SHORTLIST" title="오늘 볼 종목 · 확신도" right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
-    <p className="pad-box muted small">상승 초입·자산 전환·바닥 관찰 규칙을 통과한 종목만, 근거 점수로 정렬합니다. A도 매수 확정이 아니며, 시장이 대기·미확인이면 모두 C(관찰)로 낮춥니다. 점수 근거는 각 줄에 그대로 적습니다.</p>
+    <p className="pad-box muted small">상승 초입·자산 전환·바닥 관찰 규칙을 통과한 종목만, 근거 점수로 정렬합니다. 과거 공시 검증에서 초과수익이 난 것은 매출 가속이었고(이익 개선만은 없음), A는 매출 가속이 있어야 받습니다. A도 매수 확정이 아니며, 시장이 대기·미확인이면 모두 C(관찰)로 낮춥니다. 점수 근거는 각 줄에 그대로 적습니다.</p>
     {state === 'loading' && <p className="pad-box muted">확인 중…</p>}
     {state !== 'loading' && !picks.length && <p className="pad-box muted">오늘은 규칙을 통과한 종목이 없습니다. 기준을 낮춰 채우지 않습니다.</p>}
     <ol className="thesis-list pad-box">{picks.map((c) => {

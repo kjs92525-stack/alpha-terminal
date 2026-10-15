@@ -32,3 +32,19 @@ test('only rule-passing names are listed; nothing passes → empty, never padded
   assert.deepEqual(topConviction(data, 'SELECTIVE').map((c) => c.row.symbol), ['OK']);
   assert.deepEqual(topConviction({ asOf: '2026-10-14', candidates: [good({ ret63: 0.9 })] }, 'SELECTIVE'), []);
 });
+
+test('sales acceleration carries the points; income-only improvement is marked down and cannot reach A', async () => {
+  const { businessEvidence } = await import('../packages/analysis/business-evidence.mjs');
+  const asOf = '2026-10-14';
+  const accel = good({ edge: insider });
+  assert.deepEqual([businessEvidence(accel, asOf).revAccel, businessEvidence(accel, asOf).niImproved], [true, true]);
+  const both = scoreConviction(accel, asOf, 'early', 'SELECTIVE');
+  assert.ok(both.plus.some((p) => /매출 가속 \+ 이익 개선/.test(p)));
+  const flat = good({ edge: insider, revenueYoY: [{ end: '2026-03-31', yoy: 0.25 }, { end: '2026-06-30', yoy: 0.2 }] });
+  const ni = scoreConviction(flat, asOf, 'early', 'SELECTIVE');
+  assert.ok(ni.minus.some((m) => /이익 개선만/.test(m)));
+  assert.ok(ni.points <= both.points - 30);
+  assert.notEqual(ni.tier, 'A');
+  // stale quarters count for nothing
+  assert.equal(businessEvidence(accel, '2027-06-30').revAccel, false);
+});
