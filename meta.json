@@ -1,13 +1,18 @@
 {
- "startedAt": "2026-10-14T21:59:30.984Z",
+ "startedAt": "2026-10-15T02:04:04.593Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
  "universe": 5267,
- "alpacaRequests": 215,
- "fullFetches": 1,
- "monthlyFetched": 1,
+ "alpacaRequests": 216,
+ "fullFetches": 7,
+ "monthlyFetched": 6,
  "asOf": "2026-10-14",
+ "marketBrief": {
+  "state": "WAIT",
+  "sample": 3567,
+  "missing": []
+ },
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
  "sec": {
   "skipped": true,
@@ -16,17 +21,15 @@
  },
  "finnhub": {
   "needed": 5267,
-  "cached": 4492,
-  "attempted": 500,
-  "fetched": 499,
-  "withRevenue": 220,
-  "errors": [
-   "QCRH: Finnhub HTTP 500"
-  ],
-  "calls": 1499
+  "cached": 4991,
+  "attempted": 0,
+  "fetched": 0,
+  "withRevenue": 0,
+  "errors": [],
+  "calls": 0
  },
  "secPublished": {
-  "companyFilesWritten": 529,
+  "companyFilesWritten": 4875,
   "recentFilings": 1
  },
  "withFeatures": 5263,
@@ -74,7 +77,7 @@
   },
   "grouped": 700
  },
- "ledgerWritten": true,
+ "ledgerWritten": false,
  "earlyAlpha": {
   "scanned": 5263,
   "eligible": 1562,
@@ -90,5 +93,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 2021
+ "seconds": 278
 }
