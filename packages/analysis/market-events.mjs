@@ -5,3 +5,11 @@ const EVENTS=[
  {id:'2026-10-14-asml-demand',publishedAt:null,publishedOn:'2026-10-14',availableAfter:'2026-10-15T00:00:00Z',reviewedAt:'2026-10-15T04:20:00Z',expiresAt:'2026-10-17T12:00:00Z',title:'반대 근거도 있다: 반도체 장비 수요와 주가 하락은 공존한다',source:'ASML · 회사 실적 발표 (발표일 기준)',url:'https://investor.asml.com/news-releases/news-release-details/asml-reports-eu11.7-billion-total-net-sales-and-eu5.0-billion-net-income-q3-2026',fact:'ASML은 10월 14일 3분기 매출 약 117억 유로, 매출총이익률 57.5%를 발표했습니다. 경영진은 AI 투자 전망을 배경으로 고객의 장비 수요 예상이 늘고 있다고 설명했습니다. 수요 전망은 회사의 진술이며 확정된 미래 매출이 아닙니다.',analysis:'이는 기술주 하락을 곧바로 산업 수요 붕괴로 해석하면 안 되는 반대 근거입니다. 장비 발주가 늘어도 이미 높은 성장률을 반영한 주가는 금리·기대치 변화로 하락할 수 있습니다. 소형 부품 공급사에 기회가 되려면 그 회사가 실제 공급망에 들어가 있는지와 수주가 이익으로 전환되는지 확인해야 합니다.',challenge:'후속 수주·고객 투자 집행·취소 조건·매출 인식 시점을 봅니다. ASML 한 회사의 결과로 반도체 전 공정이나 모든 관련 소형주의 호황을 확정하지 않습니다.'}
 ];
 export function reviewedMarketEvents(now=Date.now()){return EVENTS.filter(e=>Date.parse(e.reviewedAt)<=now&&Date.parse(e.availableAfter??e.publishedAt)<=now&&now<Date.parse(e.expiresAt)).map(e=>({...e,classification:'출처를 검토한 사실 + 조건부 해석 · 자동 속보 아님'}));}
+
+// Official release checked against the BLS archive on the review date. Short
+// validity and explicit provenance prevent a blocked live fetch looking fresh.
+export function reviewedCpi(now=Date.now()){
+ const reviewedAt='2026-10-15T04:20:00Z',expiresAt='2026-10-17T12:30:00Z';
+ if(now<Date.parse(reviewedAt)||now>=Date.parse(expiresAt))return null;
+ return {publishedAt:'2026-10-14T12:30:00.000Z',period:'2026-09',headlineMonthly:0.6,headlineAnnual:3.7,coreMonthly:0.3,coreAnnual:2.6,source:'미국 노동통계국(BLS) · 원문 대조한 검토본',url:'https://www.bls.gov/news.release/archives/cpi_10142026.htm',reviewedAt,expiresAt,collection:'reviewed_snapshot'};
+}
