@@ -34,3 +34,17 @@ test('groups split by story and 52-week position; illiquid names are skipped', (
   assert.ok(g.eventImprovingNearLow.every((e) => e.posIn52w <= 0.33 && e.story.improving));
   assert.equal(storyEvents(bars.map((b) => ({ ...b, volume: 10 })), facts, spy).length, 0);
 });
+
+test('forward ledger: a fresh filing is recorded once with what it showed; returns start after the record night', async () => {
+  const { recordFilingEvent, evaluateFilingEvent } = await import('../packages/pipeline/story-events.mjs');
+  const filedLast = d(6 * 91 + 40);
+  const asOf = d(6 * 91 + 42);
+  const rec = recordFilingEvent('X', facts, bars, asOf);
+  assert.equal(rec.id, `${filedLast}:X`);
+  assert.ok(rec.story.revAccel && rec.story.improving);
+  assert.equal(recordFilingEvent('X', facts, bars, d(6 * 91 + 60)), null); // too old to be news
+  const ev = evaluateFilingEvent(rec, bars, spy);
+  assert.equal(ev.entryDate, d(6 * 91 + 43));
+  assert.ok(ev.results[20].ret > 0);
+  assert.equal(evaluateFilingEvent(rec, bars.slice(0, 6 * 91 + 50), spy).results[20], null); // not matured
+});
