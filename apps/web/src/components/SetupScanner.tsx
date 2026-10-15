@@ -138,7 +138,7 @@ export function SetupScanner() {
                         <td className="up">{p ? `$${fmtPrice(p.target)}` : '—'}<small>{p?.target2 ? `2차 $${fmtPrice(p.target2)}` : ''}</small></td>
                         <td>{p?.rMultiple != null ? p.rMultiple.toFixed(1) : '—'}</td>
                         <td className="heat"><span style={{ background: heatColor(x.chartScore) }}>{x.chartScore}</span></td>
-                        <td className="heat"><span style={{ background: heatColor(x.storyScore) }}>{x.storyScore}</span></td>
+                        <td className="heat"><span style={{ background: heatColor(x.storyScore) }}>{x.storyScore}</span>{typeOf(x) === 'breakout' && x.storySignals && !x.storySignals.revenueAcceleration && !x.storySignals.profitTurnaround && !x.storySignals.lossNarrowing && <small className="down" title="과거 검증: 실적 개선 없는 돌파는 120일 뒤 시장보다 평균 -8.9%"> ⚠실적 개선 없음</small>}</td>
                         <td className="heat"><span style={{ background: heatColor(x.score) }}>{x.score}</span></td>
                         <td className="muted reason-cell">{x.narrative?.takeaway ?? pos[0]?.text ?? (x.newsChecked ? '실적·뉴스 근거 없음' : '뉴스 미확인(상위 후보만 조회)')}{x.themes.length ? ` · ${x.themes.join(', ')}` : ''}</td>
                       </tr>

@@ -3,6 +3,7 @@ import { Activity, Gauge, Radar, Sparkles } from 'lucide-react';
 import { fetchLatest, fetchSetups, type Latest, type Setups } from '../lib/snapshot';
 import { storyPicks, TYPE_KO } from '../lib/storyPicks';
 import { StoryPicks } from '../components/StoryPicks';
+import { TodayActions } from '../components/TodayActions';
 import { SectorCycle } from '../components/SectorCycle';
 import { useTerminal, useAnalysis } from '../lib/store';
 import { ScannerPanel } from '../components/Scanner';
@@ -35,7 +36,8 @@ export function Dashboard() {
         <div className="kpi-card"><div className="kpi-top">BUY SETUPS <Radar size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{byType ? String(buyCount('breakout', ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT']) + buyCount('pullback', ['BOUNCE', 'AT_SUPPORT']) + buyCount('weekly_bottom', ['TURNING']) + buyCount('monthly_bottom', ['TURNING'])) : '—'}</strong><span>매수 자리</span></div><div className="kpi-foot">● {byType ? `${TYPE_KO.breakout} ${buyCount('breakout', ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT'])} · ${TYPE_KO.pullback} ${buyCount('pullback', ['BOUNCE', 'AT_SUPPORT'])} · 바닥 전환 ${buyCount('weekly_bottom', ['TURNING']) + buyCount('monthly_bottom', ['TURNING'])}` : '—'}</div></div>
         <div className="kpi-card"><div className="kpi-top">DATA <Gauge size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{mode === 'live' ? 'LIVE' : 'SIM'}</strong><span>재무 {fundSrc}</span></div><div className="kpi-foot">● 시세: {health?.priceProviders.join(' → ') ?? '합성 OHLCV'}</div></div>
       </div>
-      <StoryPicks limit={6} />
+      <TodayActions />
+      <div style={{ marginTop: 12 }}><StoryPicks limit={6} /></div>
       <div style={{ marginTop: 12 }}><SectorCycle compact /></div>
       <div className="feed-row">
         <NewsFeed />

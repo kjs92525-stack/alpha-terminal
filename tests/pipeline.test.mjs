@@ -329,6 +329,11 @@ test('SEC blocked (403 everywhere): universe from Alpaca assets, scans still pub
   assert.equal(r.stats.briefError, undefined);
   const surges = JSON.parse(fs.readFileSync(path.join(outDir, 'volume-surges.json'), 'utf8'));
   assert.ok(Array.isArray(surges.items) && surges.asOf === setups.asOf, 'volume surge snapshot written for the same date');
+  const paper = JSON.parse(fs.readFileSync(path.join(outDir, 'paper', 'latest.json'), 'utf8'));
+  assert.equal(paper.asOf, setups.asOf);
+  assert.ok(paper.summary && Array.isArray(paper.actions) && Array.isArray(paper.trades));
+  const sigs = JSON.parse(fs.readFileSync(path.join(outDir, 'paper', 'signals.json'), 'utf8'));
+  assert.ok(Array.isArray(sigs) && sigs.every((x) => x.signalDate === setups.asOf && x.entry > x.stop), 'only today\'s rule-passing names recorded');
   assert.match(latest.sources.universe, /Alpaca/);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
