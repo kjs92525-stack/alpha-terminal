@@ -238,7 +238,7 @@ function ChartFacts({ x }: { x: SetupRow }) {
       <li>{tf} 고점 ${fmtPrice(x.high)} → 바닥 ${fmtPrice(x.low)} (-{((x.decline ?? 0) * 100).toFixed(0)}%), 저점은 {x.lowAgeLabel}</li>
       <li>현재 바닥 대비 +{((x.aboveLow ?? 0) * 100).toFixed(1)}%</li>
       <li>저점 상승 {ok(x.higherLow)} · {ma} 위 {ok(x.aboveMa)} · {ma} 상승 {ok(x.maRising)} · 거래량 감소 {ok(x.volumeDryUp)} · RSI 과매도 탈출 {ok(x.rsiRecover)}</li>
-      <li className="muted">{x.provisional===false?`마지막 ${tf}은 기간이 종료된 봉입니다`:`마지막 ${tf}은 진행 중이거나 마감 확인이 안 된 잠정 봉입니다`}{x.bars ? ` (분석 ${x.bars}개 봉)` : ''}</li>
+      <li className="muted">{x.htfBasis==='closed_confirmed'?`마지막 ${tf}은 진행 중 — 판정은 직전 마감 ${tf} 기준이며 진행 중인 봉이 이를 깨지 않았습니다${x.htfNote?` (${x.htfNote})`:''}`:x.provisional===false?`마지막 ${tf}은 기간이 종료된 봉입니다`:`마지막 ${tf}은 진행 중이거나 마감 확인이 안 된 잠정 봉입니다`}{x.bars ? ` (분석 ${x.bars}개 봉)` : ''}</li>
     </>
   );
 }

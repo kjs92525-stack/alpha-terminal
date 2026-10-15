@@ -12,7 +12,7 @@ import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './
 import { makeFinnhubClient, fetchCompany, withFacts } from './finnhub.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals, quarterlyYoY } from '../analysis/story.mjs';
-import { detectPullback, detectHtfBottom, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
+import { detectPullback, detectHtfBottomClosed, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
 import { resampleWeekly } from '../analysis/indicators.mjs';
 import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs';
 import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
@@ -359,11 +359,13 @@ export async function runNightly({
       } });
     }
     for (const tf of ['weekly', 'monthly']) {
-      const hb = detectHtfBottom(htf[tf], tf);
+      // mid-week / mid-month the last bar is still forming: confirm on the last closed bar instead
+      const forming = tf==='weekly'?htf[tf].at(-1).time+4*86400>asOfSec:(()=>{const d=new Date(htf[tf].at(-1).time*1000);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)/1000>asOfSec+86400})();
+      const hb = detectHtfBottomClosed(htf[tf], tf, forming);
       if (hb.stage === 'NONE') continue;
       items.push({ type: tf === 'weekly' ? 'weekly_bottom' : 'monthly_bottom', r, stage: hb.stage, setupScore: hb.score, plan: planOut(hb.plan), detail: {
         high: r4(hb.high), low: r4(hb.low), decline: r4(hb.decline), lowAgeBars: hb.lowAgeBars, lowAgeLabel: hb.lowAgeLabel, aboveLow: r4(hb.aboveLow),
-        provisional: tf==='weekly'?htf[tf].at(-1).time+4*86400>asOfSec:(()=>{const d=new Date(htf[tf].at(-1).time*1000);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)/1000>asOfSec+86400})(),
+        provisional: hb.provisional, htfBasis: hb.basis, htfNote: hb.note ?? null,
         higherLow: hb.higherLow, aboveMa: hb.aboveMa, maRising: hb.maRising, volumeDryUp: hb.volumeDryUp, rsiRecover: hb.rsiRecover, pivot: r4(hb.pivot), bars: htf[tf].length,
       } });
     }
@@ -408,6 +410,8 @@ export async function runNightly({
       funding:(()=>{const f=companyBy.get(r.symbol)?.facts,current=end=>Boolean(end&&Number.isFinite(Date.parse(end))&&Date.parse(end)/1000<=asOfSec&&asOfSec-Date.parse(end)/1000<=200*86400);return {runwayMonths:current(f?.cash?.end)&&current(f?.operatingCashFlow?.end)?f?.runwayMonths??null:null,sharesYoY:current(f?.sharesOutstanding?.end)?f?.sharesYoY??null:null,source:'200일 이내 보고 자료만 표시 · 공시 원문 미검증'}})(),
       chartScore: x.setupScore, storyScore: story.storyScore, score: Math.round(x.setupScore * 0.55 + story.storyScore * 0.45),
       reasons: story.reasons, themes: story.themes, revenueYoY: story.revenueYoY.map((q) => ({ end: q.end, yoy: r4(q.yoy) })),
+      // reported quarterly net income (only periods up to the snapshot date) for the automatic thesis checks
+      netIncomeQ:(companyBy.get(r.symbol)?.facts?.netIncomeQuarterly??[]).filter(q=>q?.end&&Date.parse(q.end)/1000<=asOfSec&&Number.isFinite(q.value)).slice(-5).map(q=>({end:q.end,value:Math.round(q.value)})),
       narrative: story.narrative,
       news: news.slice(0, 5).map((n) => ({ time: n.time, headline: n.headline, url: n.url, sentiment: n.sentiment, tags: n.tags })),
       newsChecked: newsBy.has(r.symbol),

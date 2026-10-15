@@ -89,3 +89,29 @@ test('monthly resample and merge with long monthly history', () => {
   assert.ok(merged.length >= m.length + 1);
   assert.ok(resampleWeekly(daily).length > 9);
 });
+
+test('weekly bottom mid-week: a turn seen on the closed bar is confirmed; one seen only on the forming bar stays provisional', async () => {
+  const { detectHtfBottomClosed } = await import('../packages/analysis/zones.mjs');
+  const w = weeklyBottom();
+  const confirmed = detectHtfBottomClosed(w, 'weekly', true);
+  assert.equal(confirmed.stage, 'TURNING');
+  assert.equal(confirmed.provisional, false);
+  assert.equal(confirmed.basis, 'closed_confirmed');
+  // the forming bar breaks to a new low: no signal at all, whatever the closed bar said
+  const broke = [...w.slice(0, -1), { ...w.at(-1), low: 30, close: 31 }];
+  assert.equal(detectHtfBottomClosed(broke, 'weekly', true).stage, 'NONE');
+  // closed bar only at the bottom, the forming bar pops above the average: not a confirmed turn
+  const c = [];
+  for (let i = 0; i < 20; i++) c.push(100 + i);
+  for (let i = 0; i < 50; i++) c.push(120 * Math.pow(40 / 120, i / 49));
+  for (let i = 0; i < 10; i++) c.push(40.5 + 0.3 * Math.sin(i));
+  const flat = series(c, { step: 7 * 86400 });
+  const pop = [...flat.slice(0, -1), { ...flat.at(-1), open: 40.6, high: 46.5, low: 40.4, close: 46 }];
+  assert.equal(detectHtfBottomClosed(pop, 'weekly', false).stage, 'TURNING', 'after the close it would count');
+  const p = detectHtfBottomClosed(pop, 'weekly', true);
+  assert.equal(p.stage, 'AT_BOTTOM');
+  assert.equal(p.provisional, false);
+  assert.match(p.note, /마감 후 확인/);
+  // last bar closed: plain detection
+  assert.equal(detectHtfBottomClosed(w, 'weekly', false).basis, 'closed');
+});

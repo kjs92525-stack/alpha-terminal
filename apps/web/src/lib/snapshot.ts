@@ -52,7 +52,7 @@ export interface SetupPlan {
   entryType?: 'buy-stop' | 'limit' | 'zone' | 'market' | null; how?: string | null; riskPct: number | null; rMultiple: number | null; note: string | null;
 }
 export interface SetupRow {
-  priceAsOf?:string;ret1?:number|null;ret5?:number|null;ret63?:number|null;ret21?:number|null;provisional?:boolean;storySignals?:{revenueAcceleration:boolean;profitTurnaround:boolean;lossNarrowing:boolean};funding?:{runwayMonths:number|null;sharesYoY:number|null;source:string};
+  priceAsOf?:string;ret1?:number|null;ret5?:number|null;ret63?:number|null;ret21?:number|null;provisional?:boolean;netIncomeQ?:Array<{end:string;value:number}>;htfBasis?:'closed'|'closed_confirmed'|'forming';htfNote?:string|null;storySignals?:{revenueAcceleration:boolean;profitTurnaround:boolean;lossNarrowing:boolean};funding?:{runwayMonths:number|null;sharesYoY:number|null;source:string};
   type?: SetupType; symbol: string; name: string | null; sector: string; price: number; mcap: number | null; adv20: number | null; stage: SetupStage;
   // breakout
   pivot?: number | null; distanceToPivot?: number | null; extension?: number | null; barsSinceBreakout?: number | null; posInBase?: number | null; breakoutVolMult?: number | null;

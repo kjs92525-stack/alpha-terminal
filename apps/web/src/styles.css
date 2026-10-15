@@ -712,3 +712,5 @@ td.heat>span{display:block;margin:1px;padding:5px 6px;text-align:center;border-r
 .ob-readable-legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:12px 16px;background:#0b0d22;border-top:1px solid #23264d;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
 .ob-readable-legend small{flex-basis:100%;color:#aeb5d7}.ob-readable-legend span{font-weight:500}
 .discovery-card summary{cursor:pointer;list-style:none}.discovery-card summary::-webkit-details-marker{display:none}.discovery-card[open]{grid-column:1/-1}.discovery-reading{margin-top:20px;border-top:1px solid #33384c;padding-top:18px;line-height:1.85;overflow-wrap:anywhere;min-width:0}.discovery-reading h3{margin:22px 0 8px}.discovery-reading .business-story{padding:0;border:0}.discovery-reading .ea-button{margin-top:16px}.discovery-card .pick-top{flex-wrap:wrap}.discovery-card summary .text-link{display:block;margin-top:10px}
+.thesis-list { margin:6px 0 10px; padding-left:18px; font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
+.thesis-list li b { margin-right:4px; }
