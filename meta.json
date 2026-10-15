@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-15T09:28:23.435Z",
+ "startedAt": "2026-10-15T09:44:40.791Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
@@ -45,6 +45,11 @@
  "earnings": {
   "status": "ok",
   "count": 1497
+ },
+ "edge": {
+  "status": "ok",
+  "symbols": 60,
+  "errors": 0
  },
  "setups": {
   "scanned": 5260,
@@ -117,5 +122,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 335
+ "seconds": 467
 }

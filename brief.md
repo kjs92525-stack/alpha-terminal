@@ -1,6 +1,6 @@
 # ALPHA TERMINAL 데일리 브리프 — 기준일 2026-10-14
 
-생성 2026-10-15T09:33:19.871Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
+생성 2026-10-15T09:51:50.136Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
 
 읽는 법: 손절폭 = 매수가에서 손절가까지 하락률, R = (1차 목표-매수가)/(매수가-손절가). "스토리"는 재무·뉴스 규칙 기반 자동 요약(AI 해석 아님)이라 직접 검증이 필요합니다. 백테스트상 차트 신호만으로는 시장(SPY) 대비 우위가 확인되지 않았습니다.
 
@@ -103,7 +103,7 @@
 | PFAI Pinnacle Food Group Ltd | 2026-10-13 | 59.4배 | +80.1% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | Pinnacle Food's AgTech Unit Completes First Bench-Scale Fermentation Of Recombinant Human  |
 | VSTM Verastem Inc | 2026-10-14 | 14.5배 | +3.5% | 1년 범위 중간 | 증자·자금 조달 | Verastem Oncology Priced Underwritten Offering Of 30.94M Common Shares At $8.00 Per Share  |
 | MMED MiniMed Group Inc | 2026-10-14 | 13.4배 | -8.6% | 1년 범위 중간 | 실적·전망 | Medtronic Announces Oversubscribed MiniMed Exchange Offer Results; Accepts 55,032,401 Of I |
-| TDIC Dreamland Ltd | 2026-10-14 | 27배 | +39.9% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | Dreamland Form4 Filing Shows CEO Seto Wai Yue Acquires 1.5M Shares, Increasing Direct Hold |
+| TDIC Dreamland Ltd | 2026-10-14 | 27배 | +39.9% | 3개월 -25% 넘게 빠진 하락 추세 중 | 내부자 매수 | Dreamland Form4 Filing Shows CEO Seto Wai Yue Acquires 1.5M Shares, Increasing Direct Hold |
 | ZURA Zura Bio Ltd | 2026-10-13 | 14.4배 | +5.8% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | 기사 없음 |
 | DCX Digital Currency X Techn | 2026-10-13 | 44.9배 | -6.8% | 1년 저점 부근 | 계약·수주·제휴 | Digital Currency X Technology Enters Investment And Exclusive Commercialization Agreement  |
 | MDA Mda Space Ltd | 2026-10-13 | 12.1배 | +4.1% | 1년 저점 부근 | 확인된 이유 없음 | 기사 없음 |
