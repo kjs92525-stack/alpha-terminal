@@ -46,7 +46,14 @@ const all = loadBarsDir(cacheDir);
 const spy = all.SPY;
 delete all.SPY;
 log(`running backtest on ${Object.keys(all).length} symbols`);
-const report = runBreakoutBacktest(all, spy, { caseStudies: CASES });
+// reported quarters with filing dates, from the nightly company snapshots on the data branch
+const companiesDir = path.join(outDir, 'companies');
+const factsBySymbol = {};
+if (fs.existsSync(companiesDir)) for (const f of fs.readdirSync(companiesDir)) {
+  try { const c = JSON.parse(fs.readFileSync(path.join(companiesDir, f), 'utf8')); if (c?.facts?.revenueQuarterly?.length) factsBySymbol[c.symbol ?? f.replace(/\.json$/, '')] = c.facts; } catch { /* skip unreadable */ }
+}
+log(`point-in-time fundamentals for ${Object.keys(factsBySymbol).length} symbols`);
+const report = runBreakoutBacktest(all, spy, { caseStudies: CASES, factsBySymbol: Object.keys(factsBySymbol).length ? factsBySymbol : null });
 fs.mkdirSync(path.join(outDir, 'backtest'), { recursive: true });
 fs.writeFileSync(path.join(outDir, 'backtest', 'breakouts.json'), JSON.stringify(report, null, 1));
 log(`done: ${report.trades} trades`);

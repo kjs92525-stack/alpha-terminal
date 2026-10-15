@@ -202,3 +202,21 @@ export function withFacts(rec) {
   if (!rec?.reported || rec.format !== 2) return null; // older records lack the annual reports
   return { ...rec, facts: fundamentalsFromCompact(rec.reported, rec.profile) };
 }
+
+/**
+ * Upcoming earnings dates (free plan: /calendar/earnings, one call for the whole window).
+ * Returns Map<vendorSymbol, {date, hour}> — hour is 'bmo' (before open), 'amc' (after close) or ''.
+ */
+export async function fetchEarningsCalendar(client, from, to) {
+  const json = await client.json(`/calendar/earnings?from=${from}&to=${to}`);
+  const rows = Array.isArray(json?.earningsCalendar) ? json.earningsCalendar : null;
+  if (!rows) throw new Error('earnings calendar schema');
+  const out = new Map();
+  for (const r of rows) {
+    if (!r?.symbol || !/^\d{4}-\d{2}-\d{2}$/.test(r.date ?? '') || r.date < from || r.date > to) continue;
+    const sym = String(r.symbol);
+    const prev = out.get(sym);
+    if (!prev || r.date < prev.date) out.set(sym, { date: r.date, hour: r.hour ?? '' });
+  }
+  return out;
+}
