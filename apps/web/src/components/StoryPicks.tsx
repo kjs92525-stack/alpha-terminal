@@ -8,16 +8,22 @@ import { Loading, PanelHead } from './ui';
 import { BusinessStory } from './BusinessStory';
 import { businessStory } from '../../../../packages/analysis/business-stories.mjs';
 import { thesisChecks } from '../../../../packages/analysis/thesis-checks.mjs';
+import { briefingFreshness } from '../../../../packages/analysis/market-brief.mjs';
+import { useMarketBrief } from '../lib/marketBrief';
+// market regime decides how a candidate may be used, not whether it is listed
+const GATE={SELECTIVE:['선별 진입 가능 시장','up','손절·비중 규칙을 지키는 조건에서 신규 진입을 검토할 수 있는 시장입니다.'],LIMIT:['제한적 진입 시장','neutral','신규 진입은 평소 비중의 절반 이하, 가장 강한 후보만 검토합니다.'],WAIT:['신규 진입 대기 시장','down','시장 위험이 높아 아래 후보는 관찰용입니다. 매수 계획을 세워두고 시장이 나아지면 다시 확인합니다.'],UNKNOWN:['시장 상태 미확인','down','시황 자료가 최신이 아니라 진입 판단을 보류합니다. 후보는 관찰용으로만 봅니다.']} as const;
 const MET=(m:boolean|null,good:boolean)=>m===null?'미확인':m===good?'충족':'미충족';
 const THESIS_KO={review:'검토로 올릴 조건 충족',watch:'관찰 유지',drop:'탈락 조건 해당'} as const;
 export function StoryPicks({ limit = 8 }: { limit?: number }) {
  const { select, setPage } = useTerminal();const [data,setData]=useState<Setups|null>(null),[state,setState]=useState('loading'),[copied,setCopied]=useState<string|null>(null),[mode,setMode]=useState<DiscoveryMode>('early');
+ const mb=useMarketBrief(),gateState=(mb.error||!briefingFreshness(mb.data,mb.now).fresh?'UNKNOWN':mb.data!.decision.state) as keyof typeof GATE,gate=GATE[gateState];
  useEffect(()=>{fetchSetups().then(d=>{setData(d);setState('ok')}).catch(e=>setState(e instanceof NoSnapshotError?'missing':'error'))},[]);
  const picks=storyPicks(data,limit,mode);
  const copy=async(sym:string)=>{const p=picks.find(p=>p.row.symbol===sym);if(!p||!data)return;const text=buildStoryPrompt(p.row,data.asOf);try{await navigator.clipboard.writeText(text)}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()}setCopied(sym);setTimeout(()=>setCopied(null),2500)};
  return <section className="panel story-picks">
   <PanelHead kicker="EARLY TURN · BUSINESS + PRICE" title="상승 초입 검토 · 사업 변화와 바닥 전환" right={data&&<span className="live-badge">기준일 {data.asOf}</span>}/>
   <p className="pad-box muted small">사업 개선의 보고 신호와 바닥 전환을 함께 찾습니다. 기본 목록은 상승 후 눌림목·테마 기사만 있는 종목·전환 없는 바닥권을 제외합니다. <b>확인된 미래 상승이나 매수 검증 완료를 뜻하지 않습니다.</b></p>
+  {mode!=='legacy'&&!mb.loading&&<p className={`pad-box small ${gate[1]}`}><b>{gate[0]}</b> — {gate[2]}</p>}
   <div className="event-filter">{([['early','상승 초입'],['watch','바닥 관찰'],['pivot','자산 전환형'],['legacy','기존 셋업 참고']] as const).map(([key,label])=><button key={key} className={mode===key?'active':''} aria-pressed={mode===key} onClick={()=>setMode(key)}>{label}</button>)}</div>
   <div className="pad-box muted small">{mode==='early'?'당일 종가 · 하루 +12%·5일 +20% 급등 제외 · 시총 $25M~$5B · 63거래일 +35%·21거래일 +20% 초과 제외 · 보고기간 200일 이내 실적 개선 · 돌파/전환 조건 동반. 진행 중인 주봉·월봉은 확정 신호에서 제외합니다.':mode==='watch'?'실적 개선 신호는 있지만 바닥 다지기·전환을 더 확인해야 하는 연구 목록입니다. 바닥이라는 이유로 분할매수하지 않습니다.':mode==='pivot'?'아직 적자여도 가진 자산(전력·부지·설비)의 쓰임새가 바뀌는 회사를 찾습니다. 최근 90일 기사 제목의 대형 계약(시총의 10% 이상) 또는 1년 새 2배 이상 늘어난 설비투자가 근거이고, 설비투자까지 포함해 현금이 18개월 이상 버텨야 합니다. 기사 제목은 원문 확인 전 단서이며 계약 확정이 아닙니다. 차트 조건(돌파·전환, 추격 제외)은 상승 초입과 같습니다.':'이전 추천 방식의 참고 목록입니다. 상승 후 눌림목·테마·기사 관심도도 포함하며 상승 초입 검증을 통과한 목록이 아닙니다.'}</div>
   {state==='loading'&&<Loading label="발굴 결과 확인"/>}{['missing','error'].includes(state)&&<p className="pad-box muted">발굴 자료를 확보하지 못했습니다. 이전 목록을 최신으로 표시하지 않습니다.</p>}
@@ -35,6 +41,7 @@ export function StoryPicks({ limit = 8 }: { limit?: number }) {
      {!!row.assetPivot.financing.length&&<p className="ea-risk">자금 조달 기사: {row.assetPivot.financing.map(f=>`${f.date} ${f.headline}`).join(' · ')} — 증자·전환사채는 주당 가치를 희석할 수 있습니다.</p>}
      {row.assetPivot.acquisition&&<p className="ea-risk">인수·합병 기사: {row.assetPivot.acquisition.headline} — 사업 전환이 아니라 거래 조건이 주가를 결정할 수 있습니다.</p>}
      <p className="market-note">기사 제목에서 읽은 금액은 계약 총액·기간·취소 조건이 다를 수 있어 8-K·계약 원문 확인 전에는 단서입니다. 전력·부지가 있어도 고객 계약, 장비 조달, 가동 일정, 자금 조달 조건이 맞아야 매출과 현금으로 이어집니다.{row.assetPivot.newsChecked?'':' 이 종목은 이번 실행에서 뉴스를 수집하지 않아 계약 기사 여부가 미확인입니다.'}</p></>}
+    <p className={row.earnings&&row.earnings.sessions<=5?'ea-risk':'market-note'}>{row.earnings?`다음 실적 발표 ${row.earnings.date}${row.earnings.hour==='bmo'?' 장 전':row.earnings.hour==='amc'?' 장 후':''} (${row.earnings.sessions}거래일 뒤).${row.earnings.sessions<=5?' 발표 전 진입은 결과에 따라 갭으로 손절가를 건너뛸 수 있어, 발표 후 반응을 보고 판단합니다.':''}`:row.earningsChecked?'앞으로 30일 안에 잡힌 실적 발표 일정이 없습니다 (일정 미등록 가능성 있음).':'실적 발표 일정을 확인하지 못했습니다.'}</p>
     <h3>보고 실적은 무엇이 바뀌었나</h3>{row.narrative?.lines.map((l,i)=><p key={i}>{l}</p>)}<p className="market-note">보고 수치의 자동 신호입니다. 인수·계절성·손상차손 기저·자산 매각과 반복 본업의 개선을 구분해야 합니다. 목표가는 차트 가정이며 기업 적정가가 아닙니다.</p>
     {(()=>{const t=thesisChecks(row,data!.asOf);return <><h3>관찰 → 검토 · 탈락 조건 (매일 자동 확인)</h3><p><b className={t.state==='drop'?'down':t.state==='review'?'up':''}>{THESIS_KO[t.state]}</b>{t.unknown?` · 미확인 ${t.unknown}개 — 미확인은 충족으로 세지 않습니다`:''}{t.nextDue?` · 다음 분기 실적 예상 시점 ${t.nextDue} 무렵`:''}</p>
      <h4>모두 충족해야 검토로 올림</h4><ul className="thesis-list">{t.promote.map(c=><li key={c.label}><b>{MET(c.met,true)}</b> {c.label} — <span className="muted">{c.observed}</span></li>)}</ul>

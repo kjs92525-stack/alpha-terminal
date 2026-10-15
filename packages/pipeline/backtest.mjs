@@ -6,11 +6,13 @@
 // the open), otherwise exit at the close after h sessions. Results vs SPY.
 //
 // Honest limits, reported in the output:
-//  - story signals are NOT tested (no point-in-time news/fundamentals history yet);
+//  - news is not tested; reported sales/net income are, but only with quarters already filed on
+//    the trade date (story-pit.mjs) and only as far back as the cached filings go (~3 years);
 //  - universe = currently listed stocks (survivorship bias flatters results);
 //  - no commissions/slippage beyond stop gaps.
 
 import fs from 'node:fs';
+import { storyAsOf } from '../analysis/story-pit.mjs';
 import path from 'node:path';
 import { sma } from '../analysis/indicators.mjs';
 import { findBase, explainBase, tradePlan, trendTemplate, relativeStrength, SETUP_RULES } from '../analysis/setups.mjs';
@@ -130,14 +132,16 @@ export function nearMisses(bars, rules = SETUP_RULES, limit = 12) {
   return out.slice(-limit);
 }
 
-export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 'RGTI', 'QUBT', 'IONQ'] } = {}) {
+export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 'RGTI', 'QUBT', 'IONQ'], factsBySymbol = null } = {}) {
   const spyByTime = new Map(spy.map((b) => [b.time, b]));
   const trades = [];
   for (const [symbol, bars] of Object.entries(barsBySymbol)) {
     if (!bars || bars.length < 400) continue;
     for (const ev of findBreakoutEvents(bars)) {
       const t = simulate(bars, ev, spyByTime);
-      if (t) trades.push({ symbol, ...t, rsNewHigh: relativeStrength(bars.slice(0, ev.index + 1), spy).rsNewHigh });
+      if (t) trades.push({ symbol, ...t, rsNewHigh: relativeStrength(bars.slice(0, ev.index + 1), spy).rsNewHigh,
+        // what the filings said on the breakout day (only quarters already filed by then)
+        story: factsBySymbol?.[symbol] ? storyAsOf(factsBySymbol[symbol], new Date(t.time * 1000).toISOString().slice(0, 10)) : null });
     }
   }
   const groups = {
@@ -147,6 +151,12 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
     highQualityBase: trades.filter((t) => t.quality >= 2),
     rsNewHigh: trades.filter((t) => t.rsNewHigh),
     tightRisk8pct: trades.filter((t) => t.riskPct <= 0.08),
+    ...(factsBySymbol ? {
+      storyKnown: trades.filter((t) => t.story?.known),
+      storyImproving: trades.filter((t) => t.story?.known && t.story.improving),
+      storyNotImproving: trades.filter((t) => t.story?.known && !t.story.improving),
+      storyImprovingTrendOk: trades.filter((t) => t.story?.known && t.story.improving && t.trendOk),
+    } : {}),
   };
   const report = {};
   for (const [g, ts] of Object.entries(groups)) report[g] = Object.fromEntries(HORIZONS.map((h) => [`${h}d`, summarize(ts, h)]));
@@ -155,7 +165,7 @@ export function runBreakoutBacktest(barsBySymbol, spy, { caseStudies = ['PLTR', 
     generatedAt: new Date().toISOString(),
     rules: SETUP_RULES,
     method: '각 거래일까지의 데이터만으로 BREAKOUT 판정 → 다음 거래일 시가 매수, 계획 손절가 이탈 시 손절(갭은 시가 체결), 아니면 h거래일 후 종가 청산. SPY 대비.',
-    limits: ['스토리 점수는 과거 시점 데이터가 없어 미검증 (차트 규칙만 검증)', '현재 상장 종목만 사용 → 상장폐지 종목 누락으로 결과가 좋게 나올 수 있음 (생존 편향)', '수수료·슬리피지 미반영 (손절 갭만 반영)'],
+    limits: [factsBySymbol ? '실적 조건은 매수일까지 공시된 분기만 사용 — 재무 자료가 약 3년치라 2024년 하반기 이후 돌파만 비교 가능' : '스토리 점수는 과거 시점 데이터가 없어 미검증 (차트 규칙만 검증)', '현재 상장 종목만 사용 → 상장폐지 종목 누락으로 결과가 좋게 나올 수 있음 (생존 편향)', '수수료·슬리피지 미반영 (손절 갭만 반영)'],
     trades: trades.length,
     symbols: Object.keys(barsBySymbol).length,
     report,

@@ -68,3 +68,12 @@ test('asset-pivot tab: loss-making company with a large contract and funded buil
   assert.ok(earlyIssues({ ...ok, assetPivot: { ...pv, pivot: false, acquisition: { headline: 'to be acquired' } } }, '2026-10-14', 'pivot').includes('인수·합병 기사 — 사업 전환 아님'));
   assert.ok(earlyIssues({ ...ok, ret63: 0.8 }, '2026-10-14', 'pivot').includes('63일 +35%·21일 +20% 초과'), 'no chasing after the move');
 });
+
+test('earnings inside 5 sessions holds the entry; an unchecked calendar is not read as "no earnings"', async () => {
+  const { earlyIssues } = await import('../apps/web/src/lib/storyPicks.ts');
+  const base = row({ symbol: 'E', type: 'breakout', stage: 'NEAR_PIVOT', priceAsOf: '2026-10-14', ret1: 0.01, ret5: 0.02, ret21: 0.05, ret63: 0.1 });
+  assert.ok(earlyIssues({ ...base, earningsChecked: true, earnings: { date: '2026-10-16', hour: 'amc', sessions: 2 } }, '2026-10-14', 'early').some((i) => /실적 발표 2거래일 앞/.test(i)));
+  assert.ok(!earlyIssues({ ...base, earningsChecked: true, earnings: { date: '2026-11-05', hour: '', sessions: 16 } }, '2026-10-14', 'early').some((i) => /실적 발표/.test(i)));
+  assert.ok(earlyIssues({ ...base, earningsChecked: false, earnings: null }, '2026-10-14', 'early').includes('실적 발표일 미확인'));
+  assert.ok(!earlyIssues({ ...base, earningsChecked: false }, '2026-10-14', 'legacy').includes('실적 발표일 미확인'), 'legacy list is unchanged');
+});

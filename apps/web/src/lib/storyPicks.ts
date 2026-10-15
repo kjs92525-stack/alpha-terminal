@@ -34,6 +34,9 @@ export function earlyIssues(row:SetupRow,asOf:string,mode:DiscoveryMode='early')
  const period=row.storySignals?.revenueAcceleration?q?.revenuePeriod:q?.profitPeriod;if(!period||!Number.isFinite(Date.parse(period))||Date.parse(period)>Date.parse(asOf)||Date.parse(asOf)-Date.parse(period)>200*86400000)issues.push('재무 기준일 확인 필요');
  }
  if(mode==='early'||mode==='pivot'){
+  // a report inside the holding window turns the entry into a bet on the report
+  if(row.earningsChecked===false)issues.push('실적 발표일 미확인');
+  else if(row.earnings&&row.earnings.sessions<=5)issues.push(`실적 발표 ${row.earnings.sessions}거래일 앞 — 발표 후 판단`);
   if(!['BREAKOUT','POST_BREAKOUT','NEAR_PIVOT','TURNING'].includes(row.stage))issues.push('전환·돌파 확인 전');
   if(row.provisional)issues.push('진행 중인 주봉·월봉');
   if(['weekly_bottom','monthly_bottom'].includes(type)&&(!row.higherLow||!row.aboveMa))issues.push('저점 상승·평균선 회복 미확인');

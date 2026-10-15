@@ -99,3 +99,13 @@ test('annual 10-K fetched separately fills fiscal Q4; object-shaped report secti
   const rev = quarterlyFlow(compactReported(quarterly, annual), 'rev');
   assert.deepEqual(rev.map((x) => x.value), [10, 11, 12, 13]);
 });
+
+test('earnings calendar: earliest date per symbol inside the window, schema errors thrown', async () => {
+  const { fetchEarningsCalendar } = await import('../packages/pipeline/finnhub.mjs');
+  const client = { json: async () => ({ earningsCalendar: [{ symbol: 'A', date: '2026-10-20', hour: 'bmo' }, { symbol: 'A', date: '2026-10-18', hour: 'amc' }, { symbol: 'B', date: '2026-12-01' }, { symbol: 'C', date: 'bad' }] }) };
+  const m = await fetchEarningsCalendar(client, '2026-10-14', '2026-11-13');
+  assert.deepEqual(m.get('A'), { date: '2026-10-18', hour: 'amc' });
+  assert.equal(m.has('B'), false);
+  assert.equal(m.has('C'), false);
+  await assert.rejects(fetchEarningsCalendar({ json: async () => ({ error: 'limit' }) }, '2026-10-14', '2026-11-13'));
+});

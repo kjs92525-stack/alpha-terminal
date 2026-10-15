@@ -9,7 +9,7 @@ import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
 import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
 import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
-import { makeFinnhubClient, fetchCompany, withFacts } from './finnhub.mjs';
+import { makeFinnhubClient, fetchCompany, withFacts, fetchEarningsCalendar } from './finnhub.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals, quarterlyYoY } from '../analysis/story.mjs';
 import { detectPullback, detectHtfBottomClosed, mergeMonthly, PULLBACK_RULES, BOTTOM_RULES } from '../analysis/zones.mjs';
@@ -425,6 +425,14 @@ export async function runNightly({
     items: surges,
   });
   stats.surges = { detected: surgeRows.length, shown: surges.length, newsRequests: surgeNewsRequests };
+  // upcoming earnings (one Finnhub call): buying days before a report is a coin flip on the report
+  const earnFrom = asOf, earnTo = new Date(Date.parse(asOf) + 30 * 86400000).toISOString().slice(0, 10);
+  let earnings = new Map(), earningsStatus = env.FINNHUB_API_KEY ? 'error' : 'not_configured';
+  if (env.FINNHUB_API_KEY) {
+    try { earnings = await fetchEarningsCalendar(makeFinnhubClient({ apiKey: env.FINNHUB_API_KEY, fetchImpl, wait, minIntervalMs: 0 }), earnFrom, earnTo); earningsStatus = 'ok'; } catch { /* unknown, never "no earnings" */ }
+  }
+  const weekdaysUntil = (d) => { let n = 0; for (let t = Date.parse(asOf) + 86400000; t <= Date.parse(d); t += 86400000) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; } return n; };
+  stats.earnings = { status: earningsStatus, count: earnings.size };
   const storyBy = new Map();
   const setups = [];
   for (const x of items) {
@@ -447,6 +455,7 @@ export async function runNightly({
       // reported quarterly net income (only periods up to the snapshot date) for the automatic thesis checks
       netIncomeQ:(companyBy.get(r.symbol)?.facts?.netIncomeQuarterly??[]).filter(q=>q?.end&&Date.parse(q.end)/1000<=asOfSec&&Number.isFinite(q.value)).slice(-5).map(q=>({end:q.end,value:Math.round(q.value)})),
       narrative: story.narrative,
+      earnings: earnings.has(r.symbol) ? { ...earnings.get(r.symbol), sessions: weekdaysUntil(earnings.get(r.symbol).date) } : null, earningsChecked: earningsStatus === 'ok',
       // IREN-type asset pivots: large contract headlines / capex build-out and how it is funded
       assetPivot: assetPivotSignals({ news: newsBy.has(r.symbol) ? newsBy.get(r.symbol) : null, facts: companyBy.get(r.symbol)?.facts ?? null, mcap: r.features.mcap ?? null, asOf }),
       news: news.slice(0, 5).map((n) => ({ time: n.time, headline: n.headline, url: n.url, sentiment: n.sentiment, tags: n.tags })),
@@ -516,6 +525,7 @@ export async function runNightly({
     },
     caveat: '돌파·눌림·바닥 매수 모두 실패가 흔합니다. 손절가를 지키는 것을 전제로 한 후보 목록이며 투자 자문이 아닙니다. 주봉·월봉의 마지막 봉은 진행 중인 봉입니다.',
     stats: stats.setups,
+    earningsCalendar: { status: earningsStatus, from: earnFrom, to: earnTo, count: earnings.size, source: 'Finnhub /calendar/earnings' },
     candidates: TYPES.flatMap((t) => setups.filter((x) => x.type === t).slice(0, PER_TYPE)),
   });
   // small Markdown brief for chat assistants that read a URL (the JSON files are too large)

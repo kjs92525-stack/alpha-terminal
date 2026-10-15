@@ -399,7 +399,7 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   const outDir = path.join(tmp, 'out');
   const state = { days: 560, calls: [] };
   const f = e2eFetch(state);
-  let fhCalls = 0,marketNewsCalls=0;
+  let fhCalls = 0,marketNewsCalls=0,earningsCalls=0;
   const reported = (i) => ({ cik: 1000 + i, data: Array.from({ length: 8 }, (_, k) => {
     const end = new Date(Date.UTC(2024, 3 * k + 3, 0)).toISOString().slice(0, 10);
     const start = new Date(Date.parse(end) - 90 * 86400000).toISOString().slice(0, 10);
@@ -415,6 +415,7 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
     if (u.hostname === 'finnhub.io') {
       assert.equal(init.headers['X-Finnhub-Token'], 'fh');
       if(u.pathname.endsWith('/news')){marketNewsCalls++;return Response.json([]);}
+      if (u.pathname.endsWith('/calendar/earnings')) { earningsCalls++; const d = new Date(Date.parse(u.searchParams.get('from')) + 2 * 86400000).toISOString().slice(0, 10); return Response.json({ earningsCalendar: [{ symbol: f.syms[0], date: d, hour: 'amc' }, { symbol: 'OUTSIDE', date: '1999-01-01' }] }); }
       fhCalls++;
       const i = f.syms.indexOf(u.searchParams.get('symbol'));
       if (u.pathname.endsWith('/profile2')) return Response.json({ name: `${u.searchParams.get('symbol')} Corp`, finnhubIndustry: ['Semiconductors', 'Biotechnology', 'Banking', 'Software'][i % 4], shareOutstanding: 100, marketCapitalization: 5000 });
@@ -429,6 +430,11 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   assert.equal(r.stats.finnhub.attempted, 10, 'call budget respected (3 calls per company)');
   assert.equal(fhCalls, 30);
   assert.equal(marketNewsCalls,1,'general briefing news uses a separate single call');
+  assert.equal(earningsCalls, 1, 'one earnings-calendar call for the whole universe');
+  const st = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
+  assert.equal(st.earningsCalendar.status, 'ok');
+  assert.ok(st.candidates.every((x) => x.earningsChecked === true));
+  for (const x of st.candidates.filter((c) => c.symbol === f.syms[0])) assert.ok(x.earnings && x.earnings.sessions >= 1 && x.earnings.sessions <= 2, JSON.stringify(x.earnings));
   assert.equal(r.stats.finnhub.withRevenue, 10);
   const latest = JSON.parse(fs.readFileSync(path.join(outDir, 'latest.json'), 'utf8'));
   assert.ok(latest.mid.length > 0, 'mid-term ranking restored');
