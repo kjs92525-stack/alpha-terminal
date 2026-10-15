@@ -11,19 +11,19 @@ const STAGE: Record<SetupStage, { ko: string; cls: string; tip: string }> = {
   POST_BREAKOUT: { ko: '돌파 후 눌림', cls: 'up', tip: '최근 10거래일 내 돌파, 아직 많이 오르지 않음 — 진입 가능 구간' },
   NEAR_PIVOT: { ko: '돌파 임박', cls: 'neutral', tip: '바닥 상단 6% 이내 — 돌파 시 진입 대기' },
   EXTENDED: { ko: '추격 금지', cls: 'down', tip: '돌파가 대비 12% 이상 상승 — 눌림 대기' },
-  IN_BASE: { ko: '바닥 다지는 중', cls: 'neutral', tip: '긴 바닥 박스 안 — 아래쪽이면 분할매수, 위쪽이면 상단 돌파 대기' },
+  IN_BASE: { ko: '바닥 다지는 중', cls: 'neutral', tip: '긴 바닥 박스 안 — 저점 유지·상단 돌파를 확인하기 전 관찰' },
   FAILED: { ko: '돌파 실패', cls: 'down', tip: '' },
   NONE: { ko: '—', cls: '', tip: '' },
   BOUNCE: { ko: '지지 반등', cls: 'up', tip: '지지선에서 반등 캔들 확인 — 오늘 고가 돌파 시 매수' },
   AT_SUPPORT: { ko: '지지 테스트', cls: 'neutral', tip: '지지선에 닿음 — 반등 확인 대기' },
   APPROACHING: { ko: '지지 접근', cls: '', tip: '지지선 5% 이내 — 지정가 대기' },
   TURNING: { ko: '전환 시작', cls: 'up', tip: '바닥 후 이평선 위로 올라오고 저점이 높아짐' },
-  AT_BOTTOM: { ko: '바닥권', cls: 'neutral', tip: '바닥 근처, 아직 전환 신호 없음 — 분할매수 구간' },
+  AT_BOTTOM: { ko: '바닥권', cls: 'neutral', tip: '바닥 근처, 아직 전환 신호 없음 — 전환 확인 전 관찰' },
 };
 
 const TYPES: Array<{ key: SetupType; ko: string; desc: string; stages: SetupStage[] }> = [
   { key: 'breakout', ko: '바닥 돌파', desc: '6–18개월 바닥을 다진 뒤 상단을 거래량 실어 뚫는 자리', stages: ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT'] },
-  { key: 'base', ko: '바닥 다지기', desc: '크게 빠진 뒤 6–18개월째 바닥에서 옆으로 기는 종목 (아직 돌파 전). 박스 아래쪽 절반이면 바닥 근처 분할매수(지정가), 위쪽이면 돌파 대기', stages: ['IN_BASE'] },
+  { key: 'base', ko: '바닥 다지기', desc: '크게 빠진 뒤 6–18개월째 바닥에서 옆으로 기는 종목 (아직 돌파 전). 박스 아래라는 이유로 매수하지 않고 저점 유지·거래량·상단 돌파를 확인', stages: ['IN_BASE'] },
   { key: 'pullback', ko: '눌림목', desc: '상승 추세 종목이 5–25% 쉬면서 20일 EMA·50일선·이전 고점·오더블록 지지에 닿은 자리', stages: ['BOUNCE', 'AT_SUPPORT', 'APPROACHING'] },
   { key: 'weekly_bottom', ko: '주봉 바닥', desc: '2년 고점 대비 35% 이상 빠진 뒤 신저가를 멈추고 바닥 20% 이내에 있는 종목', stages: ['TURNING', 'AT_BOTTOM'] },
   { key: 'monthly_bottom', ko: '월봉 바닥', desc: '5년 고점 대비 50% 이상 빠진 뒤 신저가를 멈추고 바닥 25% 이내에 있는 종목', stages: ['TURNING', 'AT_BOTTOM'] },
@@ -80,7 +80,7 @@ export function SetupScanner() {
 
   return (
     <section className="panel">
-      <PanelHead kicker="SETUP SCANNER · NIGHTLY" title="매수 자리 스캐너 — 돌파 · 눌림목 · 주봉/월봉 바닥" right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
+      <PanelHead kicker="SETUP SCANNER · NIGHTLY" title="전체 차트 셋업 참고 — 돌파 · 눌림목 · 바닥" right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
       {!data && !err && !missing && <Loading label="스캐너 결과 불러오기" />}
       {err && <ErrorBox error={err} />}
       {missing && (
@@ -238,7 +238,7 @@ function ChartFacts({ x }: { x: SetupRow }) {
       <li>{tf} 고점 ${fmtPrice(x.high)} → 바닥 ${fmtPrice(x.low)} (-{((x.decline ?? 0) * 100).toFixed(0)}%), 저점은 {x.lowAgeLabel}</li>
       <li>현재 바닥 대비 +{((x.aboveLow ?? 0) * 100).toFixed(1)}%</li>
       <li>저점 상승 {ok(x.higherLow)} · {ma} 위 {ok(x.aboveMa)} · {ma} 상승 {ok(x.maRising)} · 거래량 감소 {ok(x.volumeDryUp)} · RSI 과매도 탈출 {ok(x.rsiRecover)}</li>
-      <li className="muted">마지막 {tf}은 아직 진행 중인 봉입니다{x.bars ? ` (분석 ${x.bars}개 봉)` : ''}</li>
+      <li className="muted">{x.provisional===false?`마지막 ${tf}은 기간이 종료된 봉입니다`:`마지막 ${tf}은 진행 중이거나 마감 확인이 안 된 잠정 봉입니다`}{x.bars ? ` (분석 ${x.bars}개 봉)` : ''}</li>
     </>
   );
 }

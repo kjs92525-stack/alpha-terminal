@@ -39,6 +39,14 @@ export function storySignals({ fundamentals, filings = [], news = [], asOf, tick
   if(fundamentals?.cash&&!visible(fundamentals.cash))f.runwayMonths=null;
   news=news.filter(n=>Number.isFinite(Date.parse(n.time))&&Date.parse(n.time)<=asOfMs&&asOfMs-Date.parse(n.time)<=60*DAY);
   filings=filings.filter(f=>Number.isFinite(Date.parse(f.acceptedAt??f.filingDate))&&Date.parse(f.acceptedAt??f.filingDate)<=asOfMs);
+  // Old reports cannot create a current business inflection. Preserve prior-year
+  // comparators when the newest quarter is current, not when the whole feed is old.
+  const revenuePeriod=f?.revenueQuarterly?.at(-1)?.end??null,profitPeriod=f?.netIncomeQuarterly?.at(-1)?.end??null;
+  const fresh=end=>Boolean(end&&asOfMs-Date.parse(end)<=200*DAY);
+  const growthFresh=fresh(revenuePeriod),profitFresh=fresh(profitPeriod);
+  if(f&&!growthFresh){f.revenueQuarterly=[];f.revenueGrowth=null;}
+  if(f&&!profitFresh)f.netIncomeQuarterly=[];
+  if(f?.cash?.end&&!fresh(f.cash.end))f.runwayMonths=null;
   const reasons = [];
   let score = 0;
   const add = (pts, text, kind = 'plus') => { score += pts; reasons.push({ kind, text, pts }); };
@@ -106,7 +114,10 @@ export function storySignals({ fundamentals, filings = [], news = [], asOf, tick
   if (distress.length) add(-25, `위험 공시: ${distress[0].label}`, 'minus');
 
   const narrative = narrate({ f, yoy: g, ni, news, themes, dilution: dil.length, distress: distress.length, review:reviewed });
-  return { storyScore: Math.max(0, Math.min(100, score)), reasons, themes, revenueYoY: g, newsCount: { week: recent.length, weeklyAvg: weeklyBase }, narrative };
+  narrative.quality={...narrative.quality,growthFresh,profitFresh,revenuePeriod,profitPeriod};
+  if(!growthFresh||!profitFresh)narrative.lines.push('최신 200일 이내 분기 자료가 없는 항목은 현재 개선 신호에서 제외했습니다.');
+  const signals={revenueAcceleration:growthFresh&&(!reviewed||reviewed.growthCap>=20)&&reasons.some(r=>r.kind==='plus'&&/매출 성장 가속/.test(r.text)),profitTurnaround:profitFresh&&(!reviewed||reviewed.profitCap>0)&&reasons.some(r=>r.kind==='plus'&&/흑자 전환/.test(r.text)),lossNarrowing:profitFresh&&(!reviewed||reviewed.profitCap>0)&&ni.at(-1)?.value<0&&reasons.some(r=>r.kind==='plus'&&/적자 폭 절반/.test(r.text))};
+  return { signals, storyScore: Math.max(0, Math.min(100, score)), reasons, themes, revenueYoY: g, newsCount: { week: recent.length, weeklyAvg: weeklyBase }, narrative };
 }
 
 const pct = (v) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(0)}%`;

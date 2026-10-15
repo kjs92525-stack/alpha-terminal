@@ -21,7 +21,7 @@ test('story picks: chart buy area + story signals, turnaround ranked first, char
     row({ symbol: 'WIDE', reasons: [{ kind: 'plus', text: '매출 성장 가속: 30% → 36% (3개 분기)', pts: 20 }],
       narrative: { lines: ['2026-06 분기 순손실 -$170.0M로 아직 적자지만, 1년 전(-$50.4M)보다 적자가 237% 늘었습니다.'], takeaway: 't', method: 'm' } }),
   ] };
-  const picks = storyPicks(data);
+  const picks = storyPicks(data,8,'legacy');
   assert.deepEqual(picks.map((p) => p.row.symbol), ['TURN', 'THEME', 'WIDE']);
   assert.ok(picks[0].why.includes('적자지만 개선 중') && picks[0].why.includes('시장은 의심 중'));
   const wide = picks.find((p) => p.row.symbol === 'WIDE');
@@ -36,5 +36,18 @@ test('story prompt carries the setup, buy point, numbers, headlines and the anal
 
 test('review-rejected profit and growth cannot reappear as pick bonuses via stale positive text',()=>{
  const r=row({symbol:'KOPN',themes:['방산'],reasons:[{kind:'plus',text:'흑자 전환',pts:25},{kind:'plus',text:'매출 성장 가속',pts:20},{kind:'minus',text:'원문 검토에서 가점 제외',pts:-45}],narrative:{lines:['1년 전 적자에서 흑자로 돌아섰습니다.'],takeaway:'본업 미검증',method:'review',quality:{profitBlocked:true,growthBlocked:true}}});
- const p=storyPicks({asOf:'2026-10-13',candidates:[r]});assert.equal(p.length,1);assert.deepEqual(p[0].why,['테마: 방산']);
+ const p=storyPicks({asOf:'2026-10-13',candidates:[r]},8,'legacy');assert.equal(p.length,1);assert.deepEqual(p[0].why,['테마: 방산']);
+});
+
+const earlyRow=(o={})=>row({type:'breakout',stage:'BREAKOUT',priceAsOf:'2026-10-14',ret1:0.02,ret5:0.08,ret63:0.18,ret21:0.08,storySignals:{revenueAcceleration:true,profitTurnaround:false,lossNarrowing:false},reasons:[{kind:'plus',text:'매출 성장 가속',pts:20}],narrative:{lines:[],takeaway:'t',method:'m',quality:{growthBlocked:false,profitBlocked:false,growthFresh:true,profitFresh:true,revenuePeriod:'2026-06-30',profitPeriod:'2026-06-30'}},...o});
+test('default discovery separates early turns from pullbacks, unconfirmed bottoms, themes and extended rallies',()=>{
+ const rows=[earlyRow({symbol:'EARLY'}),earlyRow({symbol:'PULL',type:'pullback',stage:'BOUNCE'}),earlyRow({symbol:'BOTTOM',type:'weekly_bottom',stage:'AT_BOTTOM'}),earlyRow({symbol:'HOT',ret63:0.6}),earlyRow({symbol:'MEGA',mcap:30e9}),earlyRow({symbol:'THEME',storySignals:{},themes:['AI']}),earlyRow({symbol:'PARTIAL',type:'weekly_bottom',stage:'TURNING',higherLow:true,aboveMa:true,provisional:true}),earlyRow({symbol:'OLD',narrative:{quality:{growthFresh:false,profitFresh:false}}})];
+ const data={asOf:'2026-10-14',candidates:rows};assert.deepEqual(storyPicks(data).map(p=>p.row.symbol),['EARLY']);assert.deepEqual(storyPicks(data,8,'watch').map(p=>p.row.symbol),['BOTTOM','PARTIAL']);
+});
+test('structured signals prevent loss-narrowing and profit-turnaround being claimed together from old text',()=>{
+ const r=earlyRow({storySignals:{revenueAcceleration:false,profitTurnaround:true,lossNarrowing:false},narrative:{...earlyRow().narrative,lines:['지난해 적자가 70% 줄었습니다. 현재 흑자.']}});const d=storyPicks({asOf:'2026-10-14',candidates:[r]});assert.ok(d[0].why.includes('흑자 전환'));assert.ok(!d[0].why.includes('적자지만 개선 중'));
+});
+
+test('a short squeeze from a depressed level and stale last prints cannot masquerade as early accumulation',()=>{
+ const data={asOf:'2026-10-14',candidates:[earlyRow({symbol:'GAP',ret1:0.3,ret5:0.1,ret21:-0.1}),earlyRow({symbol:'HALT',priceAsOf:'2026-10-09'})]};assert.equal(storyPicks(data).length,0);
 });

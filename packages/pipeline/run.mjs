@@ -363,6 +363,7 @@ export async function runNightly({
       if (hb.stage === 'NONE') continue;
       items.push({ type: tf === 'weekly' ? 'weekly_bottom' : 'monthly_bottom', r, stage: hb.stage, setupScore: hb.score, plan: planOut(hb.plan), detail: {
         high: r4(hb.high), low: r4(hb.low), decline: r4(hb.decline), lowAgeBars: hb.lowAgeBars, lowAgeLabel: hb.lowAgeLabel, aboveLow: r4(hb.aboveLow),
+        provisional: tf==='weekly'?htf[tf].at(-1).time+4*86400>asOfSec:(()=>{const d=new Date(htf[tf].at(-1).time*1000);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)/1000>asOfSec+86400})(),
         higherLow: hb.higherLow, aboveMa: hb.aboveMa, maRising: hb.maRising, volumeDryUp: hb.volumeDryUp, rsiRecover: hb.rsiRecover, pivot: r4(hb.pivot), bars: htf[tf].length,
       } });
     }
@@ -401,6 +402,10 @@ export async function runNightly({
     setups.push({
       type: x.type, symbol: r.symbol, name: r.name, sector: r.sector, price: r4(r.features.price), mcap: r.features.mcap ? Math.round(r.features.mcap) : null, adv20: r.features.adv20 ? Math.round(r.features.adv20) : null,
       stage: x.stage, ...x.detail, plan: x.plan,
+      ret63: (()=>{const b=(cached.get(r.symbol)??[]).filter(b=>b.time<=asOfSec);return b.length>63?r4(b.at(-1).close/b.at(-64).close-1):null})(),
+      ret21: (()=>{const b=(cached.get(r.symbol)??[]).filter(b=>b.time<=asOfSec);return b.length>21?r4(b.at(-1).close/b.at(-22).close-1):null})(),
+      storySignals:story.signals,priceAsOf:r.features.lastDate,ret1:r4(r.features.ret_1),ret5:r4(r.features.ret_5),
+      funding:(()=>{const f=companyBy.get(r.symbol)?.facts,current=end=>Boolean(end&&Number.isFinite(Date.parse(end))&&Date.parse(end)/1000<=asOfSec&&asOfSec-Date.parse(end)/1000<=200*86400);return {runwayMonths:current(f?.cash?.end)&&current(f?.operatingCashFlow?.end)?f?.runwayMonths??null:null,sharesYoY:current(f?.sharesOutstanding?.end)?f?.sharesYoY??null:null,source:'200일 이내 보고 자료만 표시 · 공시 원문 미검증'}})(),
       chartScore: x.setupScore, storyScore: story.storyScore, score: Math.round(x.setupScore * 0.55 + story.storyScore * 0.45),
       reasons: story.reasons, themes: story.themes, revenueYoY: story.revenueYoY.map((q) => ({ end: q.end, yoy: r4(q.yoy) })),
       narrative: story.narrative,
