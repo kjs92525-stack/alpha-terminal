@@ -10,7 +10,7 @@ test('business explanations never leak into older snapshots and expire without r
 });
 test('every current editorial profile carries a distinct business, primary link and testable failure',()=>{
  const rows=businessTickers().map(t=>businessStory(t,'2026-10-14'));
- assert.equal(rows.length,104);assert.equal(new Set(rows.map(r=>r.business)).size,104);
+ assert.equal(rows.length,115);assert.equal(new Set(rows.map(r=>r.business)).size,115);
  for(const r of rows){assert.ok(r.url.startsWith('https://'));assert.ok(r.demand.length>20);assert.ok(r.risk.length>20);assert.ok(r.indicators.length>=3);assert.match(r.interpretation,/조건부/);assert.match(r.limitation,/별개/);}
 });
 test('changed identities and economic models do not reuse old business or generic industrial metrics',()=>{

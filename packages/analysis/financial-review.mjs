@@ -1,6 +1,11 @@
 // Primary-source review of a specific reporting period. This is not a complete
 // securities/liability audit and must never imply that financing risk is cleared.
 export const FINANCIAL_REVIEWS = {
+  ARX:{period:'2026-06-30',publishedAt:'2026-08-13',source:'https://accelerant.ai/resources/accelerant-enters-into-definitive-agreement-to-be-acquired-by-thoma-bravo/',profitCap:0,growthCap:0,cash:null,restricted:null,investments:null,issuance:null,quality:'현금 인수계약 발표가 확인돼 거래 가격을 소외된 독립 성장주의 재평가 신호로 해석하지 않습니다. 계약 종결·변경·파기 상태를 확인하기 전에는 본 필터의 실적 가점에서 제외합니다.',liquidity:'보험 위험 보유와 인수계약 조건을 별도 확인합니다.',doubt:'인수 가격 주변의 거래는 사업 소외와 다른 가격 형성일 수 있습니다.',confirm:'인수 조건·주주 지급·종결 및 거래 상태를 원문으로 확인합니다.',invalidate:'인수 파기·조건 변경 시 기존 거래 전제를 재검토합니다.',valuation:'인수 대금·조건·파기 위험을 독립 기업의 성장 가치와 구분합니다.'},
+  JAKK:{period:'2026-06-30',publishedAt:'2026-07-23',source:'https://jakkspacificinc.gcs-web.com/news-releases/news-release-details/jakks-pacific-reports-second-quarter-2026-financial-results',profitCap:0,growthCap:30,cash:59.513e6,restricted:1.132e6,investments:null,issuance:null,
+   quality:'2026년 2분기 보고 순이익 $5.9M에는 영업외 관세 환급이 반영됐습니다. 영업손익은 약 -$0.1M으로 본업의 흑자 전환 가점은 부여하지 않습니다.',
+   liquidity:'현금성 자산 $59.513M과 제한성 현금 $1.132M을 구분합니다. 반기 영업현금 유입과 재고 감소만으로 계절성·향후 발주·유동성 위험이 해소됐다고 보지 않습니다.',
+   doubt:'라이선스 상품의 유행·로열티·관세·유통 재고와 계절성이 실적을 바꿉니다. 환급을 반복 이익으로 평가하면 왜곡됩니다.',confirm:'관세 환급 제외 영업이익·실판매·재주문·유통 재고를 다음 보고기간에서 확인합니다.',invalidate:'매출 성장에도 로열티·판촉·관세 부담으로 영업손실과 재고가 다시 늘면 회복 가설을 재검토합니다.',valuation:'환급을 뺀 정상 영업이익과 계절별 현금 필요를 사용합니다. 보고 순이익의 단순 연율화는 피합니다.'},
   FF: { period:'2026-06-30', publishedAt:'2026-08-10', source:'https://www.sec.gov/Archives/edgar/data/1337298/000143774926026783/ex_966478.htm',
     profitCap:0, growthCap:30, cash:34.3e6, investments:null, restricted:null, issuance:null,
     quality:'흑자는 확인되지만 헤지 시점 효과와 미실현 파생상품 이익이 섞여 반복 이익은 미확인입니다.',

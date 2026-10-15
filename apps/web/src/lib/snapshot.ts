@@ -52,6 +52,7 @@ export interface SetupPlan {
   entryType?: 'buy-stop' | 'limit' | 'zone' | 'market' | null; how?: string | null; riskPct: number | null; rMultiple: number | null; note: string | null;
 }
 export interface SetupRow {
+  priceAsOf?:string;ret1?:number|null;ret5?:number|null;ret63?:number|null;ret21?:number|null;provisional?:boolean;storySignals?:{revenueAcceleration:boolean;profitTurnaround:boolean;lossNarrowing:boolean};funding?:{runwayMonths:number|null;sharesYoY:number|null;source:string};
   type?: SetupType; symbol: string; name: string | null; sector: string; price: number; mcap: number | null; adv20: number | null; stage: SetupStage;
   // breakout
   pivot?: number | null; distanceToPivot?: number | null; extension?: number | null; barsSinceBreakout?: number | null; posInBase?: number | null; breakoutVolMult?: number | null;
@@ -66,7 +67,7 @@ export interface SetupRow {
   plan: SetupPlan | null;
   chartScore: number; storyScore: number; score: number;
   reasons: SetupReason[]; themes: string[]; revenueYoY: Array<{ end: string; yoy: number }>;
-  narrative?: { lines: string[]; takeaway: string; method: string;quality?:{profitBlocked:boolean;growthBlocked:boolean} };
+  narrative?: { lines: string[]; takeaway: string; method: string;quality?:{profitBlocked:boolean;growthBlocked:boolean;growthFresh?:boolean;profitFresh?:boolean;revenuePeriod?:string|null;profitPeriod?:string|null} };
   news: Array<{ time: string; headline: string; url?: string; sentiment?: string; tags?: string[] }>;
   newsChecked: boolean;
 }

@@ -1,3 +1,4 @@
+import { businessStory } from '../../../../packages/analysis/business-stories.mjs';
 // "스토리 확인 추천": scanner candidates whose chart is at a buy area AND whose numbers or news
 // hint at a story worth checking (turnaround, accelerating growth, doubted while improving,
 // sudden attention, theme). Pure ranking over setups.json — no extra data or API calls.
@@ -13,28 +14,50 @@ const BUY_AREA = new Set(['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT', 'BOUNCE', '
 
 export interface StoryPick { row: SetupRow; priority: number; why: string[]; hook: string }
 
-export function storyPicks(data: Setups | null, limit = 8): StoryPick[] {
+export type DiscoveryMode='early'|'watch'|'legacy';
+export function earlyIssues(row:SetupRow,asOf:string,mode:DiscoveryMode='early'):string[]{
+ const issues:string[]=[];if(businessStory(row.symbol,asOf)?.model==='treasury')issues.push('자산 보유형 · 주당 NAV 원문 검증 필요');const type=row.type??'breakout',q=row.narrative?.quality;
+ if(!row.plan||![row.plan.entry,row.plan.stop,row.plan.target,row.plan.riskPct,row.plan.rMultiple].every(v=>typeof v==='number'&&Number.isFinite(v))||row.plan.stop>=row.plan.entry||row.plan.target<=row.plan.entry||row.plan.riskPct! <= 0||row.plan.riskPct! > 0.15||row.plan.rMultiple! < 1.5)issues.push('진입·무효화·보상 가정 부족');
+ if(row.priceAsOf!==asOf)issues.push('당일 종가 미확인');
+ if(row.ret1==null||row.ret5==null||!Number.isFinite(row.ret1)||!Number.isFinite(row.ret5))issues.push('최근 급등 확인 자료 부족');
+ else if(row.ret1>0.12||row.ret5>0.2)issues.push('하루 +12%·5거래일 +20% 초과');
+ if(type==='pullback')issues.push('상승 후 눌림목');
+ if(row.mcap==null||!Number.isFinite(row.mcap)||row.mcap<25e6||row.mcap>5e9)issues.push('시총 $25M~$5B 범위 밖·미확인');
+ if(row.ret63==null||!Number.isFinite(row.ret63)||row.ret21==null||!Number.isFinite(row.ret21))issues.push('추격 여부 자료 부족');
+ else if(row.ret63>0.35||row.ret21>0.2)issues.push('63일 +35%·21일 +20% 초과');
+ if(!row.storySignals||!(row.storySignals.revenueAcceleration&&!q?.growthBlocked&&q?.growthFresh||row.storySignals.profitTurnaround&&!q?.profitBlocked&&q?.profitFresh||row.storySignals.lossNarrowing&&!q?.profitBlocked&&q?.profitFresh))issues.push('현재 분기 실적 개선 근거 부족');
+ const period=row.storySignals?.revenueAcceleration?q?.revenuePeriod:q?.profitPeriod;if(!period||!Number.isFinite(Date.parse(period))||Date.parse(period)>Date.parse(asOf)||Date.parse(asOf)-Date.parse(period)>200*86400000)issues.push('재무 기준일 확인 필요');
+ if(mode==='early'){
+  if(!['BREAKOUT','POST_BREAKOUT','NEAR_PIVOT','TURNING'].includes(row.stage))issues.push('전환·돌파 확인 전');
+  if(row.provisional)issues.push('진행 중인 주봉·월봉');
+  if(['weekly_bottom','monthly_bottom'].includes(type)&&(!row.higherLow||!row.aboveMa))issues.push('저점 상승·평균선 회복 미확인');
+  if(row.stage==='POST_BREAKOUT'&&(row.extension==null||row.extension>0.08))issues.push('돌파 후 이격 8% 초과·미확인');
+ }else if(mode==='watch'&&!['IN_BASE','AT_BOTTOM','TURNING','NEAR_PIVOT'].includes(row.stage))issues.push('바닥 관찰 단계 아님');
+ return issues;
+}
+export function storyPicks(data: Setups | null, limit = 8,mode:DiscoveryMode='early'): StoryPick[] {
   if (!data) return [];
   const best = new Map<string, StoryPick>();
   for (const row of data.candidates) {
+    if(mode!=='legacy'&&earlyIssues(row,data.asOf,mode).length)continue;
     if (!(BUY_AREA.has(row.stage) || (row.stage === 'IN_BASE' && (row.plan?.entryType === 'zone' || row.plan?.entryType === 'limit'))) || !row.plan || row.plan.riskPct == null || row.plan.riskPct > 0.15) continue;
     if (row.plan.rMultiple == null || row.plan.rMultiple < 1.5) continue; // target too close to be worth the risk
     const text = row.reasons.filter(r=>r.kind==='plus'&&r.pts>0).map((r) => r.text).join(' ');
     const lines = row.narrative?.lines.join(' ') ?? '';
     const why: string[] = [];
     let bonus = 0;
-    const narrowing = !row.narrative?.quality?.profitBlocked && (/적자가 \d+% 줄었/.test(lines) || /적자 폭 절반/.test(text));
+    const narrowing = row.storySignals?Boolean(row.storySignals.lossNarrowing):!row.narrative?.quality?.profitBlocked && (/적자가 \d+% 줄었/.test(lines) || /적자 폭 절반/.test(text));
     const widening = /적자가 \d+% 늘었/.test(lines);
-    const accel = !row.narrative?.quality?.growthBlocked && /가속/.test(text);
-    const turned = !row.narrative?.quality?.profitBlocked && (/흑자 전환/.test(text) || /흑자로 돌아섰/.test(lines));
+    const accel = row.storySignals?Boolean(row.storySignals.revenueAcceleration):!row.narrative?.quality?.growthBlocked && /가속/.test(text);
+    const turned = row.storySignals?Boolean(row.storySignals.profitTurnaround):!row.narrative?.quality?.profitBlocked && (/흑자 전환/.test(text) || /흑자로 돌아섰/.test(lines));
     const doubted = /의심/.test(text);
-    const surge = /관심 급증/.test(text);
+    const surge = mode==='legacy'&&/관심 급증/.test(text);
     if (narrowing) { why.push('적자지만 개선 중'); bonus += 15; }
     if (turned) { why.push('흑자 전환'); bonus += 12; }
     if (accel) { why.push('매출 성장 가속'); bonus += 8; }
     if (doubted) { why.push('시장은 의심 중'); bonus += 10; }
     if (surge) { why.push('뉴스 관심 급증'); bonus += 5; }
-    if (row.themes.length) { why.push(`테마: ${row.themes.join('·')}`); bonus += 4; }
+    if (mode==='legacy'&&row.themes.length) { why.push(`테마: ${row.themes.join('·')}`); bonus += 4; }
     if (widening) { why.push('⚠ 적자 확대'); bonus -= 20; }
     const drop = lines.match(/순이익 [^(]*\(1년 전 [^,]+, -(\d+)%\)/);
     if (drop && Number(drop[1]) >= 30) { why.push('⚠ 이익 감소'); bonus -= 12; }

@@ -120,11 +120,17 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
     const drawOrderBlocks = (parts: string[], w: number, ph: number, x: (i: number) => number | null, y: (p: number) => number | null) => {
       // blocks outside the visible price range are not drawn (they used to spill over the toolbar);
       // one small edge note says how many sit above / below
+      const occupied:number[]=[];
+      const badge=(text:string,lx:number,ly:number,col:string,anchor='start')=>{
+        if(w<130||ph<70)return;ly=Math.max(42,Math.min(ph-12,ly));if(occupied.some(y=>Math.abs(y-ly)<18))return;occupied.push(ly);
+        const bw=Math.min(w-12,text.length*7+14),left=Math.max(3,Math.min(w-bw-3,anchor==='end'?lx-bw:lx));
+        parts.push(`<g class="ob-chart-badge"><rect x="${left}" y="${ly-12}" width="${bw}" height="17" rx="3" fill="${C.bg}" fill-opacity="0.96" stroke="none"/><text x="${left+6}" y="${ly}" fill="${col}" stroke="none" font-size="11" font-weight="500">${text}</text></g>`);
+      };
       const off = { above: [] as number[], below: [] as number[] };
       const last = bars.length - 1;
       const active = analysis.orderBlocks.filter((o) => o.mitigatedIndex === null).slice(-6);
       const recent = analysis.orderBlocks.filter((o) => o.mitigatedIndex !== null && last - (o.mitigatedIndex as number) <= 40).slice(-4);
-      const zone = (o: (typeof active)[number], endIdx: number | null, faded: boolean) => {
+      const zone = (o: (typeof active)[number], endIdx: number | null, faded: boolean, number=0) => {
         const x0 = x(o.index);
         const x1 = endIdx === null ? w : x(endIdx);
         const yt = y(o.top);
@@ -144,19 +150,19 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
         }
         parts.push(`<rect x="${left}" y="${top}" width="${Math.max(1, right - left)}" height="${h}" fill="${col}2e" stroke="${col}" stroke-width="1"/>`);
         if (x0 >= 0) parts.push(`<rect x="${x0}" y="${top}" width="3" height="${h}" fill="${col}"/>`);
-        const label = `${bull ? '▲ 매수 OB' : '▼ 매도 OB'} ${fmtPrice(o.bottom)}–${fmtPrice(o.top)}${o.provisional ? ' (미확정)' : ''}`;
+        const label = `OB ${number} · ${bull?'매수':'매도'}${o.provisional?'?':''}`;
         // Origin off-screen: anchor the label at the right edge so it never sits under the OHLC legend.
         const onScreen = x0 >= 0;
         const lx = onScreen ? Math.min(w - 160, x0 + 6) : w - 12;
         const ly = h >= 14 ? top + 11 : bull ? top + h + 11 : top - 3;
-        parts.push(`<text x="${lx}" y="${ly}" text-anchor="${onScreen ? 'start' : 'end'}" fill="${col}" font-size="10" font-weight="700" paint-order="stroke" stroke="${C.bg}" stroke-width="3">${label}</text>`);
+        badge(label,lx,ly,col,onScreen?'start':'end');
         parts.push(`<rect x="${w - 6}" y="${top}" width="6" height="${h}" fill="${col}"/>`);
       };
       for (const o of recent) zone(o, o.mitigatedIndex, true);
-      for (const o of active) zone(o, null, false);
+      for (const [i,o] of active.entries()) zone(o, null, false,i+1);
       const note = (vals: number[], yPos: number, txt: string, col: string) => {
         if (!vals.length) return;
-        parts.push(`<text x="${w - 10}" y="${yPos}" text-anchor="end" fill="${col}" font-size="10" font-weight="700" paint-order="stroke" stroke="${C.bg}" stroke-width="3">${txt} ${vals.length / 2}개 (${fmtPrice(Math.min(...vals))}–${fmtPrice(Math.max(...vals))})</text>`);
+        badge(`${txt} ${vals.length/2}개`,w-10,yPos,col,'end');
       };
       note(off.above, 14, '▲ 화면 위 오더블록', C.obBear);
       note(off.below, ph - 6, '▼ 화면 아래 오더블록', C.obBull);
@@ -236,12 +242,16 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
     };
   }, [bars, analysis, showKey, intraday, height]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const activeBlocks=analysis.orderBlocks.filter(o=>o.mitigatedIndex===null).slice(-6);
   return (
+    <>
     <div className="chart-cell" style={{ height }}>
       <div className="chart-mount" ref={wrap} />
       <svg className="chart-overlay" ref={svg} />
       <div className="chart-legend" ref={legend} />
       {watermark && <div className="chart-watermark">{watermark}</div>}
     </div>
+    {show.has('ob')&&<div className="ob-readable-legend" aria-label="오더블록 가격 범위"><small>오더블록 · 과거 캔들로 추정한 구간 (실제 기관 주문 확인 아님)</small>{activeBlocks.length?activeBlocks.map((o,i)=><span key={`${o.index}-${o.direction}`} style={{color:o.provisional?C.provisional:o.direction==='bull'?C.obBull:C.obBear}}>OB {i+1} · {o.direction==='bull'?'매수':'매도'} ${fmtPrice(o.bottom)}–${fmtPrice(o.top)}{o.provisional?' · 미확정':''}</span>):<span>표시할 활성 오더블록 없음</span>}</div>}
+    </>
   );
 }

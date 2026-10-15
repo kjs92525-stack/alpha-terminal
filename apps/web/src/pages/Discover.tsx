@@ -68,11 +68,11 @@ export function Discover() {
           )}
           <button className="primary-button" onClick={runScreen} disabled={screening.running}><RefreshCw size={12} className={screening.running ? 'spin' : ''} /> {screening.running ? `계산 중 ${screening.done}/${screening.total}` : '스크리닝 실행'}</button>
         </div>
-        <p className="footnote pad">미국 전체 상장 종목(약 1만 개)을 한 번에 스캔하려면 서버 측 배치 수집(Supabase 저장)이 필요합니다. 현재는 유니버스 단위로 무료 데이터를 실시간 계산합니다. Cloudflare 무료 플랜의 요청 한도 때문에 4종목씩 나눠 계산합니다.</p>
+        <p className="footnote pad">위 발굴·차트 셋업은 야간 전체 상장 집합을 검사한 결과입니다. 아래 실시간 계산은 추가한 관심 유니버스만 대상으로 하며 상승 초입 발굴과 다른 종합 팩터 점수입니다.</p>
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <PanelHead kicker="RANKING" title="퀀트 스크리너" />
+        <PanelHead kicker="RANKING" title="관심 유니버스 종합 팩터 · 상승 초입 순위와 별도" />
         <div className="event-filter">
           {(['all', 'growth', 'value', 'large', 'small', 'watch'] as const).map((f) => (
             <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{{ all: '전체', growth: '성장주', value: '가치주', large: '대형주', small: '중소형주', watch: '관심종목' }[f]}</button>
