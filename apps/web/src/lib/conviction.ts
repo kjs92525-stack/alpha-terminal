@@ -3,9 +3,11 @@
 // market regime caps the tier because a good stock in a bad tape still loses more often.
 import { earlyIssues } from '../../../../packages/analysis/discovery-rules.mjs';
 import { thesisChecks } from '../../../../packages/analysis/thesis-checks.mjs';
+import { businessEvidence, EVENT_EVIDENCE as EV } from '../../../../packages/analysis/business-evidence.mjs';
 import type { SetupRow, Setups } from './snapshot';
 
 export type Tier = 'A' | 'B' | 'C';
+const pp = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%p`;
 export type Gate = 'SELECTIVE' | 'LIMIT' | 'WAIT' | 'UNKNOWN';
 export interface Conviction { row: SetupRow; mode: 'early' | 'pivot' | 'watch'; points: number; tier: Tier; plus: string[]; minus: string[]; capped: string | null }
 
@@ -18,7 +20,12 @@ export function scoreConviction(row: SetupRow, asOf: string, mode: Conviction['m
   if (t.state === 'drop') add(-40, '탈락 조건 해당');
   if (mode === 'early') add(10, '실적 개선 + 전환·돌파 동시 충족');
   if (mode === 'pivot') add(10, '대형 계약·설비 확장 근거');
-  if (mode === 'watch') add(-10, '아직 바닥 관찰 단계');
+  if (mode === 'watch') add(-10, `아직 바닥 관찰 단계 (과거 바닥권 실적 개선 120일 SPY ${pp(EV.improvingNearLow.excess120)})`);
+  // filing event study (backtest [공시] rows): sales acceleration carried the excess return, income alone did not
+  const ev = businessEvidence(row, asOf);
+  if (ev.both) add(25, `매출 가속 + 이익 개선 (과거 ${EV.both.n.toLocaleString()}건 120일 SPY ${pp(EV.both.excess120)})`);
+  else if (ev.revAccel) add(15, `매출 가속 (과거 ${EV.revAccel.n.toLocaleString()}건 120일 SPY ${pp(EV.revAccel.excess120)})`);
+  else if (ev.niImproved) add(-5, `이익 개선만·매출 가속 없음 (과거 120일 SPY ${pp(EV.niOnly.excess120)})`);
   if (row.edge?.insider?.cluster) add(20, `내부자 ${row.edge.insider.buyers}명 장내 매수`);
   if (row.edge?.dilution?.offering) add(-20, '최근 발행 공시(424B)');
   else if (row.edge?.dilution?.shelf) add(-5, '증자 대기 등록(S-3)');
@@ -29,6 +36,7 @@ export function scoreConviction(row: SetupRow, asOf: string, mode: Conviction['m
   if (row.plan?.rMultiple != null && row.plan.rMultiple >= 3) add(5, `손익비 ${row.plan.rMultiple.toFixed(1)}`);
   let tier: Tier = pts >= 50 ? 'A' : pts >= 30 ? 'B' : 'C';
   let capped: string | null = null;
+  if (tier === 'A' && !ev.revAccel) { tier = 'B'; capped = '매출 가속 없음 — A 보류'; }
   if (gate === 'WAIT' || gate === 'UNKNOWN') { if (tier !== 'C') capped = gate === 'WAIT' ? '시장 진입 대기 — 관찰용으로 낮춤' : '시장 상태 미확인 — 관찰용으로 낮춤'; tier = 'C'; }
   else if (gate === 'LIMIT' && tier === 'A') { tier = 'B'; capped = '제한적 진입 시장 — 한 단계 낮춤'; }
   return { row, mode, points: pts, tier, plus, minus, capped };
