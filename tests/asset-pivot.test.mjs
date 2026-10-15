@@ -47,3 +47,11 @@ test('small contracts, old headlines, buyouts and unknown capex do not make a pi
   assert.equal(none.newsChecked, false);
   assert.equal(none.fundedMonths, null);
 });
+
+test('take-private deals are buyouts, not pivots (BWIN 2026-10 headline)', () => {
+  assert.equal(classifyPivotHeadline('Michael Dell’s Family Office Leads $7.7bn Deal To Take Insurance Broker Private'), 'acquisition');
+  assert.equal(classifyPivotHeadline('Board agrees to go private in $2 billion transaction'), 'acquisition');
+  const p = assetPivotSignals({ news: [{ time: '2026-10-10T00:00:00Z', headline: 'Family Office Leads $7.7bn Deal To Take Insurance Broker Private' }], facts: null, mcap: 3e9, asOf: '2026-10-14' });
+  assert.equal(p.pivot, false);
+  assert.ok(p.acquisition);
+});
