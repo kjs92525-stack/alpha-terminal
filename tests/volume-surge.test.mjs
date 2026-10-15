@@ -68,3 +68,11 @@ test('thin shells and market-wrap headlines do not dominate', async () => {
   assert.equal(e.cause, 'earnings');
   assert.equal(e.headlines[0].roundup, false, 'the specific headline comes first');
 });
+
+test('index-level wraps are not a company cause; the headline behind the label is listed first', () => {
+  assert.equal(classifyCause('Nasdaq Dips Over 400 Points; Bank of America Shares Tumble After Q3 Results'), null);
+  const s = detectVolumeSurge(bars({ last: { open: 10.2, high: 11.6, low: 10.1, close: 11.5, volume: 5e6 } }));
+  const e = explainSurge({ surge: s, news: [{ time: `${s.date}T09:00:00Z`, headline: 'Broker raises price target on X' }, { time: `${s.date}T12:00:00Z`, headline: 'FDA approves X therapy' }], asOf: s.date });
+  assert.equal(e.cause, 'regulatory');
+  assert.match(e.headlines[0].headline, /FDA/);
+});

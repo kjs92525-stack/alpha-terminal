@@ -54,7 +54,7 @@ const CAUSES = [
 export const CAUSE_KO = Object.fromEntries([...CAUSES.map(([k, ko]) => [k, ko]), ['unexplained', '확인된 이유 없음']]);
 
 // market-wrap / "why is X moving" headlines name no cause; they are listed last and never classify
-const ROUNDUP = /(\bstocks? moving\b|\bmovers?\b|\btop (gainers|losers)\b|^why (is|are) .{0,60}\b(stock|shares)\b|\bwhat'?s going on with\b|\b(mid-?day|pre-?market|after-?hours?) (session|movers|update)\b)/i;
+const ROUNDUP = /(^(nasdaq|dow|s&p 500|u\.?s\.? stocks|stocks|wall street)\b.{0,40}\b(dips?|jumps?|falls?|rises?|slides?|surges?|tumbles?|gains?|climbs?|drops?|edges?)\b|\bstocks? moving\b|\bmovers?\b|\btop (gainers|losers)\b|^why (is|are) .{0,60}\b(stock|shares)\b|\bwhat'?s going on with\b|\b(mid-?day|pre-?market|after-?hours?) (session|movers|update)\b)/i;
 export const isRoundup = (headline) => ROUNDUP.test(String(headline ?? ''));
 
 export function classifyCause(headline) {
@@ -93,6 +93,7 @@ export function explainSurge({ surge, news = null, filings = [], asOf }) {
   // most specific cause first (deal / financing / filing-backed news outrank opinions)
   const order = CAUSES.map(([k]) => k);
   const cause = Object.keys(counts).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0] ?? 'unexplained';
+  heads.sort((a, b) => Number(b.cause === cause) - Number(a.cause === cause)); // the headline behind the label first
   const up = surge.ret1 > 0;
   const tone = surge.context === 'after_run' && (!up || surge.closePos < 0.3) ? '오른 뒤 큰 거래량에 약하게 마감 — 차익 실현·분산 가능성을 경계합니다.'
     : surge.context === 'near_low' && up && surge.closePos > 0.6 ? '저점 부근에서 큰 거래량과 함께 강하게 마감 — 바닥에서 수요가 들어왔을 수 있으나 하루로 전환을 확정하지 않습니다.'
