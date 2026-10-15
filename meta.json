@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-15T09:13:13.983Z",
+ "startedAt": "2026-10-15T09:28:23.435Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
@@ -86,6 +86,21 @@
   },
   "grouped": 700
  },
+ "paper": {
+  "signals": 0,
+  "filled": 0,
+  "closed": 0,
+  "open": 0,
+  "pending": 0,
+  "expiredOrInvalidated": 0,
+  "winRate": null,
+  "avgR": null,
+  "totalR": 0,
+  "avgReturn": null,
+  "avgVsSpy": null,
+  "openR": 0,
+  "enough": false
+ },
  "ledgerWritten": false,
  "earlyAlpha": {
   "scanned": 5263,
@@ -102,5 +117,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 297
+ "seconds": 335
 }
