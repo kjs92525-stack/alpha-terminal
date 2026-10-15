@@ -19,6 +19,8 @@ test('close chart computes moving averages and RSI without future leakage; proxy
 test('BLS parser preserves monthly/annual and seasonal bases, real release time, rejects stale/future or changed layout',()=>{
  const d=parseBlsCpi(cpi,now);assert.equal(d.publishedAt,'2026-10-14T12:30:00.000Z');assert.equal(d.period,'2026-09');assert.equal(d.headlineMonthly,0.6);assert.equal(d.coreAnnual,2.6);assert.match(macroReading(d).fact,/季|계절조정/);assert.match(macroReading(d).counterpoint,/확정하지/);
  assert.equal(parseBlsCpi(cpi,Date.parse('2026-10-14T12:29Z')),null);assert.equal(parseBlsCpi(cpi,now+46*86400000),null);assert.equal(parseBlsCpi('<html>Access Denied</html>',now),null);assert.equal(parseBlsCpi(cpi.replace('CPI-U)','WRONG)'),now),null);
+ const soft=cpi.replace('increased 0.6 percent on a seasonally','declined 0.1 percent on a seasonally').replace('rose 0.3 percent in September','was unchanged in September');const s=parseBlsCpi(soft,now);assert.equal(s.headlineMonthly,-0.1);assert.equal(s.coreMonthly,0);assert.equal(s.headlineAnnual,3.7);
+ assert.equal(parseBlsCpi(cpi.replace('increased 0.6 percent on a seasonally adjusted basis','was unchanged in September on a seasonally adjusted basis'),now).headlineMonthly,0);
  const winter=cpi.replace('October 14, 2026','December 14, 2026');assert.equal(parseBlsCpi(winter,Date.parse('2026-12-15')).publishedAt,'2026-12-14T13:30:00.000Z');
 });
 test('reviewed news is unavailable before review or after expiry and never pretends to be live automated analysis',()=>{

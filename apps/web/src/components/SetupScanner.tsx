@@ -243,7 +243,7 @@ function ChartFacts({ x }: { x: SetupRow }) {
   );
 }
 
-const GROUP_KO: Record<string, string> = { all: '전체 돌파', trendTemplateOk: '추세 템플릿 통과', longBase9mPlus: '바닥 9개월 이상', highQualityBase: '바닥 품질 상위', rsNewHigh: 'RS 신고가 동반', tightRisk8pct: '손절폭 8% 이내', storyKnown: '실적 자료 있는 돌파', storyImproving: '돌파 + 실적 개선 (매수일 기준 공시)', storyNotImproving: '돌파 + 실적 개선 없음', storyImprovingTrendOk: '돌파 + 실적 개선 + 추세 템플릿' };
+const GROUP_KO: Record<string, string> = { all: '전체 돌파', trendTemplateOk: '추세 템플릿 통과', longBase9mPlus: '바닥 9개월 이상', highQualityBase: '바닥 품질 상위', rsNewHigh: 'RS 신고가 동반', tightRisk8pct: '손절폭 8% 이내', storyKnown: '실적 자료 있는 돌파', storyImproving: '돌파 + 실적 개선 (매수일 기준 공시)', storyNotImproving: '돌파 + 실적 개선 없음', storyImprovingTrendOk: '돌파 + 실적 개선 + 추세 템플릿', floorTurn: '바닥 전환(연구용·기준선 돌파 전)', floorTurnStoryKnown: '바닥 전환 · 실적 자료 있음', floorTurnStoryImproving: '바닥 전환 + 실적 개선', floorTurnStoryNotImproving: '바닥 전환 + 실적 개선 없음' };
 
 function BacktestBox({ bt }: { bt: Backtest | null }) {
   if (!bt) {
