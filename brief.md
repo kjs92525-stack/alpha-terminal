@@ -1,6 +1,6 @@
 # ALPHA TERMINAL 데일리 브리프 — 기준일 2026-10-14
 
-생성 2026-10-15T07:51:42.842Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
+생성 2026-10-15T07:56:55.325Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
 
 읽는 법: 손절폭 = 매수가에서 손절가까지 하락률, R = (1차 목표-매수가)/(매수가-손절가). "스토리"는 재무·뉴스 규칙 기반 자동 요약(AI 해석 아님)이라 직접 검증이 필요합니다. 백테스트상 차트 신호만으로는 시장(SPY) 대비 우위가 확인되지 않았습니다.
 
@@ -94,6 +94,23 @@
 | HE Hawaiian Electric Industries | $8.45 | 바닥권 | 월봉 바닥 $7.61~$8.21 구간 분할매수(1/3씩) · 확인 후 매수는 $17.38 돌파 시 · 손절 $7.22 | 12% | 3.9 | 53/12 | 성장이 느려지는 중이라, 차트가 좋아도 실적 뒷받침은 약합니다. |
 | WLDN Willdan Group, Inc | $72.0 | 바닥권 | 월봉 바닥 $64.67~$69.84 구간 분할매수(1/3씩) · 확인 후 매수는 $101.75 돌파 시 · 손절 $61.43 | 12% | 1.4 | 46/22 | 실적에 뚜렷한 변화는 아직 보이지 않습니다. |
 | APTV APTIV PLC | $43.8 | 바닥권 | 월봉 바닥 $39.98~$43.18 구간 분할매수(1/3씩) · 확인 후 매수는 $78.49 돌파 시 · 손절 $37.98 | 12% | 3.0 | 41/25 | 보고 순이익의 흑자 전환입니다. 일회성 효과와 본업 반복 이익을 원문에서 확인해야 합니다. |
+
+## 거래량 급증 — 상위 12개 (감지 87개)
+
+| 종목 | 날짜 | 거래량 | 당일 | 위치 | 이유(분류) | 근거 기사 |
+|---|---|---|---|---|---|---|
+| CLWT Euro Tech Holdings Compa | 2026-10-12 | 4186.8배 | +58.1% | 1년 범위 중간 | 지수 편입·변경 | 12 Industrials Stocks Moving In Tuesday's After-Market Session |
+| MNDR Mobile-health Network So | 2026-10-12 | 679.1배 | +257.6% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | 12 Health Care Stocks Moving In Tuesday's After-Market Session |
+| LNKS Linkers Industries Ltd | 2026-10-12 | 367.5배 | +138.4% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | 12 Industrials Stocks Moving In Tuesday's Intraday Session |
+| JYD Jayud Global Logistics L | 2026-10-13 | 335배 | +57.0% | 1년 범위 중간 | 확인된 이유 없음 | 12 Industrials Stocks Moving In Tuesday's After-Market Session |
+| GENK GEN Restaurant Group Inc | 2026-10-14 | 239.4배 | +16.6% | 1년 저점 부근 | 확인된 이유 없음 | 12 Consumer Discretionary Stocks Moving In Wednesday's After-Market Session |
+| SKYA Sharps Technology Inc | 2026-10-12 | 110.6배 | +42.9% | 이미 3개월 +50% 넘게 오른 뒤 | 확인된 이유 없음 | Why Is SkyAI Stock Surging Monday? |
+| WORX Scworx Corp | 2026-10-13 | 108배 | -22.1% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | 12 Health Care Stocks Moving In Tuesday's Pre-Market Session |
+| PFAI Pinnacle Food Group Ltd | 2026-10-13 | 59.4배 | +80.1% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | 12 Industrials Stocks Moving In Wednesday's Pre-Market Session |
+| NXGL Nexgel Inc | 2026-10-14 | 52.7배 | +34.8% | 3개월 -25% 넘게 빠진 하락 추세 중 | 주식 분할·병합 | NEXGEL Announces 1-For-20 Reverse Stock Split, Effective Immediately |
+| DCX Digital Currency X Techn | 2026-10-13 | 44.9배 | -6.8% | 1년 저점 부근 | 계약·수주·제휴 | 12 Consumer Discretionary Stocks Moving In Wednesday's Pre-Market Session |
+| YMAT J-Star Holding Co Ltd | 2026-10-12 | 38.9배 | +125.6% | 3개월 -25% 넘게 빠진 하락 추세 중 | 인수·합병 | 12 Consumer Discretionary Stocks Moving In Tuesday's After-Market Session |
+| FCHL Fitness Champs Holdings  | 2026-10-13 | 42.7배 | +7.0% | 1년 범위 중간 | 확인된 이유 없음 | 12 Consumer Discretionary Stocks Moving In Tuesday's Intraday Session |
 
 ---
 이 문서는 매일 밤 자동으로 다시 만들어집니다. 종목별 상세(분기 매출·이익, 뉴스 원문)는 같은 폴더의 setups.json에 있습니다.

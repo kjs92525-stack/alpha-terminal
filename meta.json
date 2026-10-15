@@ -1,12 +1,12 @@
 {
- "startedAt": "2026-10-15T07:48:10.780Z",
+ "startedAt": "2026-10-15T07:52:38.778Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
  "universe": 5266,
  "alpacaRequests": 215,
  "fullFetches": 3,
- "monthlyFetched": 3,
+ "monthlyFetched": 2,
  "asOf": "2026-10-14",
  "marketBrief": {
   "state": "WAIT",
@@ -29,13 +29,18 @@
   "calls": 0
  },
  "secPublished": {
-  "companyFilesWritten": 4989,
+  "companyFilesWritten": 30,
   "recentFilings": 1
  },
  "withFeatures": 5260,
  "ranked": {
   "mid": 2676,
   "short": 3531
+ },
+ "surges": {
+  "detected": 87,
+  "shown": 60,
+  "newsRequests": 59
  },
  "setups": {
   "scanned": 5260,
@@ -93,5 +98,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 249
+ "seconds": 290
 }
