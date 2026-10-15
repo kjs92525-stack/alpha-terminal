@@ -8,3 +8,4 @@ export function resampleMonthly(bars: Bar[]): Bar[];
 export function mergeMonthly(longMonthly: Bar[] | null | undefined, daily: Bar[]): Bar[];
 export function detectPullback(bars: Bar[], rules?: typeof PULLBACK_RULES): Pullback;
 export function detectHtfBottom(htf: Bar[], tf?: 'weekly' | 'monthly'): HtfBottom;
+export function detectHtfBottomClosed(htf: Bar[], tf?: 'weekly' | 'monthly', lastBarForming?: boolean): HtfBottom & { provisional: boolean; basis: 'closed' | 'closed_confirmed' | 'forming'; note?: string };

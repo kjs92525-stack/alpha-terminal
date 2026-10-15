@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {parseNasdaqCsv,buildNasdaqContext,parseBlsCpi,macroReading} from '../packages/analysis/market-context.mjs';
+import {parseNasdaqCsv,buildNasdaqContext,parseBlsCpi,parseFredCpi,macroReading} from '../packages/analysis/market-context.mjs';
 import {reviewedMarketEvents,reviewedCpi} from '../packages/analysis/market-events.mjs';
 import {buildMarketBrief,MARKET_ETFS} from '../packages/analysis/market-brief.mjs';
 import {publishMarketBrief,selectMarketNews} from '../packages/pipeline/market-brief.mjs';
@@ -42,4 +42,31 @@ test('publisher adds independently sourced context; unavailable optional sources
 test('verified CPI fallback is dated, short lived and distinguishes blocked collection from a live successful fetch',async()=>{
  assert.equal(reviewedCpi(Date.parse('2026-10-14')),null);assert.equal(reviewedCpi(Date.parse('2026-10-18')),null);assert.equal(reviewedCpi(now).collection,'reviewed_snapshot');
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cpi-reviewed-'));try{const d=await publishMarketBrief({barsBy:{},asOf,now,outDir:tmp,fetchImpl:async()=>new Response('Access denied',{status:403})});assert.equal(d.contextStatus.cpi,'reviewed_snapshot');assert.equal(d.macro.headlineAnnual,3.7);assert.match(d.macro.source,/검토본/);assert.equal(d.macro.collection,'reviewed_snapshot');}finally{fs.rmSync(tmp,{recursive:true,force:true})}
+});
+
+test('CPI fallback from FRED: changes from index levels, valid only between release window and the next one',()=>{
+ const rows=[['2025-09-01',100,100,100,100],['2026-08-01',103.0,103.5,102.4,102.6],['2026-09-01',103.62,103.7,102.71,102.67]];
+ const csv='observation_date,CPIAUCSL,CPIAUCNS,CPILFESL,CPILFENS\n'+rows.map(r=>r.join(',')).join('\n');
+ const now=Date.parse('2026-10-18T00:00:00Z'),d=parseFredCpi(csv,now);
+ assert.equal(d.period,'2026-09');assert.equal(d.headlineMonthly,0.6);assert.equal(d.headlineAnnual,3.7);assert.equal(d.coreMonthly,0.3);assert.equal(d.coreAnnual,2.7);
+ assert.equal(d.publishedAt,null);assert.equal(d.collection,'fred_derived');assert.equal(d.expiresAt,'2026-11-20T00:00:00.000Z');
+ assert.match(macroReading(d).fact,/FRED에 실린 BLS 지수로 계산한 2026-09 CPI/);
+ assert.equal(parseFredCpi(csv,Date.parse('2026-11-20T00:00:00Z')),null,'next release should exist by now');
+ assert.equal(parseFredCpi(csv,Date.parse('2026-10-05T00:00:00Z'))?.period,undefined,'September cannot be out before ~Oct 8 and August has no year-ago row');
+ assert.equal(parseFredCpi(csv.replace('103.62','.'),now),null,'missing value');
+ assert.equal(parseFredCpi('<html>blocked</html>',now),null);assert.equal(parseFredCpi(csv.replace('CPILFENS','OTHER'),now),null);
+});
+
+test('pipeline: reviewed CPI snapshot wins while valid; after it expires FRED keeps CPI instead of dropping it',async()=>{
+ const csv='observation_date,CPIAUCSL,CPIAUCNS,CPILFESL,CPILFENS\n2025-09-01,100,100,100,100\n2026-08-01,103.0,103.5,102.4,102.6\n2026-09-01,103.62,103.7,102.71,102.67';
+ const fetchImpl=async url=>String(url).includes('CPIAUCSL')?new Response(csv):new Response('Access denied',{status:403});
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cpi-fred-'));
+ try{
+  const during=await publishMarketBrief({barsBy:{},asOf,now,outDir:tmp,fetchImpl});
+  assert.equal(during.macro.collection,'reviewed_snapshot');assert.equal(during.contextStatus.cpi,'reviewed_snapshot');
+  const after=await publishMarketBrief({barsBy:{},asOf,now:Date.parse('2026-10-18T00:00Z'),outDir:tmp,fetchImpl});
+  assert.equal(after.macro.collection,'fred_derived');assert.equal(after.contextStatus.cpi,'fred_derived');assert.equal(after.macro.period,'2026-09');
+  const none=await publishMarketBrief({barsBy:{},asOf,now:Date.parse('2026-10-18T00:00Z'),outDir:tmp,fetchImpl:async()=>new Response('no',{status:403})});
+  assert.equal(none.macro,null);assert.equal(none.contextStatus.cpi,'unavailable');
+ }finally{fs.rmSync(tmp,{recursive:true,force:true})}
 });

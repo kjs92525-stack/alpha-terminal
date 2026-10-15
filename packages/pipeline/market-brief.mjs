@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { reviewedMarketEvents, reviewedCpi } from '../analysis/market-events.mjs';
-import { parseNasdaqCsv, buildNasdaqContext, parseBlsCpi, macroReading } from '../analysis/market-context.mjs';
+import { parseNasdaqCsv, buildNasdaqContext, parseBlsCpi, parseFredCpi, FRED_CPI, macroReading } from '../analysis/market-context.mjs';
 import path from 'node:path';
 import { MARKET_ETFS,buildMarketBrief } from '../analysis/market-brief.mjs';
 import { isDailyBarClosed } from '../analysis/market.mjs';
@@ -22,14 +22,17 @@ export function selectMarketNews(rows,now){
  return [{headline:r.headline,url:r.url,source:r.source,publishedAt:new Date(r.datetime*1000).toISOString(),topic:topic[1],implication:topic[2],confidence:'headline_only'}];}).slice(0,5);
 }
 export async function publishMarketBrief({barsBy,breadth,asOf,outDir,env={},fetchImpl=fetch,now=Date.now(),source}){
- let vix=null,news=[],newsStatus='not_configured',nasdaqBars=[],cpi=null;
+ let vix=null,news=[],newsStatus='not_configured',nasdaqBars=[],cpi=null,fredCpi=null;
  // Public sources are independent: failed context must not suppress price risk.
  const contextResults=await Promise.allSettled([
   (async()=>{const start=new Date(Date.parse(asOf)-480*86400000).toISOString().slice(0,10);const r=await fetchImpl(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQCOM&cosd=${start}&coed=${asOf}`,{signal:AbortSignal.timeout(15000)});if(r.ok)nasdaqBars=parseNasdaqCsv(await r.text(),asOf)})(),
-  (async()=>{for(const url of ['https://www.bls.gov/news.release/cpi.nr0.htm','https://www.bls.gov/news.release/cpi.htm',reviewedCpi(now)?.url].filter(Boolean)){try{const r=await fetchImpl(url,{signal:AbortSignal.timeout(10000)});if(r.ok)cpi=parseBlsCpi(await r.text(),now);if(cpi)break}catch{}}})()
+  (async()=>{for(const url of ['https://www.bls.gov/news.release/cpi.nr0.htm','https://www.bls.gov/news.release/cpi.htm',reviewedCpi(now)?.url].filter(Boolean)){try{const r=await fetchImpl(url,{signal:AbortSignal.timeout(10000)});if(r.ok)cpi=parseBlsCpi(await r.text(),now);if(cpi)break}catch{}}})(),
+  (async()=>{const r=await fetchImpl(FRED_CPI,{signal:AbortSignal.timeout(15000)});if(r.ok)fredCpi=parseFredCpi(await r.text(),now)})()
  ]);
- const checkedCpi=reviewedCpi(now);if(checkedCpi&&(!cpi||Date.parse(checkedCpi.publishedAt)>Date.parse(cpi.publishedAt)))cpi=checkedCpi;
- const contextStatus={nasdaq:nasdaqBars.length>=22?'ok':contextResults[0].status==='rejected'?'error':'unavailable',cpi:cpi?(cpi.collection==='reviewed_snapshot'?'reviewed_snapshot':'ok'):contextResults[1].status==='rejected'?'error':'unavailable'};
+ // newest period wins; for the same period: live BLS release > reviewed snapshot > FRED-derived
+ const rank=c=>c.collection==='fred_derived'?0:c.collection==='reviewed_snapshot'?1:2;
+ cpi=[cpi,reviewedCpi(now),fredCpi].filter(Boolean).sort((a,b)=>b.period.localeCompare(a.period)||rank(b)-rank(a))[0]??null;
+ const contextStatus={nasdaq:nasdaqBars.length>=22?'ok':contextResults[0].status==='rejected'?'error':'unavailable',cpi:cpi?(cpi.collection==='reviewed_snapshot'||cpi.collection==='fred_derived'?cpi.collection:'ok'):contextResults[1].status==='rejected'&&contextResults[2].status==='rejected'?'error':'unavailable'};
  try{const r=await fetchImpl(VIX_CSV,{signal:AbortSignal.timeout(15000)});if(r.ok)vix=parseVix(await r.text(),asOf);}catch{}
  if(!vix||vix.asOf!==asOf){try{const start=new Date(Date.parse(asOf)-10*86400000).toISOString().slice(0,10);const r=await fetchImpl(`${FRED_VIX}&cosd=${start}&coed=${asOf}`,{signal:AbortSignal.timeout(15000)});if(r.ok){const f=parseFredVix(await r.text(),asOf);if(f&&(!vix||f.asOf>vix.asOf))vix=f}}catch{}}
  if(env.FINNHUB_API_KEY){try{const r=await fetchImpl('https://finnhub.io/api/v1/news?category=general',{headers:{'X-Finnhub-Token':env.FINNHUB_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('news unavailable');const data=await r.json();if(!Array.isArray(data))throw Error('news schema');news=selectMarketNews(data,now);newsStatus=news.length?'ok':'no_recent_relevant_headlines';}catch{newsStatus='error';}}

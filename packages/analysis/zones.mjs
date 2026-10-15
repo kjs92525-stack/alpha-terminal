@@ -226,3 +226,20 @@ export function detectHtfBottom(htf, tf = 'weekly') {
   };
 }
 
+/**
+ * Bottom judged on the last CLOSED weekly/monthly bar when the final bar is still forming.
+ * The forming bar alone never confirms a turn; it only keeps (or breaks) a closed-bar signal and
+ * sets today's plan. basis: 'closed' (last bar closed), 'closed_confirmed' (closed bar confirms,
+ * forming bar agrees), 'forming' (only the forming bar shows it — provisional).
+ */
+export function detectHtfBottomClosed(htf, tf = 'weekly', lastBarForming = false) {
+  const live = detectHtfBottom(htf, tf);
+  if (!lastBarForming) return { ...live, provisional: false, basis: 'closed' };
+  if (live.stage === 'NONE') return { ...live, provisional: true, basis: 'forming' }; // today's price broke the setup
+  const done = detectHtfBottom(htf.slice(0, -1), tf);
+  if (done.stage === 'NONE') return { ...live, provisional: true, basis: 'forming' };
+  // a turn counts only when the closed bar showed it and the forming bar still holds it
+  if (done.stage === live.stage) return { ...live, provisional: false, basis: 'closed_confirmed' };
+  const atBottom = live.stage === 'AT_BOTTOM' ? live : done;
+  return { ...atBottom, stage: 'AT_BOTTOM', provisional: false, basis: 'closed_confirmed', note: live.stage === 'TURNING' ? '전환은 진행 중인 봉에서만 보임 — 봉 마감 후 확인' : '마감 봉의 전환이 진행 중인 봉에서 약해짐' };
+}
