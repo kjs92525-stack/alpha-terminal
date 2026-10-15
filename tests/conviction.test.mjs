@@ -23,8 +23,13 @@ test('evidence adds up to a tier; the market regime caps it', () => {
   assert.equal(w.tier, 'C');
   assert.match(w.capped, /대기/);
   const dil = scoreConviction(good({ edge: { ...insider, insider: null, dilution: { days: 180, count: 1, shelf: false, offering: true, recent: [] } } }), '2026-10-14', 'early', 'SELECTIVE');
-  assert.ok(dil.minus.includes('최근 발행 공시(424B)'));
-  assert.ok(dil.points < a.points);
+  assert.ok(dil.minus.some((m) => /최근 발행 공시\(424B\).*-8\.4%p/.test(m)));
+  assert.ok(dil.points <= a.points - 25);
+  // event study: an insider cluster alone is worth little, a shelf registration costs a lot
+  const noIns = scoreConviction(good({ edge: { ...insider, insider: null } }), '2026-10-14', 'early', 'SELECTIVE');
+  assert.equal(a.points - noIns.points, 5);
+  const shelf = scoreConviction(good({ edge: { ...insider, insider: null, dilution: { days: 180, count: 1, shelf: true, offering: false, recent: [] } } }), '2026-10-14', 'early', 'SELECTIVE');
+  assert.equal(noIns.points - shelf.points, 20);
 });
 
 test('only rule-passing names are listed; nothing passes → empty, never padded', () => {

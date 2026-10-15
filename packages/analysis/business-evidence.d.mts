@@ -1,2 +1,2 @@
-export declare const EVENT_EVIDENCE: Record<'both' | 'revAccel' | 'niOnly' | 'improvingNearLow', { n: number; excess120: number }>;
+export declare const EVENT_EVIDENCE: Record<'both' | 'revAccel' | 'niOnly' | 'improvingNearLow' | 'insiderCluster' | 'offering424B' | 'shelfRegistration', { n: number; excess120: number }>;
 export declare function businessEvidence(row: { revenueYoY?: Array<{ end: string; yoy: number }>; netIncomeQ?: Array<{ end: string; value: number }> } | null | undefined, asOf: string): { revAccel: boolean; niImproved: boolean; both: boolean; revYoY: number | null; prevYoY: number | null };
