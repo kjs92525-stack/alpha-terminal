@@ -17,6 +17,7 @@ import { resampleWeekly } from '../analysis/indicators.mjs';
 import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs';
 import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
 import { assetPivotSignals } from '../analysis/asset-pivot.mjs';
+import { detectVolumeSurge, explainSurge, SURGE_RULES } from '../analysis/volume-surge.mjs';
 import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
 import { throttle } from './http.mjs';
@@ -392,6 +393,38 @@ export async function runNightly({
       newsRequests++;
     } catch { newsBy.set(sym, []); /* news is optional evidence */ }
   }
+  // 6b-2. volume surges (3x+ the 50-session average in the last 3 sessions) with the likely cause
+  //       from dated headlines/filings; extra news requests only for surge names not yet fetched
+  const surgeRows = [];
+  for (const r of rows) {
+    if (r.sector === 'Blank Check') continue;
+    const s = detectVolumeSurge((cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec));
+    if (s) surgeRows.push({ r, s });
+  }
+  surgeRows.sort((a, b) => b.s.volMult * Math.log10(b.s.dollarVolume) - a.s.volMult * Math.log10(a.s.dollarVolume));
+  const surgeTop = surgeRows.slice(0, Number(env.SURGE_MAX || 60));
+  let surgeNewsRequests = 0;
+  for (const { r } of surgeTop) {
+    if (newsBy.has(r.symbol)) continue;
+    try {
+      await newsGate();
+      newsBy.set(r.symbol, (await fetchNews({ symbol: r.symbol, start: newsStart, keyId: env.ALPACA_KEY_ID, secretKey: env.ALPACA_SECRET_KEY, fetchImpl, wait })).filter((n) => Date.parse(n.time) <= asOfSec * 1000 + 86400000).map((n) => ({ ...n, ...classifyHeadline(n.headline) })));
+      surgeNewsRequests++;
+    } catch { /* not collected: shown as unchecked, never as "no news" */ }
+  }
+  const surges = surgeTop.map(({ r, s }) => {
+    const e = explainSurge({ surge: s, news: newsBy.has(r.symbol) ? newsBy.get(r.symbol) : null, filings: companyBy.get(r.symbol)?.filings ?? [], asOf });
+    return { symbol: r.symbol, name: r.name, sector: r.sector, mcap: r.features.mcap ? Math.round(r.features.mcap) : null, adv20: r.features.adv20 ? Math.round(r.features.adv20) : null,
+      ...Object.fromEntries(Object.entries(s).map(([k, v]) => [k, typeof v === 'number' ? r4(v) : v])), ...e };
+  });
+  writeJson(path.join(outDir, 'volume-surges.json'), {
+    asOf, generatedAt: new Date().toISOString(), rules: SURGE_RULES,
+    method: '최근 3거래일 안에 거래량이 직전 50거래일 평균의 3배 이상(거래대금 $10M 이상, $1 이상)인 종목. 이유는 급증일 전후(-3일~+2일) 뉴스 제목·공시로 분류하고, 찾지 못하면 "확인된 이유 없음"으로 둡니다.',
+    caveat: '거래량은 무언가 바뀌었다는 신호일 뿐 방향을 알려주지 않습니다. 이유 분류는 기사 제목 기준이라 원문 확인 전에는 단서입니다. 매수 추천이 아닙니다.',
+    stats: { detected: surgeRows.length, shown: surges.length, newsRequests: surgeNewsRequests },
+    items: surges,
+  });
+  stats.surges = { detected: surgeRows.length, shown: surges.length, newsRequests: surgeNewsRequests };
   const storyBy = new Map();
   const setups = [];
   for (const x of items) {
@@ -487,7 +520,7 @@ export async function runNightly({
   });
   // small Markdown brief for chat assistants that read a URL (the JSON files are too large)
   try {
-    const brief = buildBrief({ setups: readJson(path.join(outDir, 'setups.json')), sectors: readJson(path.join(outDir, 'sectors.json'), null), siteUrl: env.SITE_URL || null });
+    const brief = buildBrief({ setups: readJson(path.join(outDir, 'setups.json')), sectors: readJson(path.join(outDir, 'sectors.json'), null), surges: readJson(path.join(outDir, 'volume-surges.json'), null), siteUrl: env.SITE_URL || null });
     fs.writeFileSync(path.join(outDir, 'brief.md'), brief);
   } catch (e) { stats.briefError = String(e?.message ?? e); }
   const toRec = (x) => ({ rank: 0, symbol: x.symbol, name: x.name, sector: x.sector, score: x.score, factors: { chart: x.chartScore, story: x.storyScore, type: x.type, stage: x.stage }, features: { price: x.price } });

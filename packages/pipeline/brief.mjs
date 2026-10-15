@@ -15,7 +15,7 @@ const TABS = [
 const STAGE_KO = { BREAKOUT: '오늘 돌파', POST_BREAKOUT: '돌파 후 눌림', NEAR_PIVOT: '돌파 임박', IN_BASE: '바닥 다지는 중', BOUNCE: '지지 반등', AT_SUPPORT: '지지 테스트', TURNING: '전환 시작', AT_BOTTOM: '바닥권' };
 
 /** setups.json + sectors.json objects → Markdown string. */
-export function buildBrief({ setups, sectors, perTab = 12, siteUrl = null }) {
+export function buildBrief({ setups, sectors, surges = null, perTab = 12, siteUrl = null }) {
   const L = [];
   L.push(`# ALPHA TERMINAL 데일리 브리프 — 기준일 ${setups.asOf}`);
   L.push('');
@@ -41,6 +41,12 @@ export function buildBrief({ setups, sectors, perTab = 12, siteUrl = null }) {
       const p = x.plan ?? {};
       L.push(`| ${x.symbol} ${clean(x.name).slice(0, 28)} | ${px(x.price)} | ${STAGE_KO[x.stage] ?? x.stage} | ${clean(p.how ?? '—')} | ${typeof p.riskPct === "number" ? `${(p.riskPct * 100).toFixed(0)}%` : "—"} | ${typeof p.rMultiple === 'number' ? p.rMultiple.toFixed(1) : '—'} | ${x.chartScore}/${x.storyScore} | ${clean(x.narrative?.takeaway ?? '—')} |`);
     }
+  }
+  if (surges?.items?.length) {
+    L.push('', `## 거래량 급증 — 상위 ${Math.min(12, surges.items.length)}개 (감지 ${surges.stats?.detected ?? surges.items.length}개)`, '');
+    L.push('| 종목 | 날짜 | 거래량 | 당일 | 위치 | 이유(분류) | 근거 기사 |');
+    L.push('|---|---|---|---|---|---|---|');
+    for (const x of surges.items.slice(0, 12)) L.push(`| ${x.symbol} ${clean(x.name).slice(0, 24)} | ${x.date} | ${x.volMult}배 | ${pct(x.ret1, 1)} | ${clean(x.contextKo)} | ${clean(x.causeKo)} | ${clean(x.headlines?.[0]?.headline ?? (x.newsChecked ? '기사 없음' : '뉴스 미수집')).slice(0, 90)} |`);
   }
   L.push('', '---', '이 문서는 매일 밤 자동으로 다시 만들어집니다. 종목별 상세(분기 매출·이익, 뉴스 원문)는 같은 폴더의 setups.json에 있습니다.');
   return L.join('\n') + '\n';
