@@ -1,16 +1,16 @@
 {
- "startedAt": "2026-10-15T05:11:44.792Z",
+ "startedAt": "2026-10-15T07:48:10.780Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
  "universe": 5266,
- "alpacaRequests": 213,
- "fullFetches": 0,
- "monthlyFetched": 0,
+ "alpacaRequests": 215,
+ "fullFetches": 3,
+ "monthlyFetched": 3,
  "asOf": "2026-10-14",
  "marketBrief": {
   "state": "WAIT",
-  "sample": 3567,
+  "sample": 3569,
   "missing": []
  },
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
@@ -21,7 +21,7 @@
  },
  "finnhub": {
   "needed": 5266,
-  "cached": 4991,
+  "cached": 4989,
   "attempted": 0,
   "fetched": 0,
   "withRevenue": 0,
@@ -29,17 +29,17 @@
   "calls": 0
  },
  "secPublished": {
-  "companyFilesWritten": 30,
+  "companyFilesWritten": 4989,
   "recentFilings": 1
  },
- "withFeatures": 5262,
+ "withFeatures": 5260,
  "ranked": {
-  "mid": 2673,
-  "short": 3529
+  "mid": 2676,
+  "short": 3531
  },
  "setups": {
-  "scanned": 5262,
-  "candidates": 1703,
+  "scanned": 5260,
+  "candidates": 1704,
   "newsRequests": 200,
   "byStage": {
    "POST_BREAKOUT": 6,
@@ -55,16 +55,16 @@
    },
    "pullback": {
     "BOUNCE": 138,
-    "AT_SUPPORT": 461,
+    "AT_SUPPORT": 462,
     "APPROACHING": 12
    },
    "weekly_bottom": {
-    "TURNING": 18,
-    "AT_BOTTOM": 313
+    "TURNING": 15,
+    "AT_BOTTOM": 316
    },
    "monthly_bottom": {
-    "TURNING": 3,
-    "AT_BOTTOM": 181
+    "TURNING": 2,
+    "AT_BOTTOM": 182
    }
   }
  },
@@ -93,5 +93,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 312
+ "seconds": 249
 }
