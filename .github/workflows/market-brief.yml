@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths:
       - 'packages/analysis/market-brief.mjs'
+      - 'packages/analysis/market-context.mjs'
+      - 'packages/analysis/market-events.mjs'
       - 'packages/pipeline/market-brief.mjs'
       - 'scripts/market-brief.mjs'
       - '.github/workflows/market-brief.yml'

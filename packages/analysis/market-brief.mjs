@@ -3,7 +3,7 @@
 import { isDailyBarClosed } from './market.mjs';
 export const BRIEF_SECTORS=[['XLK','기술'],['XLC','통신'],['XLF','금융'],['XLV','헬스케어'],['XLE','에너지'],['XLI','산업재'],['XLY','경기소비'],['XLP','필수소비'],['XLB','소재'],['XLU','유틸리티'],['XLRE','부동산']];
 export const MARKET_ETFS=['SPY','QQQ','IWM','RSP','HYG','LQD','TLT','UUP',...BRIEF_SECTORS.map(x=>x[0])];
-export const MARKET_RULES={minBreadth:300,minCoverage:0.3,shockDay:-0.025,shockWeek:-0.05,weakBreadth:0.35,healthyBreadth:0.55,vixCaution:25,vixStress:35,realizedCaution:0.3,creditCaution:-0.02,confirmSessions:3,maxAgeHours:36,maxPriceAgeDays:4};
+export const MARKET_RULES={minBreadth:300,minCoverage:0.3,shockDay:-0.025,shockWeek:-0.05,weakBreadth:0.35,healthyBreadth:0.55,vixCaution:25,vixStress:35,realizedCaution:0.3,creditCaution:-0.02,confirmSessions:3,maxAgeHours:36,maxPriceAgeDays:4,growthShockDay:-0.025,growthShockWeek:-0.05,growthCautionWeek:-0.03};
 const DAY=86400000,finite=n=>typeof n==='number'&&Number.isFinite(n);
 const day=t=>new Date(t*1000).toISOString().slice(0,10);
 const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
@@ -56,6 +56,10 @@ export function buildMarketBrief({barsBy={},breadth=null,vix=null,news=[],newsSt
  const credit=hyg?.asOf===asOf&&lqd?.asOf===asOf&&finite(hyg.ret21)&&finite(lqd.ret21)?hyg.ret21-lqd.ret21:null;
  const spy=metrics.SPY?.asOf===asOf?metrics.SPY:null,qqq=metrics.QQQ?.asOf===asOf?metrics.QQQ:null,iwm=metrics.IWM?.asOf===asOf?metrics.IWM:null;
  const stress=[],caution=[];
+ if(finite(qqq?.ret1)&&qqq.ret1<=MARKET_RULES.growthShockDay)stress.push(`Nasdaq-100 QQQ 하루 ${pct(qqq.ret1)} 급락`);
+ if(finite(qqq?.ret5)&&qqq.ret5<=MARKET_RULES.growthShockWeek)stress.push(`Nasdaq-100 QQQ 5거래일 ${pct(qqq.ret5)} 급락`);
+ if(finite(qqq?.ret5)&&qqq.ret5<=MARKET_RULES.growthCautionWeek)caution.push(`Nasdaq-100 QQQ 5거래일 ${pct(qqq.ret5)} 조정`);
+ if(qqq?.above50===false)caution.push('Nasdaq-100 QQQ가 50일선 아래');
  if(finite(spy?.ret1)&&spy.ret1<=MARKET_RULES.shockDay)stress.push(`대형주 하루 ${pct(spy.ret1)} 급락`);
  if(finite(spy?.ret5)&&spy.ret5<=MARKET_RULES.shockWeek)stress.push(`대형주 5거래일 ${pct(spy.ret5)} 하락`);
  if(spy?.above200===false&&qqq?.above200===false)stress.push('대형주·성장주가 모두 200일선 아래');
@@ -79,8 +83,9 @@ export function buildMarketBrief({barsBy={},breadth=null,vix=null,news=[],newsSt
  const actions=state==='WAIT'||state==='UNKNOWN'?['새 매수와 손실 만회를 위한 물타기는 대기합니다.','관심 종목과 사업 가설은 계속 추적하고, 시장과 종목 조건이 회복되는지 확인합니다.']:state==='LIMIT'?['평소보다 신규 진입을 줄이고, 추격 대신 확인된 종목만 검토합니다.','진입 전 계좌 손실 한도·유동성·이벤트 및 증자 위험을 다시 확인합니다.']:['시장 조건을 통과한 상태이며 개별 종목의 매수 신호는 아닙니다.','사업 근거·가격·희석·손실 한도를 통과한 종목만 선별합니다.'];
  const paragraphs=[];
  if(spy?.asOf===asOf&&finite(spy.ret1))paragraphs.push(`대형주를 보는 SPY는 하루 ${pct(spy.ret1)}, 5거래일 ${pct(spy.ret5)}입니다. ${spy.above200===null?'장기 추세 자료가 부족합니다.':spy.above200?'200일선 위에 있습니다.':'200일선 아래여서 장기 가격 추세가 약합니다.'}`);
+ if(qqq&&finite(qqq.ret1))paragraphs.push(`성장주를 보는 QQQ(Nasdaq-100 ETF)는 하루 ${pct(qqq.ret1)}, 5거래일 ${pct(qqq.ret5)}입니다. ${qqq.ma20!==null&&qqq.close<qqq.ma20?'20일 평균 아래여서 단기 가격 흐름이 약합니다.':'단기 평균과 중장기 추세를 함께 확인합니다.'} 나스닥 종합지수와 구성·수익률이 다르며, 소형주 전체의 상태를 대신하지 않습니다.`);
  if(iwm?.asOf===asOf&&finite(iwm.ret21)&&finite(spy?.ret21))paragraphs.push(`소형주 IWM의 21거래일 성과는 ${pct(iwm.ret21)}로 SPY 대비 ${pct(iwm.ret21-spy.ret21).replace('%','%p')}입니다. ${iwm.ret21<spy.ret21?'지수 상승이 소형주의 기회로 똑같이 이어진다고 보기 어렵습니다.':'상대성과는 개선됐지만 각 종목의 수익·현금 검증은 별개입니다.'}`);
- if(b&&finite(b.above50))paragraphs.push(`당일 조건을 충족한 ${b.sample.toLocaleString('ko-KR')}개 종목 중 ${(b.above50*100).toFixed(0)}%가 50일선 위입니다. ${b.above50<0.5?'다수 종목의 추세가 약해 몇몇 대형주가 지수를 끌어올리는 장인지 주의해야 합니다.':'상승 참여는 과반이지만 저유동성·신규 상장 제외 표본이라는 한계가 있습니다.'}`);
+ if(b&&finite(b.above50))paragraphs.push(`당일 조건을 충족한 ${b.sample.toLocaleString('ko-KR')}개 종목 중 ${(b.above50*100).toFixed(0)}%가 50일선 위입니다. ${b.above50<0.5?'다수 종목의 추세가 약합니다. 이 표본만으로 지수 상승의 원인이나 자금 유입을 확정할 수는 없습니다.':'상승 참여는 과반이지만 저유동성·신규 상장 제외 표본이라는 한계가 있습니다.'}`);
  if(v)paragraphs.push(`VIX는 ${v.close.toFixed(1)}입니다. 향후 약 30일의 옵션 내재 예상 변동성으로 방향·하락 확률이 아닙니다. ${v.close>=25?'높은 진폭은 같은 매수 금액에서도 손실 변동을 키울 수 있습니다.':'낮은 수치만으로 안전한 시장이라고 결론내리지 않습니다.'}`);
  return {model:'market-brief-v1',asOf,generatedAt:new Date(now).toISOString(),decision:{state,label:labels[state],scope:'미국 소형주 신규 진입을 위한 보수적 위험 점검',reasons,actions},
   story:{lead:state==='WAIT'?'좋은 기업을 찾는 일과 오늘 새 위험을 떠안는 일은 다릅니다. 신규 위험을 늘리기 어려운 가격·참여도 신호가 확인돼 지금은 진입을 기다리는 쪽으로 판정했습니다.':state==='UNKNOWN'?'확인되지 않은 시장을 좋은 시장으로 표시하지 않습니다. 필요한 자료가 확보될 때까지 신규 진입 판단을 보류합니다.':state==='LIMIT'?'추세·참여도·변동성 점검 항목의 일부가 충족되지 않았습니다. 확인된 경고나 누락 자료를 해소하기 전에는 기업 스토리가 좋아도 신규 위험을 줄이는 쪽으로 판정합니다.':'시장 추세와 참여도 조건은 비교적 양호합니다. 이 판정은 좋은 종목을 고를 여건을 뜻하며, 급등 종목 추격이나 모든 종목 매수를 정당화하지 않습니다.',paragraphs},
