@@ -1,11 +1,11 @@
 {
- "startedAt": "2026-10-15T04:27:25.371Z",
+ "startedAt": "2026-10-15T04:32:23.977Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
  "universe": 5266,
- "alpacaRequests": 216,
- "fullFetches": 49,
+ "alpacaRequests": 213,
+ "fullFetches": 0,
  "monthlyFetched": 0,
  "asOf": "2026-10-14",
  "marketBrief": {
@@ -93,5 +93,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 259
+ "seconds": 313
 }
