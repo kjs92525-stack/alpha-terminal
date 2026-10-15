@@ -94,3 +94,6 @@ export interface SectorGroup {
 }
 export interface Sectors { asOf: string; generatedAt: string; method: string; caveat: string; groups: SectorGroup[] }
 export const fetchSectors = () => get<Sectors>('sectors.json');
+export type SurgeRow = { symbol: string; name: string | null; sector: string; mcap: number | null; adv20: number | null } & import('../../../../packages/analysis/volume-surge.d.mts').VolumeSurge & import('../../../../packages/analysis/volume-surge.d.mts').SurgeExplanation;
+export interface VolumeSurges { asOf: string; generatedAt: string; method: string; caveat: string; stats: { detected: number; shown: number; newsRequests: number }; items: SurgeRow[] }
+export const fetchVolumeSurges = () => get<VolumeSurges>('volume-surges.json');
