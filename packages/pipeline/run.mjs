@@ -17,6 +17,8 @@ import { resampleWeekly } from '../analysis/indicators.mjs';
 import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs';
 import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
 import { assetPivotSignals } from '../analysis/asset-pivot.mjs';
+import { earlyIssues } from '../analysis/discovery-rules.mjs';
+import { simulatePaperTrade, summarizePaper, PAPER_RULES } from '../analysis/paper-trade.mjs';
 import { detectVolumeSurge, explainSurge, SURGE_RULES } from '../analysis/volume-surge.mjs';
 import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
@@ -535,6 +537,38 @@ export async function runNightly({
     const brief = buildBrief({ setups: readJson(path.join(outDir, 'setups.json')), sectors: readJson(path.join(outDir, 'sectors.json'), null), surges: readJson(path.join(outDir, 'volume-surges.json'), null), siteUrl: env.SITE_URL || null });
     fs.writeFileSync(path.join(outDir, 'brief.md'), brief);
   } catch (e) { stats.briefError = String(e?.message ?? e); }
+  // 7b. paper-trading ledger: every name the early-turn / asset-pivot lists show is recorded once
+  //     (append-only) and re-simulated nightly under one fixed rule set → a forward track record
+  const paperDir = path.join(outDir, 'paper');
+  const signals = readJson(path.join(paperDir, 'signals.json'), []);
+  const simulate = (sg) => simulatePaperTrade(sg, (cached.get(sg.symbol) ?? []).filter((b) => b.time <= asOfSec), spyAsOf);
+  const active = new Set(signals.filter((sg) => ['pending', 'open'].includes(simulate(sg).status)).map((sg) => sg.symbol));
+  const ids = new Set(signals.map((sg) => sg.id));
+  for (const mode of ['early', 'pivot']) for (const x of setups) {
+    const id = `${asOf}:${x.symbol}:${mode}`;
+    if (ids.has(id) || active.has(x.symbol) || earlyIssues(x, asOf, mode).length || !x.plan) continue;
+    signals.push({ id, symbol: x.symbol, name: x.name, mode, type: x.type, stage: x.stage, signalDate: asOf, entry: x.plan.entry, stop: x.plan.stop, target: x.plan.target, entryType: x.plan.entryType ?? 'buy-stop', recordedAt: new Date().toISOString() });
+    ids.add(id); active.add(x.symbol);
+  }
+  writeJson(path.join(paperDir, 'signals.json'), signals, true);
+  const paperTrades = signals.map((sg) => ({ ...sg, result: simulate(sg) }));
+  const rowBy = new Map(setups.map((x) => [x.symbol, x]));
+  const actions = [];
+  for (const t of paperTrades) {
+    for (const e of t.result.events.filter((e) => e.date === asOf)) actions.push({ symbol: t.symbol, kind: e.kind, text: e.text });
+    if (t.result.status === 'pending') actions.push({ symbol: t.symbol, kind: 'order', text: `${t.entryType === 'buy-stop' ? `$${t.entry} 이상 체결 시 매수(돌파 주문)` : `$${t.entry} 이하 지정가 매수`} · 무효화 $${t.stop} · ${t.signalDate} 신호` });
+    const e = earnings.get(t.symbol);
+    if (t.result.status === 'open' && e && weekdaysUntil(e.date) <= 5) actions.push({ symbol: t.symbol, kind: 'earnings', text: `보유 중 · 실적 발표 ${e.date} (${weekdaysUntil(e.date)}거래일 뒤) — 비중·손절 점검` });
+    if (t.result.status === 'open' && !rowBy.has(t.symbol)) actions.push({ symbol: t.symbol, kind: 'note', text: '오늘 스캔 목록에서 빠짐 — 매도 규칙대로 관리' });
+  }
+  writeJson(path.join(paperDir, 'latest.json'), {
+    asOf, generatedAt: new Date().toISOString(), rules: PAPER_RULES,
+    method: '상승 초입·자산 전환형 목록에 오른 종목을 그날 한 번 기록(이후 수정 없음). 다음 거래일부터 10거래일 안에 주문 가격에 닿으면 체결, 그 전에 무효화 가격을 깨면 취소. 체결 뒤 +1R이면 손절가를 매수가로, +2R이면 절반 익절, 그 뒤 50일선 아래 종가면 나머지 매도. 40거래일 동안 +0.5R 미만이면 시간 손절, 최대 120거래일. 같은 날 손절과 익절이 겹치면 손절로 처리합니다.',
+    caveat: '일봉 기준 모의 체결이며 수수료·호가 차이는 반영하지 않습니다. 마감 거래 30건 미만이면 성과를 판단할 수 없습니다.',
+    summary: summarizePaper(paperTrades), actions,
+    trades: paperTrades.slice(-200).reverse().map((t) => ({ ...t, result: { ...t.result, events: t.result.events.slice(-6) } })),
+  });
+  stats.paper = summarizePaper(paperTrades);
   const toRec = (x) => ({ rank: 0, symbol: x.symbol, name: x.name, sector: x.sector, score: x.score, factors: { chart: x.chartScore, story: x.storyScore, type: x.type, stage: x.stage }, features: { price: x.price } });
   const pick = (pred) => setups.filter((x) => pred(x) && x.plan && x.plan.riskPct !== null && x.plan.riskPct <= 0.15).slice(0, 20).map(toRec).map((x, i) => ({ ...x, rank: i + 1 }));
   recs.setups = pick((x) => x.type === 'breakout' && (x.stage === 'BREAKOUT' || x.stage === 'POST_BREAKOUT'));

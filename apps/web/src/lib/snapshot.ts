@@ -97,3 +97,7 @@ export const fetchSectors = () => get<Sectors>('sectors.json');
 export type SurgeRow = { symbol: string; name: string | null; sector: string; mcap: number | null; adv20: number | null } & import('../../../../packages/analysis/volume-surge.d.mts').VolumeSurge & import('../../../../packages/analysis/volume-surge.d.mts').SurgeExplanation;
 export interface VolumeSurges { asOf: string; generatedAt: string; method: string; caveat: string; stats: { detected: number; shown: number; newsRequests: number }; items: SurgeRow[] }
 export const fetchVolumeSurges = () => get<VolumeSurges>('volume-surges.json');
+type PaperResult = import('../../../../packages/analysis/paper-trade.d.mts').PaperResult;
+export interface PaperTrade { id: string; symbol: string; name: string | null; mode: 'early' | 'pivot'; type: string; stage: string; signalDate: string; entry: number; stop: number; target: number; entryType: string; result: PaperResult }
+export interface PaperLedger { asOf: string; generatedAt: string; method: string; caveat: string; summary: ReturnType<typeof import('../../../../packages/analysis/paper-trade.mjs').summarizePaper>; actions: Array<{ symbol: string; kind: string; text: string }>; trades: PaperTrade[] }
+export const fetchPaper = () => get<PaperLedger>('paper/latest.json');
