@@ -479,7 +479,7 @@ export async function runNightly({
     for (const sym of order) {
       try {
         const d = await fetchEdgeData(fhEdge, sym, asOf);
-        edgeBy.set(sym, { checkedAt: new Date().toISOString(), insider: insiderSignal(d.insider, asOf), dilution: dilutionSignal(d.filings, asOf), analyst: analystTrend(d.recommendation), errors: d.errors });
+        edgeBy.set(sym, { checkedAt: new Date().toISOString(), insider: insiderSignal(d.insider, asOf), dilution: dilutionSignal(d.filings, asOf, 180, setups.find((x) => x.symbol === sym)?.mcap ?? null), analyst: analystTrend(d.recommendation), errors: d.errors });
         if (d.errors.length) edgeStats.errors++;
       } catch (e) { edgeBy.set(sym, { checkedAt: new Date().toISOString(), insider: null, dilution: null, analyst: null, errors: [String(e.message)] }); edgeStats.errors++; if (e.fatal) break; }
     }
