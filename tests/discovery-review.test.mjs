@@ -12,3 +12,5 @@ test('JAKK refund is not a recurring operating turnaround and period-scoped revi
 });
 
 test('a reviewed cash-buyout situation is not a neglected independent growth inflection',()=>{const d=storySignals({ticker:'ARX',fundamentals:{netIncomeQuarterly:[q('2025-06-30',-10),q('2026-06-30',80)]},asOf:'2026-10-14'});assert.equal(d.signals.profitTurnaround,false);assert.equal(d.storyScore,0);assert.match(d.narrative.lines.join(' '),/인수계약/);});
+
+test('approaching profitability with a current loss cannot also become a completed profit turnaround',()=>{const d=storySignals({fundamentals:{netIncomeQuarterly:[q('2025-06-30',-20),q('2026-06-30',-5)]},asOf:'2026-10-14'});assert.equal(d.signals.lossNarrowing,true);assert.equal(d.signals.profitTurnaround,false);assert.ok(d.reasons.some(r=>/흑자 전환 접근/.test(r.text)));});

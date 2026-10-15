@@ -116,7 +116,7 @@ export function storySignals({ fundamentals, filings = [], news = [], asOf, tick
   const narrative = narrate({ f, yoy: g, ni, news, themes, dilution: dil.length, distress: distress.length, review:reviewed });
   narrative.quality={...narrative.quality,growthFresh,profitFresh,revenuePeriod,profitPeriod};
   if(!growthFresh||!profitFresh)narrative.lines.push('최신 200일 이내 분기 자료가 없는 항목은 현재 개선 신호에서 제외했습니다.');
-  const signals={revenueAcceleration:growthFresh&&(!reviewed||reviewed.growthCap>=20)&&reasons.some(r=>r.kind==='plus'&&/매출 성장 가속/.test(r.text)),profitTurnaround:profitFresh&&(!reviewed||reviewed.profitCap>0)&&reasons.some(r=>r.kind==='plus'&&/흑자 전환/.test(r.text)),lossNarrowing:profitFresh&&(!reviewed||reviewed.profitCap>0)&&ni.at(-1)?.value<0&&reasons.some(r=>r.kind==='plus'&&/적자 폭 절반/.test(r.text))};
+  const signals={revenueAcceleration:growthFresh&&(!reviewed||reviewed.growthCap>=20)&&reasons.some(r=>r.kind==='plus'&&/매출 성장 가속/.test(r.text)),profitTurnaround:profitFresh&&ni.at(-1)?.value>0&&(!reviewed||reviewed.profitCap>0)&&reasons.some(r=>r.kind==='plus'&&/흑자 전환/.test(r.text)),lossNarrowing:profitFresh&&(!reviewed||reviewed.profitCap>0)&&ni.at(-1)?.value<0&&reasons.some(r=>r.kind==='plus'&&/적자 폭 절반/.test(r.text))};
   return { signals, storyScore: Math.max(0, Math.min(100, score)), reasons, themes, revenueYoY: g, newsCount: { week: recent.length, weeklyAvg: weeklyBase }, narrative };
 }
 
