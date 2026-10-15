@@ -43,3 +43,19 @@ test('analyst trend: change in buy share over three months', () => {
   assert.equal(analystTrend([rows[0]]).direction, 'unknown');
   assert.equal(analystTrend([]), null);
 });
+
+test('live false positives (2026-10-14): strategic holders are not insiders; repeats count once; big-cap 424Bs are notes', () => {
+  const crbg = [{ name: 'NIPPON LIFE INSURANCE CO', transactionCode: 'P', change: 606912, transactionPrice: 34.4, transactionDate: '2026-10-07' }];
+  const s = insiderSignal(crbg, '2026-10-14');
+  assert.equal(s.cluster, false);
+  assert.equal(s.buyers, 0);
+  assert.deepEqual(s.holderBuys.names, ['NIPPON LIFE INSURANCE CO']);
+  const dup = { name: 'Gundlach Andrew', transactionCode: 'P', change: 2500, transactionPrice: 242, transactionDate: '2026-08-26' };
+  assert.equal(insiderSignal([dup, dup], '2026-10-14').buyValue, 605000);
+  const notes = dilutionSignal([{ form: '424B2', filingDate: '2026-10-01' }], '2026-10-14');
+  assert.equal(notes.count, 0, '424B2 debt programs are not dilution');
+  const bigCap = dilutionSignal([{ form: '424B5', filingDate: '2026-10-01' }], '2026-10-14', 180, 4e12);
+  assert.equal(bigCap.offering, false);
+  assert.equal(bigCap.likelyDebt, true);
+  assert.equal(dilutionSignal([{ form: '424B5', filingDate: '2026-10-01' }], '2026-10-14', 180, 3e8).offering, true);
+});

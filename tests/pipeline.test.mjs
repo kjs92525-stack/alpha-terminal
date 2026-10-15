@@ -441,7 +441,7 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   assert.equal(earningsCalls, 1, 'one earnings-calendar call for the whole universe');
   assert.ok(edgeCalls > 0 && edgeCalls % 3 === 0, 'three edge calls per checked symbol');
   const withEdge = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8')).candidates.filter((x) => x.edge);
-  assert.ok(withEdge.length > 0 && withEdge.every((x) => x.edge.insider?.cluster === true && x.edge.dilution?.offering === true && x.edge.analyst?.analysts === 4));
+  assert.ok(withEdge.length > 0 && withEdge.every((x) => x.edge.insider?.cluster === true && x.edge.dilution?.count === 1 && (x.edge.dilution.offering || x.edge.dilution.likelyDebt) && x.edge.analyst?.analysts === 4));
   const st = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
   assert.equal(st.earningsCalendar.status, 'ok');
   assert.ok(st.candidates.every((x) => x.earningsChecked === true));
