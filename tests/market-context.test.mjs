@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {parseNasdaqCsv,buildNasdaqContext,parseBlsCpi,macroReading} from '../packages/analysis/market-context.mjs';
-import {reviewedMarketEvents} from '../packages/analysis/market-events.mjs';
+import {reviewedMarketEvents,reviewedCpi} from '../packages/analysis/market-events.mjs';
 import {buildMarketBrief,MARKET_ETFS} from '../packages/analysis/market-brief.mjs';
 import {publishMarketBrief,selectMarketNews} from '../packages/pipeline/market-brief.mjs';
 const now=Date.parse('2026-10-15T05:00Z'),asOf='2026-10-14',end=Date.parse(asOf)/1000;
@@ -35,6 +35,11 @@ test('news relevance outranks recency and irrelevant layoffs do not count as mac
 test('publisher adds independently sourced context; unavailable optional sources do not fabricate an index or CPI',async()=>{
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'context-'));const csv='observation_date,NASDAQCOM\n'+bars.map(x=>`${new Date(x.time*1000).toISOString().slice(0,10)},${x.close}`).join('\n');
  try{const d=await publishMarketBrief({barsBy:{QQQ:bars},asOf,now,outDir:tmp,fetchImpl:async url=>new Response(String(url).includes('NASDAQCOM')?csv:String(url).includes('bls.gov')?cpi:'error')});assert.equal(d.nasdaq.instrument,'NASDAQCOM');assert.equal(d.macro.period,'2026-09');assert.equal(d.contextStatus.cpi,'ok');
- const f=await publishMarketBrief({barsBy:{QQQ:bars},asOf,now,outDir:tmp,fetchImpl:async()=>{throw Error('offline')}});assert.equal(f.nasdaq.instrument,'QQQ');assert.equal(f.macro,null);assert.equal(f.contextStatus.nasdaq,'error');assert.equal(f.decision.state,'UNKNOWN');
+ const f=await publishMarketBrief({barsBy:{QQQ:bars},asOf,now:Date.parse('2026-10-18T05:00Z'),outDir:tmp,fetchImpl:async()=>{throw Error('offline')}});assert.equal(f.nasdaq.instrument,'QQQ');assert.equal(f.macro,null);assert.equal(f.contextStatus.nasdaq,'error');assert.equal(f.decision.state,'UNKNOWN');
  }finally{fs.rmSync(tmp,{recursive:true,force:true})}
+});
+
+test('verified CPI fallback is dated, short lived and distinguishes blocked collection from a live successful fetch',async()=>{
+ assert.equal(reviewedCpi(Date.parse('2026-10-14')),null);assert.equal(reviewedCpi(Date.parse('2026-10-18')),null);assert.equal(reviewedCpi(now).collection,'reviewed_snapshot');
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cpi-reviewed-'));try{const d=await publishMarketBrief({barsBy:{},asOf,now,outDir:tmp,fetchImpl:async()=>new Response('Access denied',{status:403})});assert.equal(d.contextStatus.cpi,'reviewed_snapshot');assert.equal(d.macro.headlineAnnual,3.7);assert.match(d.macro.source,/검토본/);assert.equal(d.macro.collection,'reviewed_snapshot');}finally{fs.rmSync(tmp,{recursive:true,force:true})}
 });

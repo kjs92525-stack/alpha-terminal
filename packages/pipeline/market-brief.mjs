@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { reviewedMarketEvents } from '../analysis/market-events.mjs';
+import { reviewedMarketEvents, reviewedCpi } from '../analysis/market-events.mjs';
 import { parseNasdaqCsv, buildNasdaqContext, parseBlsCpi, macroReading } from '../analysis/market-context.mjs';
 import path from 'node:path';
 import { MARKET_ETFS,buildMarketBrief } from '../analysis/market-brief.mjs';
@@ -26,9 +26,10 @@ export async function publishMarketBrief({barsBy,breadth,asOf,outDir,env={},fetc
  // Public sources are independent: failed context must not suppress price risk.
  const contextResults=await Promise.allSettled([
   (async()=>{const start=new Date(Date.parse(asOf)-480*86400000).toISOString().slice(0,10);const r=await fetchImpl(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQCOM&cosd=${start}&coed=${asOf}`,{signal:AbortSignal.timeout(15000)});if(r.ok)nasdaqBars=parseNasdaqCsv(await r.text(),asOf)})(),
-  (async()=>{const r=await fetchImpl('https://www.bls.gov/news.release/cpi.nr0.htm',{signal:AbortSignal.timeout(15000)});if(r.ok)cpi=parseBlsCpi(await r.text(),now)})()
+  (async()=>{for(const url of ['https://www.bls.gov/news.release/cpi.nr0.htm','https://www.bls.gov/news.release/cpi.htm',reviewedCpi(now)?.url].filter(Boolean)){try{const r=await fetchImpl(url,{signal:AbortSignal.timeout(10000)});if(r.ok)cpi=parseBlsCpi(await r.text(),now);if(cpi)break}catch{}}})()
  ]);
- const contextStatus={nasdaq:nasdaqBars.length>=22?'ok':contextResults[0].status==='rejected'?'error':'unavailable',cpi:cpi?'ok':contextResults[1].status==='rejected'?'error':'unavailable'};
+ const checkedCpi=reviewedCpi(now);if(checkedCpi&&(!cpi||Date.parse(checkedCpi.publishedAt)>Date.parse(cpi.publishedAt)))cpi=checkedCpi;
+ const contextStatus={nasdaq:nasdaqBars.length>=22?'ok':contextResults[0].status==='rejected'?'error':'unavailable',cpi:cpi?(cpi.collection==='reviewed_snapshot'?'reviewed_snapshot':'ok'):contextResults[1].status==='rejected'?'error':'unavailable'};
  try{const r=await fetchImpl(VIX_CSV,{signal:AbortSignal.timeout(15000)});if(r.ok)vix=parseVix(await r.text(),asOf);}catch{}
  if(!vix||vix.asOf!==asOf){try{const start=new Date(Date.parse(asOf)-10*86400000).toISOString().slice(0,10);const r=await fetchImpl(`${FRED_VIX}&cosd=${start}&coed=${asOf}`,{signal:AbortSignal.timeout(15000)});if(r.ok){const f=parseFredVix(await r.text(),asOf);if(f&&(!vix||f.asOf>vix.asOf))vix=f}}catch{}}
  if(env.FINNHUB_API_KEY){try{const r=await fetchImpl('https://finnhub.io/api/v1/news?category=general',{headers:{'X-Finnhub-Token':env.FINNHUB_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('news unavailable');const data=await r.json();if(!Array.isArray(data))throw Error('news schema');news=selectMarketNews(data,now);newsStatus=news.length?'ok':'no_recent_relevant_headlines';}catch{newsStatus='error';}}
