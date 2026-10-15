@@ -42,7 +42,20 @@ export function TodayActions() {
         <div className="table-wrap"><table className="data-table"><thead><tr><th>종목</th><th>신호일</th><th>유형</th><th>상태</th><th>체결</th><th>결과</th><th>SPY 대비</th></tr></thead>
           <tbody>{data.trades.slice(0, 30).map((t) => <tr key={t.id}><td><button className="text-link inline" onClick={() => open(t.symbol)}>{t.symbol}</button></td><td>{t.signalDate}</td><td>{t.mode === 'pivot' ? '자산 전환' : '상승 초입'}</td><td>{STATUS[t.result.status]}{t.result.exitReason ? ` · ${t.result.exitReason}` : ''}</td><td>{t.result.fill != null ? `$${t.result.fill.toFixed(2)}` : '—'}</td><td className={(t.result.rMultiple ?? 0) >= 0 ? 'up' : 'down'}>{t.result.rMultiple != null ? `${t.result.rMultiple.toFixed(2)}R (${fmtPct(t.result.ret ?? 0)})` : '—'}</td><td>{t.result.vsSpy != null ? fmtPct(t.result.vsSpy) : '—'}</td></tr>)}</tbody></table></div>
       </details>
+      {data.filingEvents && <FilingForwardBox f={data.filingEvents} />}
       <p className="pad-box muted small">{data.caveat}</p>
     </>}
   </section>;
+}
+
+const FWD: Array<[string, string]> = [['eventAll', '전체 공시'], ['eventBoth', '매출 가속 + 이익 개선'], ['eventRevAccel', '매출 가속'], ['eventNiImproved', '이익 개선'], ['eventNotImproving', '개선 없음'], ['eventImprovingNearLow', '개선 + 52주 바닥권']];
+function FilingForwardBox({ f }: { f: NonNullable<PaperLedger['filingEvents']> }) {
+  const g = f.groups ?? {};
+  return <details className="pad-box small" open>
+    <summary>공시 이벤트 전향 검증 — 기록 {f.recorded.toLocaleString()}건{f.since ? ` (${f.since}부터)` : ''} · 오늘 신규 {f.newToday}</summary>
+    <p className="muted">과거 검증(2024~2026)에서 매출 가속 공시는 120일 SPY 대비 +3.1%p였습니다. 같은 기준이 앞으로도 맞는지 여기서 확인합니다. 120일이 지나기 전 숫자는 판단 근거가 아닙니다.</p>
+    <div className="table-wrap"><table className="data-table"><thead><tr><th>공시 내용</th><th>20일 n</th><th>20일 SPY 대비</th><th>60일 n</th><th>60일 SPY 대비</th><th>120일 n</th><th>120일 SPY 대비</th></tr></thead>
+      <tbody>{FWD.map(([k, label]) => { const h = g[k] ?? {}; return <tr key={k}><td>{label}</td>{(['20d', '60d', '120d'] as const).flatMap((d) => [<td key={d + 'n'}>{h[d]?.n ?? 0}</td>, <td key={d} className={(h[d]?.avgExcessVsSpy ?? 0) >= 0 ? 'up' : 'down'}>{h[d]?.n ? fmtPct(h[d]!.avgExcessVsSpy ?? 0) : '—'}</td>])}</tr>; })}</tbody></table></div>
+    <p className="muted">{f.method}</p>
+  </details>;
 }

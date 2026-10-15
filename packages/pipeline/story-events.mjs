@@ -53,3 +53,30 @@ export function storyEventGroups(events) {
     eventBothNearLow: events.filter((e) => e.story.revAccel && e.story.niImproved && low(e)),
   };
 }
+
+// Forward (out-of-sample) record of the same events: each night, quarters filed in the last few
+// days are written once to an append-only ledger with what the filing showed; returns are measured
+// from the first open after the night they were recorded, so nothing here can be fitted afterwards.
+export function recordFilingEvent(symbol, facts, bars, asOf, { maxAgeDays = 7, minPrice = 2, minDollarVol = 1e6 } = {}) {
+  const story = storyAsOf(facts, asOf);
+  if (!story.known || !story.filed || Date.parse(asOf) - Date.parse(story.filed) > maxAgeDays * 86400000) return null;
+  const prev = (bars ?? []).filter((b) => day(b.time) <= asOf).slice(-252);
+  if (prev.length < 130) return null;
+  const last = prev.at(-1), dollarVol = prev.slice(-20).reduce((s, b) => s + b.close * b.volume, 0) / 20;
+  if (last.close < minPrice || dollarVol < minDollarVol) return null;
+  const hi = Math.max(...prev.map((b) => b.high)), lo = Math.min(...prev.map((b) => b.low));
+  return { id: `${story.filed}:${symbol}`, symbol, filed: story.filed, recordedAsOf: asOf, close: last.close, posIn52w: hi > lo ? (last.close - lo) / (hi - lo) : null,
+    story: { known: true, filed: story.filed, revYoY: story.revYoY, prevYoY: story.prevYoY, revAccel: story.revAccel, niImproved: story.niImproved, improving: story.improving } };
+}
+
+export function evaluateFilingEvent(rec, bars, spyByTime) {
+  const e = bars.findIndex((b) => day(b.time) > rec.recordedAsOf);
+  const results = {};
+  for (const h of HORIZONS) {
+    const x = e + h - 1;
+    if (e < 0 || x >= bars.length) { results[h] = null; continue; }
+    const spyEntry = spyByTime.get(bars[e].time)?.open, spyExit = spyByTime.get(bars[x].time)?.close;
+    results[h] = { ret: bars[x].close / bars[e].open - 1, r: null, stopped: false, spy: spyEntry && spyExit ? spyExit / spyEntry - 1 : null };
+  }
+  return { ...rec, entryDate: e >= 0 ? day(bars[e].time) : null, results };
+}

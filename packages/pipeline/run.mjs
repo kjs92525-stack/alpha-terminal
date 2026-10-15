@@ -20,6 +20,8 @@ import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
 import { assetPivotSignals } from '../analysis/asset-pivot.mjs';
 import { earlyIssues } from '../analysis/discovery-rules.mjs';
 import { simulatePaperTrade, summarizePaper, PAPER_RULES } from '../analysis/paper-trade.mjs';
+import { recordFilingEvent, evaluateFilingEvent, storyEventGroups } from './story-events.mjs';
+import { summarize as summarizeEvents } from './backtest.mjs';
 import { detectVolumeSurge, explainSurge, SURGE_RULES } from '../analysis/volume-surge.mjs';
 import { SECTOR_ETFS, cyclePhase, bestGroup } from '../analysis/cycle.mjs';
 import { classifyHeadline } from '../analysis/news.mjs';
@@ -581,11 +583,30 @@ export async function runNightly({
     if (t.result.status === 'open' && e && weekdaysUntil(e.date) <= 5) actions.push({ symbol: t.symbol, kind: 'earnings', text: `보유 중 · 실적 발표 ${e.date} (${weekdaysUntil(e.date)}거래일 뒤) — 비중·손절 점검` });
     if (t.result.status === 'open' && !rowBy.has(t.symbol)) actions.push({ symbol: t.symbol, kind: 'note', text: '오늘 스캔 목록에서 빠짐 — 매도 규칙대로 관리' });
   }
+  // 7c. forward test of the filing event study: new quarters recorded once, measured afterwards
+  const filingLedger = readJson(path.join(paperDir, 'filing-events.json'), []);
+  const filingIds = new Set(filingLedger.map((r) => r.id));
+  let filingNew = 0;
+  for (const u of universe) {
+    const facts = secFacts(u) ?? fhRec.get(u.symbol)?.facts;
+    if (!facts?.revenueQuarterly?.length) continue;
+    const rec = recordFilingEvent(u.symbol, facts, cached.get(u.symbol), asOf);
+    if (rec && !filingIds.has(rec.id)) { filingLedger.push({ ...rec, recordedAt: new Date().toISOString() }); filingIds.add(rec.id); filingNew++; }
+  }
+  writeJson(path.join(paperDir, 'filing-events.json'), filingLedger, true);
+  const spyByTime = new Map(spyAsOf.map((b) => [b.time, b]));
+  const filingEvals = filingLedger.map((r) => evaluateFilingEvent(r, (cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec), spyByTime));
+  const filingEvents = {
+    method: '분기 매출 공시를 공시 후 7일 안의 야간 분석에서 한 번 기록(수정 없음) → 기록 다음 거래일 시가 기준 20/60/120거래일 수익, SPY 대비. 판정 기준은 과거 공시 이벤트 검증과 같음.',
+    recorded: filingLedger.length, newToday: filingNew, since: filingLedger[0]?.recordedAsOf ?? null,
+    groups: Object.fromEntries(Object.entries(storyEventGroups(filingEvals)).map(([g, ts]) => [g, Object.fromEntries([20, 60, 120].map((h) => [`${h}d`, summarizeEvents(ts, h)]))])),
+  };
+  stats.filingEvents = { recorded: filingLedger.length, newToday: filingNew };
   writeJson(path.join(paperDir, 'latest.json'), {
     asOf, generatedAt: new Date().toISOString(), rules: PAPER_RULES,
     method: '상승 초입·자산 전환형 목록에 오른 종목을 그날 한 번 기록(이후 수정 없음). 다음 거래일부터 10거래일 안에 주문 가격에 닿으면 체결, 그 전에 무효화 가격을 깨면 취소. 체결 뒤 +1R이면 손절가를 매수가로, +2R이면 절반 익절, 그 뒤 50일선 아래 종가면 나머지 매도. 40거래일 동안 +0.5R 미만이면 시간 손절, 최대 120거래일. 같은 날 손절과 익절이 겹치면 손절로 처리합니다.',
     caveat: '일봉 기준 모의 체결이며 수수료·호가 차이는 반영하지 않습니다. 마감 거래 30건 미만이면 성과를 판단할 수 없습니다.',
-    summary: summarizePaper(paperTrades), actions,
+    summary: summarizePaper(paperTrades), actions, filingEvents,
     trades: paperTrades.slice(-200).reverse().map((t) => ({ ...t, result: { ...t.result, events: t.result.events.slice(-6) } })),
   });
   stats.paper = summarizePaper(paperTrades);
