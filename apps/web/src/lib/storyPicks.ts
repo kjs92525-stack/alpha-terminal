@@ -43,6 +43,9 @@ export function storyPicks(data: Setups | null, limit = 8,mode:DiscoveryMode='ea
     if (surge) { why.push('뉴스 관심 급증'); bonus += 5; }
     if (mode==='legacy'&&row.themes.length) { why.push(`테마: ${row.themes.join('·')}`); bonus += 4; }
     if (widening) { why.push('⚠ 적자 확대'); bonus -= 20; }
+    // insiders buying with their own money is the most direct evidence an outsider gets; fresh offerings dilute
+    if (row.edge?.insider?.cluster) { why.push(`내부자 매수 ${row.edge.insider.buyers}명 · $${Math.round(row.edge.insider.buyValue / 1000)}K`); bonus += 12; }
+    if (row.edge?.dilution?.offering) { why.push('⚠ 최근 발행 공시(424B)'); bonus -= 8; }
     // point-in-time backtest: breakouts without improving sales/profit lagged SPY by ~9% over 120 sessions
     if ((row.type ?? 'breakout') === 'breakout' && row.storySignals && !row.storySignals.revenueAcceleration && !row.storySignals.profitTurnaround && !row.storySignals.lossNarrowing) { why.push('⚠ 실적 개선 없는 돌파'); bonus -= 15; }
     const drop = lines.match(/순이익 [^(]*\(1년 전 [^,]+, -(\d+)%\)/);

@@ -404,7 +404,7 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   const outDir = path.join(tmp, 'out');
   const state = { days: 560, calls: [] };
   const f = e2eFetch(state);
-  let fhCalls = 0,marketNewsCalls=0,earningsCalls=0;
+  let fhCalls = 0,marketNewsCalls=0,earningsCalls=0,edgeCalls=0;
   const reported = (i) => ({ cik: 1000 + i, data: Array.from({ length: 8 }, (_, k) => {
     const end = new Date(Date.UTC(2024, 3 * k + 3, 0)).toISOString().slice(0, 10);
     const start = new Date(Date.parse(end) - 90 * 86400000).toISOString().slice(0, 10);
@@ -420,6 +420,9 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
     if (u.hostname === 'finnhub.io') {
       assert.equal(init.headers['X-Finnhub-Token'], 'fh');
       if(u.pathname.endsWith('/news')){marketNewsCalls++;return Response.json([]);}
+      if (u.pathname.endsWith('/insider-transactions')) { edgeCalls++; return Response.json({ data: [{ name: 'CEO', transactionCode: 'P', change: 50000, transactionPrice: 10, transactionDate: u.searchParams.get('to') }] }); }
+      if (u.pathname.endsWith('/stock/filings')) { edgeCalls++; return Response.json([{ form: '424B5', filedDate: u.searchParams.get('to') + ' 00:00:00' }]); }
+      if (u.pathname.endsWith('/recommendation')) { edgeCalls++; return Response.json([{ period: '2026-01-01', buy: 3, hold: 1 }]); }
       if (u.pathname.endsWith('/calendar/earnings')) { earningsCalls++; const d = new Date(Date.parse(u.searchParams.get('from')) + 2 * 86400000).toISOString().slice(0, 10); return Response.json({ earningsCalendar: [{ symbol: f.syms[0], date: d, hour: 'amc' }, { symbol: 'OUTSIDE', date: '1999-01-01' }] }); }
       fhCalls++;
       const i = f.syms.indexOf(u.searchParams.get('symbol'));
@@ -436,6 +439,9 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   assert.equal(fhCalls, 30);
   assert.equal(marketNewsCalls,1,'general briefing news uses a separate single call');
   assert.equal(earningsCalls, 1, 'one earnings-calendar call for the whole universe');
+  assert.ok(edgeCalls > 0 && edgeCalls % 3 === 0, 'three edge calls per checked symbol');
+  const withEdge = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8')).candidates.filter((x) => x.edge);
+  assert.ok(withEdge.length > 0 && withEdge.every((x) => x.edge.insider?.cluster === true && x.edge.dilution?.offering === true && x.edge.analyst?.analysts === 4));
   const st = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8'));
   assert.equal(st.earningsCalendar.status, 'ok');
   assert.ok(st.candidates.every((x) => x.earningsChecked === true));

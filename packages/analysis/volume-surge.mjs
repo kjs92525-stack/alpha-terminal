@@ -43,6 +43,7 @@ export function detectVolumeSurge(bars, rules = SURGE_RULES) {
 const CAUSES = [
   ['acquisition', '인수·합병', /\b(to acquire|acquired by|acquisition|merger|to be acquired|take[- ]private|buyout|tender offer)\b/i],
   ['financing', '증자·자금 조달', /\b(offering|convertible|private placement|at-the-market|registered direct|notes due|priced|raises? \$)/i],
+  ['insider', '내부자 매수', /\b(form ?4|insiders?|ceo|cfo|director|chairman|officer)\b.{0,60}\b(buys?|bought|acquires?|purchases?d?|adds?)\b/i],
   ['earnings', '실적·전망', /\b(earnings|results|quarter|q[1-4]\b|revenue|guidance|outlook|eps|profit|loss)\b/i],
   ['regulatory', 'FDA·임상·승인', /\b(fda|approval|approves|clinical|trial|phase [123i]+|data readout|clearance|ema)\b/i],
   ['contract', '계약·수주·제휴', /\b(contract|agreement|award(?:ed|s)?|orders?|partnership|collaborat\w+|lease|deal|selected by)\b/i],
@@ -70,6 +71,7 @@ const READ = {
   earnings: '실적·전망 발표에 따른 재평가입니다. 매출·이익의 예상 대비 결과와 가이던스 변화, 일회성 요인을 원문에서 확인합니다.',
   regulatory: '승인·임상 결과는 이분법적 사건입니다. 결과의 통계적 의미, 상업화 시점, 필요한 추가 자금을 확인합니다.',
   contract: '계약 금액·기간·취소 조건과 실제 매출 인식 시점을 확인해야 합니다. 제목의 금액은 총액 상한일 수 있습니다.',
+  insider: '경영진·이사의 장내 매수 공시입니다. 자기 돈으로 산 금액과 인원, 보상 주식 행사와의 구분(Form 4 거래 코드 P)을 원문에서 확인합니다. 여러 명이 함께 사면 신호가 강해집니다.',
   index: '지수 편입·변경은 수급 사건이며 사업 변화가 아닙니다. 편입일 전후 거래량이 일시적으로 몰립니다.',
   analyst: '의견 변경은 정보가 아니라 해석입니다. 근거로 든 사업 변화가 실제로 확인되는지가 중요합니다.',
   legal: '조사·소송·공매도 보고서는 손실 위험 신호입니다. 주장 내용과 회사 반박, 재무 영향 규모를 확인합니다.',
