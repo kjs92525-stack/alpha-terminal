@@ -12,6 +12,7 @@ import { VolumeSurges } from '../components/VolumeSurges';
 import { SectorFlows } from '../components/SectorFlows';
 import { SectorRadar } from '../components/SectorRadar';
 import { SectorCycle } from '../components/SectorCycle';
+import { NextCycle } from '../components/NextCycle';
 
 type SortKey = 'score' | 'momentum' | 'trend' | 'quality' | 'valuation' | 'liquidity' | 'risk' | 'ret3m' | 'marketCap';
 const COLS: Array<[SortKey, string]> = [['score', '종합'], ['momentum', '모멘텀'], ['trend', '추세'], ['quality', '재무'], ['valuation', '밸류'], ['liquidity', '유동성'], ['risk', '위험'], ['ret3m', '3M'], ['marketCap', '시총']];
@@ -51,6 +52,7 @@ export function Discover() {
     <>
       <StoryPicks />
       <div style={{ marginTop: 12 }}><VolumeSurges /></div>
+      <div style={{ marginTop: 12 }}><NextCycle /></div>
       <div style={{ marginTop: 12 }}><SectorFlows /><SectorRadar /><SectorCycle /></div>
       <div style={{ marginTop: 12 }}><SetupScanner /></div>
       <div style={{ marginTop: 12 }}><UniverseRankings /></div>

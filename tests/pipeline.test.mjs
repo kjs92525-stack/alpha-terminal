@@ -440,6 +440,8 @@ test('SEC blocked + Finnhub key: fundamentals, sectors and mid-term ranking come
   assert.equal(marketNewsCalls,1,'general briefing news uses a separate single call');
   assert.equal(earningsCalls, 2, 'two earnings-calendar calls for the whole universe: recent reports (refresh order) and upcoming dates');
   assert.equal(r.stats.finnhub.reportedCalendar, 'ok');
+  assert.ok(!r.stats.nextCycleError, r.stats.nextCycleError);
+  assert.ok(r.stats.nextCycle, 'next-cycle sectors written');
   assert.ok(edgeCalls > 0 && edgeCalls % 3 === 0, 'three edge calls per checked symbol');
   const withEdge = JSON.parse(fs.readFileSync(path.join(outDir, 'setups.json'), 'utf8')).candidates.filter((x) => x.edge);
   assert.ok(withEdge.length > 0 && withEdge.every((x) => x.edge.insider?.cluster === true && x.edge.dilution?.count === 1 && (x.edge.dilution.offering || x.edge.dilution.likelyDebt) && x.edge.analyst?.analysts === 4));

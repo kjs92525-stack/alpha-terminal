@@ -20,6 +20,8 @@ import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
 import { assetPivotSignals } from '../analysis/asset-pivot.mjs';
 import { earlyIssues } from '../analysis/discovery-rules.mjs';
 import { thesisChecks } from '../analysis/thesis-checks.mjs';
+import { sectorBreadth, rankNextCycle, SECTOR_MAP } from '../analysis/next-cycle.mjs';
+import { storyAsOf } from '../analysis/story-pit.mjs';
 import { simulatePaperTrade, summarizePaper, PAPER_RULES } from '../analysis/paper-trade.mjs';
 import { recordFilingEvent, evaluateFilingEvent, storyEventGroups } from './story-events.mjs';
 import { summarize as summarizeEvents } from './backtest.mjs';
@@ -541,6 +543,55 @@ export async function runNightly({
     return [ticker,{company:yoy.length?{period:yoy.at(-1).end,growth:yoy.at(-1).yoy,priorGrowth:yoy.at(-2)?.yoy??null,source:company?.source??'SEC',quality:review?.quality??'반복 제품 성장·일회성 효과 미검증'}:null,price:market.price,ret21:market.ret21,ret63:market.ret63,lastDate:market.lastDate,marketCap:row?.features.mcap??null,source:'야간 기준 종가·프로필 또는 보고 주식 수 추정 시총'}];
   }));
   writeJson(path.join(outDir,'sector-radar.json'),buildSectorRadar({asOf,groups,stocks:sectorStocks}));
+  // 6d. next-cycle sector candidates: business breadth (point-in-time sales acceleration) vs how much the
+  //     sector ETF has already priced, with today's macro reading and the sector's accelerating companies
+  try {
+    const DAYMS = 86400000;
+    const breadth = sectorBreadth(rows.map((r) => ({ sector: r.sector, facts: companyBy.get(r.symbol)?.facts })), asOf);
+    const brief = readJson(path.join(outDir, 'market-brief', 'latest.json'), null);
+    const setupBy = new Map(setups.map((x) => [x.symbol, x]));
+    const stocksBySector = {};
+    for (const r of rows) {
+      if (!SECTOR_MAP[r.sector]) continue;
+      const st = storyAsOf(companyBy.get(r.symbol)?.facts, asOf);
+      if (!st.known || !st.revAccel || Date.parse(asOf) - Date.parse(st.filed) > 120 * DAYMS) continue;
+      const f = r.features;
+      if (!(f.price >= 2) || !((f.adv20 ?? 0) >= 1e6)) continue;
+      const bars = (cached.get(r.symbol) ?? []).filter((b) => b.time <= asOfSec).slice(-252);
+      const hi = Math.max(...bars.map((b) => b.high)), lo = Math.min(...bars.map((b) => b.low));
+      const dil = setupBy.get(r.symbol)?.edge?.dilution;
+      (stocksBySector[r.sector] ??= []).push({ symbol: r.symbol, name: r.name, price: r4(f.price), mcap: f.mcap ? Math.round(f.mcap) : null, filed: st.filed, revYoY: r4(st.revYoY), prevYoY: r4(st.prevYoY), niImproved: st.niImproved,
+        posIn52w: bars.length >= 130 && hi > lo ? r4((f.price - lo) / (hi - lo)) : null, ret63: bars.length > 63 ? r4(f.price / bars.at(-64).close - 1) : null,
+        dilution: dil?.offering ? '424B' : dil?.shelf ? 'S-3' : null, dilutionChecked: Boolean(dil) });
+    }
+    const small = (x) => x.mcap != null && x.mcap >= 25e6 && x.mcap <= 5e9;
+    for (const k of Object.keys(stocksBySector)) stocksBySector[k] = stocksBySector[k]
+      .sort((a, b) => (a.dilution ? 1 : 0) - (b.dilution ? 1 : 0) || (small(b) ? 1 : 0) - (small(a) ? 1 : 0) || (b.revYoY - b.prevYoY) - (a.revYoY - a.prevYoY)).slice(0, 6);
+    const ranked = rankNextCycle({ groups, breadth, macro: brief?.macro ?? null, gate: brief?.decision?.state ?? null, stocksBySector });
+    // forward ledger: candidates recorded once per ISO week, measured later against SPY
+    const ncDir = path.join(outDir, 'next-cycle');
+    const ledgerNc = readJson(path.join(ncDir, 'ledger.json'), []);
+    const d0 = new Date(asOf + 'T00:00:00Z'), wk = new Date(d0.getTime() - ((d0.getUTCDay() + 6) % 7) * DAYMS).toISOString().slice(0, 10);
+    for (const x of ranked.filter((x) => x.status === 'candidate')) {
+      const id = `${wk}:${x.etf}`, bars = etfBars[x.etf];
+      if (!ledgerNc.some((l) => l.id === id) && bars?.length) ledgerNc.push({ id, week: wk, recordedAsOf: asOf, etf: x.etf, sector: x.sector, pts: x.pts, close: r4(bars.at(-1).close) });
+    }
+    writeJson(path.join(ncDir, 'ledger.json'), ledgerNc, true);
+    const spyClose = new Map(spyAsOf.map((b) => [new Date(b.time * 1000).toISOString().slice(0, 10), b.close]));
+    const track = ledgerNc.map((l) => {
+      const bars = etfBars[l.etf] ?? [], i = bars.findIndex((b) => new Date(b.time * 1000).toISOString().slice(0, 10) >= l.recordedAsOf), s0 = spyClose.get(l.recordedAsOf);
+      const at = (h) => { const j = i + h; if (i < 0 || j >= bars.length) return null; const s1 = spyClose.get(new Date(bars[j].time * 1000).toISOString().slice(0, 10)); return { ret: r4(bars[j].close / bars[i].close - 1), vsSpy: s0 && s1 ? r4(bars[j].close / bars[i].close - s1 / s0) : null }; };
+      return { ...l, d60: at(60), d120: at(120) };
+    });
+    writeJson(path.join(outDir, 'next-cycle.json'), {
+      asOf, generatedAt: new Date().toISOString(), model: 'next-cycle-v1',
+      method: '업종별로 ① 최근 공시 분기에 매출이 가속한 기업 비중(공시일 기준, 지금 vs 91일 전) ② 업종 ETF가 2년간 시장 대비 얼마나 덜 올랐는지·고점 대비 하락폭 ③ 3개월 상대강도·50일선 방향을 점수로 합칩니다. 매출 가속 정의는 과거 공시 이벤트 검증(120일 SPY 대비 +3.1%p)과 같습니다.',
+      caveat: '업종 단위 조합은 과거 검증 전 가설입니다. 후보는 매주 원장에 기록해 60·120거래일 뒤 SPY 대비 성과로 확인합니다. 예측이 아니며, 시장 판정이 대기이면 관찰만 합니다.',
+      market: brief ? { state: brief.decision?.state ?? null, label: brief.decision?.label ?? null, reasons: brief.decision?.reasons ?? [], macro: brief.macro ?? null, vix: brief.vix?.close ?? null, asOf: brief.asOf ?? null } : null,
+      sectors: ranked, track: track.slice(-60).reverse(),
+    });
+    stats.nextCycle = { candidates: ranked.filter((x) => x.status === 'candidate').map((x) => x.etf), watch: ranked.filter((x) => x.status === 'watch').length, ledger: ledgerNc.length };
+  } catch (e) { stats.nextCycleError = String(e?.message ?? e); }
   stats.sectors = { groups: groups.length, byPhase: groups.reduce((m, g) => ((m[g.phase] = (m[g.phase] ?? 0) + 1), m), {}), grouped: [...groupOf.values()].filter(Boolean).length };
 
   const PER_TYPE = 150;

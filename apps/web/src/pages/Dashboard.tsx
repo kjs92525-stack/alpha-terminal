@@ -6,6 +6,7 @@ import { StoryPicks } from '../components/StoryPicks';
 import { TodayActions } from '../components/TodayActions';
 import { TopPicks } from '../components/TopPicks';
 import { SectorCycle } from '../components/SectorCycle';
+import { NextCycle } from '../components/NextCycle';
 import { useTerminal, useAnalysis } from '../lib/store';
 import { ScannerPanel } from '../components/Scanner';
 import { ResearchDesk } from '../components/ResearchDesk';
@@ -40,8 +41,9 @@ export function Dashboard() {
       </div>
       <div style={{ marginTop: 12 }}><TodayActions /></div>
       <details className="panel" style={{ marginTop: 12 }}>
-        <summary className="pad-box"><b>전체 후보 목록 · 업종 흐름 더 보기</b> <span className="muted small">— 위의 '오늘 볼 종목'에 들지 못한 후보와 업종 순환</span></summary>
+        <summary className="pad-box"><b>전체 후보 목록 · 다음 사이클 업종 · 업종 흐름 더 보기</b> <span className="muted small">— 위의 '오늘 볼 종목'에 들지 못한 후보와 업종 순환</span></summary>
         <div style={{ marginTop: 12 }}><StoryPicks limit={6} /></div>
+        <div style={{ marginTop: 12 }}><NextCycle /></div>
         <div style={{ marginTop: 12 }}><SectorCycle compact /></div>
       </details>
       <div className="feed-row">
