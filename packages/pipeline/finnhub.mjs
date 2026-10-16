@@ -230,3 +230,23 @@ export async function fetchEdgeData(client, symbol, asOf) {
   try { const j = await client.json(`/stock/recommendation?symbol=${sym}`); out.recommendation = Array.isArray(j) ? j : null; } catch (e) { out.errors.push(`recommendation: ${e.message}`); }
   return out;
 }
+
+/**
+ * Companies that reported in the last `days` but whose cached record has no quarter filed on or
+ * after the report date — the 10-Q usually follows the release by days to weeks, so these are
+ * retried (every `retryDays`) until it appears, instead of waiting for the 45-day refresh.
+ * records: Map<symbol, {fetchedAt, facts}>; reported: Map<symbol, {date}> from the earnings calendar.
+ */
+export function refreshAfterEarnings(records, reported, asOf, { days = 30, retryDays = 2, now = Date.now() } = {}) {
+  const out = [];
+  const from = Date.parse(asOf) - days * DAY;
+  for (const [sym, rec] of records) {
+    const r = reported.get(sym);
+    if (!r?.date || Date.parse(r.date) < from || r.date > asOf) continue;
+    const lastFiled = (rec?.facts?.revenueQuarterly ?? []).map((q) => q?.filed).filter(Boolean).sort().at(-1) ?? '';
+    if (lastFiled >= r.date) continue;
+    if (rec?.fetchedAt && now - Date.parse(rec.fetchedAt) < retryDays * DAY) continue;
+    out.push(sym);
+  }
+  return out;
+}

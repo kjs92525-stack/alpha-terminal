@@ -9,7 +9,7 @@ import { isDailyBarClosed } from '../analysis/market.mjs';
 import { parseExchangeTickers, buildUniverse, sicToSector, fromVendorSymbol } from './universe.mjs';
 import { fetchDailyBars, mergeBars, fetchNews, fetchAssets } from './alpaca.mjs';
 import { buildNameIndex, normalizeCompanyName, framePeriods, frameUrl } from './cikmap.mjs';
-import { makeFinnhubClient, fetchCompany, withFacts, fetchEarningsCalendar, fetchEdgeData } from './finnhub.mjs';
+import { makeFinnhubClient, fetchCompany, withFacts, fetchEarningsCalendar, fetchEdgeData, refreshAfterEarnings } from './finnhub.mjs';
 import { insiderSignal, dilutionSignal, analystTrend } from '../analysis/edge-signals.mjs';
 import { detectSetup, evaluateChart, SETUP_RULES } from '../analysis/setups.mjs';
 import { storySignals, quarterlyYoY } from '../analysis/story.mjs';
@@ -246,8 +246,13 @@ export async function runNightly({
     const missing = need.filter((u) => !fhRec.has(u.symbol)).sort((a, b) => adv(b.symbol) - adv(a.symbol));
     const stale = need.filter((u) => fhRec.has(u.symbol) && now - Date.parse(fhRec.get(u.symbol).fetchedAt) > 45 * 86400000)
       .sort((a, b) => fhRec.get(a.symbol).fetchedAt.localeCompare(fhRec.get(b.symbol).fetchedAt));
-    const todo = [...missing, ...stale].slice(0, maxCompanies);
-    const fstats = { needed: need.length, cached: fhRec.size, attempted: todo.length, fetched: 0, withRevenue: 0, errors: [] };
+    // companies that just reported come first, so new quarters reach the story signals within days
+    let reported = new Map(), reportedStatus = 'error';
+    try { reported = await fetchEarningsCalendar(fh, new Date(Date.parse(asOf) - 30 * 86400000).toISOString().slice(0, 10), asOf); reportedStatus = 'ok'; } catch { /* fall back to the 45-day refresh */ }
+    const dueSet = new Set(refreshAfterEarnings(new Map(need.filter((u) => fhRec.has(u.symbol)).map((u) => [u.symbol, fhRec.get(u.symbol)])), reported, asOf, { now }));
+    const due = need.filter((u) => dueSet.has(u.symbol)).sort((a, b) => adv(b.symbol) - adv(a.symbol));
+    const todo = [...new Set([...due, ...missing, ...stale])].slice(0, maxCompanies);
+    const fstats = { needed: need.length, cached: fhRec.size, reportedCalendar: reportedStatus, dueAfterEarnings: due.length, attempted: todo.length, fetched: 0, withRevenue: 0, errors: [] };
     for (let i = 0; i < todo.length; i++) {
       const u = todo[i];
       try {
