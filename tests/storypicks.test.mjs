@@ -39,9 +39,9 @@ test('review-rejected profit and growth cannot reappear as pick bonuses via stal
  const p=storyPicks({asOf:'2026-10-13',candidates:[r]},8,'legacy');assert.equal(p.length,1);assert.deepEqual(p[0].why,['테마: 방산']);
 });
 
-const earlyRow=(o={})=>row({type:'breakout',stage:'BREAKOUT',priceAsOf:'2026-10-14',ret1:0.02,ret5:0.08,ret63:0.18,ret21:0.08,storySignals:{revenueAcceleration:true,profitTurnaround:false,lossNarrowing:false},reasons:[{kind:'plus',text:'매출 성장 가속',pts:20}],narrative:{lines:[],takeaway:'t',method:'m',quality:{growthBlocked:false,profitBlocked:false,growthFresh:true,profitFresh:true,revenuePeriod:'2026-06-30',profitPeriod:'2026-06-30'}},...o});
+const earlyRow=(o={})=>row({type:'breakout',stage:'BREAKOUT',priceAsOf:'2026-10-14',ret1:0.02,ret5:0.08,ret63:0.18,ret21:0.08,storySignals:{revenueAcceleration:true,profitTurnaround:false,lossNarrowing:false},reasons:[{kind:'plus',text:'매출 성장 가속',pts:20}],revenueYoY:[{end:'2026-03-31',yoy:0.1},{end:'2026-06-30',yoy:0.25}],narrative:{lines:[],takeaway:'t',method:'m',quality:{growthBlocked:false,profitBlocked:false,growthFresh:true,profitFresh:true,revenuePeriod:'2026-06-30',profitPeriod:'2026-06-30'}},...o});
 test('default discovery separates early turns from pullbacks, unconfirmed bottoms, themes and extended rallies',()=>{
- const rows=[earlyRow({symbol:'EARLY'}),earlyRow({symbol:'PULL',type:'pullback',stage:'BOUNCE'}),earlyRow({symbol:'BOTTOM',type:'weekly_bottom',stage:'AT_BOTTOM'}),earlyRow({symbol:'HOT',ret63:0.6}),earlyRow({symbol:'MEGA',mcap:30e9}),earlyRow({symbol:'THEME',storySignals:{},themes:['AI']}),earlyRow({symbol:'PARTIAL',type:'weekly_bottom',stage:'TURNING',higherLow:true,aboveMa:true,provisional:true}),earlyRow({symbol:'OLD',narrative:{quality:{growthFresh:false,profitFresh:false}}})];
+ const rows=[earlyRow({symbol:'EARLY'}),earlyRow({symbol:'PULL',type:'pullback',stage:'BOUNCE'}),earlyRow({symbol:'BOTTOM',type:'weekly_bottom',stage:'AT_BOTTOM'}),earlyRow({symbol:'HOT',ret63:0.6}),earlyRow({symbol:'MEGA',mcap:30e9}),earlyRow({symbol:'THEME',storySignals:{},revenueYoY:[],themes:['AI']}),earlyRow({symbol:'PARTIAL',type:'weekly_bottom',stage:'TURNING',higherLow:true,aboveMa:true,provisional:true}),earlyRow({symbol:'OLD',revenueYoY:[{end:'2025-06-30',yoy:0.1},{end:'2025-09-30',yoy:0.25}],narrative:{quality:{growthFresh:false,profitFresh:false}}})];
  const data={asOf:'2026-10-14',candidates:rows};assert.deepEqual(storyPicks(data).map(p=>p.row.symbol),['EARLY']);assert.deepEqual(storyPicks(data,8,'watch').map(p=>p.row.symbol),['BOTTOM','PARTIAL']);
 });
 test('structured signals prevent loss-narrowing and profit-turnaround being claimed together from old text',()=>{
@@ -60,7 +60,7 @@ test('asset-pivot tab: loss-making company with a large contract and funded buil
   const ok = row({ symbol: 'PIV', type: 'breakout', stage: 'NEAR_PIVOT', priceAsOf: '2026-10-14', ret1: 0.01, ret5: 0.03, ret21: 0.05, ret63: 0.1, assetPivot: pv,
     narrative: { lines: ['적자가 커졌습니다'], takeaway: 't', method: 'm' } });
   assert.deepEqual(earlyIssues(ok, '2026-10-14', 'pivot'), []);
-  assert.ok(earlyIssues(ok, '2026-10-14', 'early').includes('현재 분기 실적 개선 근거 부족'), 'the plain early-turn list still needs reported improvement');
+  assert.ok(earlyIssues(ok, '2026-10-14', 'early').some((i) => /매출 가속/.test(i)), 'the plain early-turn list still needs reported sales acceleration');
   const picks = storyPicks({ asOf: '2026-10-14', candidates: [ok] }, 8, 'pivot');
   assert.equal(picks[0]?.row.symbol, 'PIV');
   assert.ok(picks[0].why.some((w) => /대형 계약/.test(w)));
@@ -87,4 +87,17 @@ test('insider buying cluster lifts a pick; a fresh offering is flagged', () => {
   assert.equal(picks[0].row.symbol, 'INS');
   assert.ok(picks[0].why.some((w) => /내부자 매수 3명/.test(w)));
   assert.ok(picks.find((p) => p.row.symbol === 'DIL').why.includes('⚠ 최근 발행 공시(424B)'));
+});
+
+test('early turns use the validated sales-acceleration rule; income-only improvement and dilution filings are excluded',async()=>{
+ const { earlyIssues } = await import('../packages/analysis/discovery-rules.mjs');
+ assert.deepEqual(earlyIssues(earlyRow({symbol:'OK',earningsChecked:true,earnings:null}),'2026-10-14','early'),[]);
+ // looser than the old 15%+ multi-quarter rule: 6% → 9% counts
+ assert.deepEqual(earlyIssues(earlyRow({symbol:'MILD',earningsChecked:true,earnings:null,revenueYoY:[{end:'2026-03-31',yoy:0.06},{end:'2026-06-30',yoy:0.09}]}),'2026-10-14','early'),[]);
+ const niOnly=earlyRow({earningsChecked:true,earnings:null,revenueYoY:[{end:'2026-03-31',yoy:0.2},{end:'2026-06-30',yoy:0.15}],netIncomeQ:[{end:'2025-06-30',value:-5e6},{end:'2026-06-30',value:-1e6}]});
+ assert.ok(earlyIssues(niOnly,'2026-10-14','early').some((i)=>/이익 개선만 · 매출 가속 없음/.test(i)));
+ const dil=(d)=>earlyIssues(earlyRow({earningsChecked:true,earnings:null,edge:{dilution:{days:180,count:1,recent:[],...d}}}),'2026-10-14','early');
+ assert.ok(dil({offering:true,shelf:false}).some((i)=>/424B.*-8\.4%p/.test(i)));
+ assert.ok(dil({offering:false,shelf:true}).some((i)=>/S-3.*-8\.9%p/.test(i)));
+ assert.deepEqual(dil({offering:false,shelf:false,likelyDebt:true}),[]);
 });
