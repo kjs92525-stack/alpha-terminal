@@ -100,7 +100,7 @@ export type SurgeRow = { symbol: string; name: string | null; sector: string; mc
 export interface VolumeSurges { asOf: string; generatedAt: string; method: string; caveat: string; stats: { detected: number; shown: number; newsRequests: number }; items: SurgeRow[] }
 export const fetchVolumeSurges = () => get<VolumeSurges>('volume-surges.json');
 type PaperResult = import('../../../../packages/analysis/paper-trade.d.mts').PaperResult;
-export interface PaperTrade { id: string; symbol: string; name: string | null; mode: 'early' | 'pivot'; type: string; stage: string; signalDate: string; entry: number; stop: number; target: number; entryType: string; result: PaperResult }
+export interface PaperTrade { id: string; symbol: string; name: string | null; sector?: string | null; mode: 'early' | 'pivot'; type: string; stage: string; signalDate: string; entry: number; stop: number; target: number; entryType: string; result: PaperResult }
 export interface FilingForward { method: string; recorded: number; newToday: number; since: string | null; groups: Record<string, Record<string, BtSummary>> }
 export interface PaperLedger { asOf: string; generatedAt: string; method: string; caveat: string; summary: ReturnType<typeof import('../../../../packages/analysis/paper-trade.mjs').summarizePaper>; actions: Array<{ symbol: string; kind: string; text: string }>; trades: PaperTrade[]; filingEvents?: FilingForward }
 export const fetchPaper = () => get<PaperLedger>('paper/latest.json');

@@ -19,6 +19,7 @@ import { BUSINESS_LINKS, buildSectorRadar } from '../analysis/sector-stories.mjs
 import { earlyMarket, earlyFacts } from '../analysis/early-alpha.mjs';
 import { assetPivotSignals } from '../analysis/asset-pivot.mjs';
 import { earlyIssues } from '../analysis/discovery-rules.mjs';
+import { thesisChecks } from '../analysis/thesis-checks.mjs';
 import { simulatePaperTrade, summarizePaper, PAPER_RULES } from '../analysis/paper-trade.mjs';
 import { recordFilingEvent, evaluateFilingEvent, storyEventGroups } from './story-events.mjs';
 import { summarize as summarizeEvents } from './backtest.mjs';
@@ -574,7 +575,7 @@ export async function runNightly({
   for (const mode of ['early', 'pivot']) for (const x of setups) {
     const id = `${asOf}:${x.symbol}:${mode}`;
     if (ids.has(id) || active.has(x.symbol) || earlyIssues(x, asOf, mode).length || !x.plan) continue;
-    signals.push({ id, symbol: x.symbol, name: x.name, mode, type: x.type, stage: x.stage, signalDate: asOf, entry: x.plan.entry, stop: x.plan.stop, target: x.plan.target, entryType: x.plan.entryType ?? 'buy-stop', recordedAt: new Date().toISOString() });
+    signals.push({ id, symbol: x.symbol, name: x.name, sector: x.sector ?? null, mode, type: x.type, stage: x.stage, signalDate: asOf, entry: x.plan.entry, stop: x.plan.stop, target: x.plan.target, entryType: x.plan.entryType ?? 'buy-stop', recordedAt: new Date().toISOString() });
     ids.add(id); active.add(x.symbol);
   }
   writeJson(path.join(paperDir, 'signals.json'), signals, true);
@@ -587,6 +588,9 @@ export async function runNightly({
     const e = earnings.get(t.symbol);
     if (t.result.status === 'open' && e && weekdaysUntil(e.date) <= 5) actions.push({ symbol: t.symbol, kind: 'earnings', text: `보유 중 · 실적 발표 ${e.date} (${weekdaysUntil(e.date)}거래일 뒤) — 비중·손절 점검` });
     if (t.result.status === 'open' && !rowBy.has(t.symbol)) actions.push({ symbol: t.symbol, kind: 'note', text: '오늘 스캔 목록에서 빠짐 — 매도 규칙대로 관리' });
+    // the business thesis broke (falling sales, widening loss, dilution, short runway) → review the position
+    const tc = ['open', 'pending'].includes(t.result.status) && rowBy.has(t.symbol) ? thesisChecks(rowBy.get(t.symbol), asOf) : null;
+    if (tc?.state === 'drop') actions.push({ symbol: t.symbol, kind: 'drop', text: `탈락 조건: ${tc.drop.filter((d) => d.met === true).map((d) => `${d.label} (${d.observed})`).join(' · ')} — ${t.result.status === 'open' ? '매도 검토' : '주문 취소 검토'}` });
   }
   // 7c. forward test of the filing event study: new quarters recorded once, measured afterwards
   const filingLedger = readJson(path.join(paperDir, 'filing-events.json'), []);
@@ -612,7 +616,7 @@ export async function runNightly({
     method: '상승 초입·자산 전환형 목록에 오른 종목을 그날 한 번 기록(이후 수정 없음). 다음 거래일부터 10거래일 안에 주문 가격에 닿으면 체결, 그 전에 무효화 가격을 깨면 취소. 체결 뒤 +1R이면 손절가를 매수가로, +2R이면 절반 익절, 그 뒤 50일선 아래 종가면 나머지 매도. 40거래일 동안 +0.5R 미만이면 시간 손절, 최대 120거래일. 같은 날 손절과 익절이 겹치면 손절로 처리합니다.',
     caveat: '일봉 기준 모의 체결이며 수수료·호가 차이는 반영하지 않습니다. 마감 거래 30건 미만이면 성과를 판단할 수 없습니다.',
     summary: summarizePaper(paperTrades), actions, filingEvents,
-    trades: paperTrades.slice(-200).reverse().map((t) => ({ ...t, result: { ...t.result, events: t.result.events.slice(-6) } })),
+    trades: paperTrades.slice(-200).reverse().map((t) => ({ ...t, sector: t.sector ?? rowBy.get(t.symbol)?.sector ?? null, result: { ...t.result, events: t.result.events.slice(-6) } })),
   });
   stats.paper = summarizePaper(paperTrades);
   const toRec = (x) => ({ rank: 0, symbol: x.symbol, name: x.name, sector: x.sector, score: x.score, factors: { chart: x.chartScore, story: x.storyScore, type: x.type, stage: x.stage }, features: { price: x.price } });

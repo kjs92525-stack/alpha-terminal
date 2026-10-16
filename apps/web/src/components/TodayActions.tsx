@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTerminal } from '../lib/store';
 import { fetchPaper, NoSnapshotError, type PaperLedger } from '../lib/snapshot';
+import { portfolioRisk, LIMITS } from '../lib/portfolio';
 import { fmtPct } from '../lib/format';
 import { Loading, PanelHead } from './ui';
 
-const KIND = { order: ['주문 대기', ''], filled: ['체결', 'up'], breakeven: ['손절가 상향', 'up'], partial: ['절반 익절', 'up'], exit: ['청산', 'down'], invalidated: ['주문 취소', 'down'], earnings: ['실적 발표 임박', 'down'], note: ['확인', ''] } as const;
+const KIND = { order: ['주문 대기', ''], filled: ['체결', 'up'], breakeven: ['손절가 상향', 'up'], partial: ['절반 익절', 'up'], exit: ['청산', 'down'], invalidated: ['주문 취소', 'down'], earnings: ['실적 발표 임박', 'down'], drop: ['탈락 조건', 'down'], note: ['확인', ''] } as const;
 const STATUS = { pending: '주문 대기', open: '보유 중', closed: '청산', expired: '미체결 만료', invalidated: '진입 전 무효화', invalid: '계획 오류' } as const;
 const read = (k: string, d: string) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
 
@@ -18,6 +19,8 @@ export function TodayActions() {
   const riskUsd = Number(acct) * Number(riskPct) / 100;
   const shares = (entry: number, stop: number) => (riskUsd > 0 && entry > stop ? Math.floor(riskUsd / (entry - stop)) : null);
   const s = data?.summary;
+  const book = data ? portfolioRisk(data.trades, Number(acct), riskUsd) : null;
+  const rp = Number(riskPct);
   const open = (sym: string) => { select(sym); setPage('charts'); };
   return <section className="panel story-picks">
     <PanelHead kicker="TODAY · PAPER LEDGER" title="오늘 할 일 · 모의 매매 성과" right={data && <span className="live-badge">기준일 {data.asOf}</span>} />
@@ -30,13 +33,17 @@ export function TodayActions() {
         {s.closed > 0 && <p>마감 {s.closed}건: 승률 {fmtPct(s.winRate ?? 0, 0).replace('+', '')} · 평균 {s.avgR?.toFixed(2)}R (합계 {s.totalR.toFixed(1)}R) · 평균 수익 {fmtPct(s.avgReturn ?? 0)} · 같은 기간 SPY 대비 {s.avgVsSpy == null ? '—' : fmtPct(s.avgVsSpy)}</p>}
         <p className="muted small">보유 중 평가 {s.openR.toFixed(1)}R · {data.method}</p>
       </div>
-      <div className="pad-box small">계좌 $<input inputMode="numeric" value={acct} onChange={(e) => setAcct(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 90 }} aria-label="계좌 금액" /> · 거래당 위험 <input inputMode="decimal" value={riskPct} onChange={(e) => setRiskPct(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 40 }} aria-label="거래당 위험 퍼센트" />% = 1R ${riskUsd ? riskUsd.toFixed(0) : '—'} <span className="muted">(이 기기에만 저장)</span></div>
+      <div className="pad-box small">계좌 $<input inputMode="numeric" value={acct} onChange={(e) => setAcct(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 90 }} aria-label="계좌 금액" /> · 거래당 위험 <input inputMode="decimal" value={riskPct} onChange={(e) => setRiskPct(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 40 }} aria-label="거래당 위험 퍼센트" />% = 1R ${riskUsd ? riskUsd.toFixed(0) : '—'} <span className="muted">(이 기기에만 저장)</span>{(rp < LIMITS.riskPctMin || rp > LIMITS.riskPctMax) && <span className="ea-risk"> · 권장 0.5~1%</span>}</div>
+      {book && <div className="pad-box small">
+        <span className={book.openR + book.pendingR > LIMITS.maxOpenR ? 'ea-risk' : ''}>보유 위험 {book.openR.toFixed(1)}R + 대기 주문 {book.pendingR.toFixed(0)}R / 한도 {LIMITS.maxOpenR}R (계좌의 약 {(LIMITS.maxOpenR * rp).toFixed(1)}%)</span>
+        {!!book.sectors.length && <> · 업종 비중 {book.sectors.slice(0, 4).map((x) => <span key={x.sector} className={x.pct > LIMITS.sectorPct ? 'ea-risk' : ''}>{x.sector} {(x.pct * 100).toFixed(0)}% </span>)}<span className="muted">(업종당 25% 한도)</span></>}
+      </div>}
       <h3 className="pad-box" style={{ margin: 0 }}>오늘 할 일</h3>
       {!data.actions.length && <p className="pad-box muted">오늘 처리할 주문·체결·청산이 없습니다.</p>}
       <ul className="thesis-list pad-box">{data.actions.map((a, i) => {
         const t = data.trades.find((x) => x.symbol === a.symbol && ['pending', 'open'].includes(x.result.status));
         const n = t && a.kind === 'order' ? shares(t.entry, t.stop) : null;
-        return <li key={i}><b className={KIND[a.kind as keyof typeof KIND]?.[1] ?? ''}>{KIND[a.kind as keyof typeof KIND]?.[0] ?? a.kind}</b> <button className="text-link inline" onClick={() => open(a.symbol)}>{a.symbol}</button> — {a.text}{n != null && <span className="muted"> · 1R 기준 {n.toLocaleString()}주 (약 ${(n * t!.entry).toFixed(0)}{Number(acct) > 0 && n * t!.entry > Number(acct) * 0.25 ? ' — 계좌의 25% 초과, 비중 축소' : ''})</span>}</li>;
+        return <li key={i}><b className={KIND[a.kind as keyof typeof KIND]?.[1] ?? ''}>{KIND[a.kind as keyof typeof KIND]?.[0] ?? a.kind}</b> <button className="text-link inline" onClick={() => open(a.symbol)}>{a.symbol}</button> — {a.text}{n != null && <span className="muted"> · 1R 기준 {n.toLocaleString()}주 (약 ${(n * t!.entry).toFixed(0)}{Number(acct) > 0 && n * t!.entry > Number(acct) * 0.25 ? ' — 계좌의 25% 초과, 비중 축소' : ''})</span>}{a.kind === 'order' && !!book?.orders[a.symbol]?.length && <span className="ea-risk"> · 한도 초과로 건너뛰기: {book.orders[a.symbol].join(' · ')}</span>}</li>;
       })}</ul>
       <details className="pad-box small"><summary>최근 기록 {Math.min(data.trades.length, 30)}건</summary>
         <div className="table-wrap"><table className="data-table"><thead><tr><th>종목</th><th>신호일</th><th>유형</th><th>상태</th><th>체결</th><th>결과</th><th>SPY 대비</th></tr></thead>
