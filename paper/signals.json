@@ -1,1 +1,32 @@
-[]
+[
+ {
+  "id": "2026-10-16:IOSP:early",
+  "symbol": "IOSP",
+  "name": "Innospec Inc",
+  "sector": "Materials",
+  "mode": "early",
+  "type": "breakout",
+  "stage": "NEAR_PIVOT",
+  "signalDate": "2026-10-16",
+  "entry": 100.4799,
+  "stop": 92.3,
+  "target": 136.2098,
+  "entryType": "buy-stop",
+  "recordedAt": "2026-10-16T22:15:45.732Z"
+ },
+ {
+  "id": "2026-10-16:VTS:early",
+  "symbol": "VTS",
+  "name": "Vitesse Energy Inc",
+  "sector": "Energy",
+  "mode": "early",
+  "type": "breakout",
+  "stage": "NEAR_PIVOT",
+  "signalDate": "2026-10-16",
+  "entry": 18.6,
+  "stop": 16.15,
+  "target": 22.55,
+  "entryType": "buy-stop",
+  "recordedAt": "2026-10-16T22:15:45.733Z"
+ }
+]
