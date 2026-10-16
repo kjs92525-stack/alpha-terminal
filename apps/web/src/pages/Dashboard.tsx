@@ -31,16 +31,19 @@ export function Dashboard() {
     .sort((a, b) => RANK[b.importance] - RANK[a.importance] || String(b.acceptedAt).localeCompare(String(a.acceptedAt))).slice(0, 4);
   return (
     <>
-      <div className="kpi-grid">
+      <TopPicks />
+      <div className="kpi-grid" style={{ marginTop: 12 }}>
         <div className="kpi-card"><div className="kpi-top">NIGHTLY SCAN <Activity size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{setups ? setups.stats.scanned.toLocaleString() : '—'}</strong><span>종목 검사</span></div><div className="kpi-foot">● {setups ? `기준일 ${setups.asOf} · 장 마감 후 자동` : '야간 수집 전'}</div></div>
         <div className="kpi-card"><div className="kpi-top">STORY PICK <Sparkles size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{top?.row.symbol ?? '—'}</strong><span>{top ? top.hook : ''}</span></div><div className="kpi-foot">● {top ? top.why.slice(0, 2).join(' · ') : '스토리 신호 종목 없음'}</div></div>
         <div className="kpi-card"><div className="kpi-top">BUY SETUPS <Radar size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{byType ? String(buyCount('breakout', ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT']) + buyCount('pullback', ['BOUNCE', 'AT_SUPPORT']) + buyCount('weekly_bottom', ['TURNING']) + buyCount('monthly_bottom', ['TURNING'])) : '—'}</strong><span>매수 자리</span></div><div className="kpi-foot">● {byType ? `${TYPE_KO.breakout} ${buyCount('breakout', ['BREAKOUT', 'POST_BREAKOUT', 'NEAR_PIVOT'])} · ${TYPE_KO.pullback} ${buyCount('pullback', ['BOUNCE', 'AT_SUPPORT'])} · 바닥 전환 ${buyCount('weekly_bottom', ['TURNING']) + buyCount('monthly_bottom', ['TURNING'])}` : '—'}</div></div>
         <div className="kpi-card"><div className="kpi-top">DATA <Gauge size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{mode === 'live' ? 'LIVE' : 'SIM'}</strong><span>재무 {fundSrc}</span></div><div className="kpi-foot">● 시세: {health?.priceProviders.join(' → ') ?? '합성 OHLCV'}</div></div>
       </div>
-      <TopPicks />
       <div style={{ marginTop: 12 }}><TodayActions /></div>
-      <div style={{ marginTop: 12 }}><StoryPicks limit={6} /></div>
-      <div style={{ marginTop: 12 }}><SectorCycle compact /></div>
+      <details className="panel" style={{ marginTop: 12 }}>
+        <summary className="pad-box"><b>전체 후보 목록 · 업종 흐름 더 보기</b> <span className="muted small">— 위의 '오늘 볼 종목'에 들지 못한 후보와 업종 순환</span></summary>
+        <div style={{ marginTop: 12 }}><StoryPicks limit={6} /></div>
+        <div style={{ marginTop: 12 }}><SectorCycle compact /></div>
+      </details>
       <div className="feed-row">
         <NewsFeed />
         <TopMovers />
