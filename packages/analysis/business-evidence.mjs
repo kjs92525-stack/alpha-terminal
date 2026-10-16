@@ -10,6 +10,10 @@ export const EVENT_EVIDENCE = {
   revAccel: { n: 1923, excess120: 0.031 },
   niOnly: { n: 5406, excess120: -0.003 },
   improvingNearLow: { n: 1607, excess120: -0.033 },
+  // edge event study (backtest/edge-events.json, 2022-2026, 2,400 symbols)
+  insiderCluster: { n: 2742, excess120: -0.004 },
+  offering424B: { n: 2879, excess120: -0.084 },
+  shelfRegistration: { n: 2169, excess120: -0.089 },
 };
 
 export function businessEvidence(row, asOf) {

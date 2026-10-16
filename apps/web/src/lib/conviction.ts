@@ -26,9 +26,10 @@ export function scoreConviction(row: SetupRow, asOf: string, mode: Conviction['m
   if (ev.both) add(25, `매출 가속 + 이익 개선 (과거 ${EV.both.n.toLocaleString()}건 120일 SPY ${pp(EV.both.excess120)})`);
   else if (ev.revAccel) add(15, `매출 가속 (과거 ${EV.revAccel.n.toLocaleString()}건 120일 SPY ${pp(EV.revAccel.excess120)})`);
   else if (ev.niImproved) add(-5, `이익 개선만·매출 가속 없음 (과거 120일 SPY ${pp(EV.niOnly.excess120)})`);
-  if (row.edge?.insider?.cluster) add(20, `내부자 ${row.edge.insider.buyers}명 장내 매수`);
-  if (row.edge?.dilution?.offering) add(-20, '최근 발행 공시(424B)');
-  else if (row.edge?.dilution?.shelf) add(-5, '증자 대기 등록(S-3)');
+  // edge event study: insider clusters alone showed no excess; offering and shelf filings lagged SPY badly
+  if (row.edge?.insider?.cluster) add(5, `내부자 ${row.edge.insider.buyers}명 장내 매수 (과거 ${EV.insiderCluster.n.toLocaleString()}건 120일 SPY ${pp(EV.insiderCluster.excess120)} — 단독 우위 없음)`);
+  if (row.edge?.dilution?.offering) add(-25, `최근 발행 공시(424B) (과거 ${EV.offering424B.n.toLocaleString()}건 120일 SPY ${pp(EV.offering424B.excess120)})`);
+  else if (row.edge?.dilution?.shelf) add(-20, `증자 대기 등록(S-3) (과거 ${EV.shelfRegistration.n.toLocaleString()}건 120일 SPY ${pp(EV.shelfRegistration.excess120)})`);
   if (row.trend && row.trend.total > 0 && row.trend.passed / row.trend.total >= 0.75) add(10, `추세 템플릿 ${row.trend.passed}/${row.trend.total}`);
   if (row.rs?.newHigh) add(5, '상대강도 신고가');
   if (row.edge?.analyst?.direction === 'up') add(5, '애널리스트 매수 의견 증가');
