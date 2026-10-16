@@ -1,6 +1,8 @@
 // Shared discovery rules: the same checks decide what the site lists and what the nightly
 // paper-trade ledger records, so the track record measures exactly what is shown.
 import { businessStory } from './business-stories.mjs';
+import { businessEvidence, EVENT_EVIDENCE as EV } from './business-evidence.mjs';
+const pp=(x)=>`${x>=0?'+':''}${(x*100).toFixed(1)}%p`;
 
 export function earlyIssues(row,asOf,mode='early'){
  const issues=[];if(businessStory(row.symbol,asOf)?.model==='treasury')issues.push('자산 보유형 · 주당 NAV 원문 검증 필요');const type=row.type??'breakout',q=row.narrative?.quality;
@@ -17,9 +19,15 @@ export function earlyIssues(row,asOf,mode='early'){
   const p=row.assetPivot;if(!p?.pivot)issues.push(p?.acquisition?'인수·합병 기사 — 사업 전환 아님':'대형 계약·설비 확장 근거 없음');
   if(p?.pivot&&p.selfFunded!==true&&!(typeof p.fundedMonths==='number'&&p.fundedMonths>=18))issues.push('설비투자 포함 현금 18개월 미만·미확인');
  }else{
- if(!row.storySignals||!(row.storySignals.revenueAcceleration&&!q?.growthBlocked&&q?.growthFresh||row.storySignals.profitTurnaround&&!q?.profitBlocked&&q?.profitFresh||row.storySignals.lossNarrowing&&!q?.profitBlocked&&q?.profitFresh))issues.push('현재 분기 실적 개선 근거 부족');
- const period=row.storySignals?.revenueAcceleration?q?.revenuePeriod:q?.profitPeriod;if(!period||!Number.isFinite(Date.parse(period))||Date.parse(period)>Date.parse(asOf)||Date.parse(asOf)-Date.parse(period)>200*86400000)issues.push('재무 기준일 확인 필요');
+ // the validated definition (filing event study): sales growth > 5% YoY and 2%p faster than the
+ // prior quarter, from a quarter ended within ~8 months; income improvement alone showed no excess
+ const ev=businessEvidence(row,asOf);
+ if(q?.growthBlocked)issues.push('매출 비교 불가(사업 범위 변화) — 원문 확인 필요');
+ else if(!ev.revAccel)issues.push(ev.niImproved?`이익 개선만 · 매출 가속 없음 (과거 120일 SPY ${pp(EV.niOnly.excess120)})`:'현재 분기 매출 가속 근거 부족');
  }
+ // offering / shelf filings lagged SPY by ~8-9%p over 120 sessions (edge event study)
+ if(row.edge?.dilution?.offering)issues.push(`최근 증자 설명서(424B) — 과거 120일 SPY ${pp(EV.offering424B.excess120)}`);
+ else if(row.edge?.dilution?.shelf)issues.push(`증자 대기 등록(S-3) — 과거 120일 SPY ${pp(EV.shelfRegistration.excess120)}`);
  if(mode==='early'||mode==='pivot'){
   // a report inside the holding window turns the entry into a bet on the report
   if(row.earningsChecked===false)issues.push('실적 발표일 미확인');

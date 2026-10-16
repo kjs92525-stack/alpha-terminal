@@ -42,7 +42,10 @@ export function SectorCycle({ compact = false }: { compact?: boolean }) {
           {(['EARLY', 'BASING', 'LEADING', 'NEUTRAL', 'LATE', 'DOWN'] as CyclePhase[]).map((p) => <button key={p} className={filter === p ? 'active' : ''} onClick={() => setFilter(p)} title={PHASE_TIP[p]}>{PHASE_LABEL[p]} ({count(p)})</button>)}
         </div>
       )}
-      {state === 'ok' && (
+      {state === 'ok' && compact && !groups.length && (
+        <p className="pad-box muted">오늘은 '가격 전환 초기'나 '바닥 다지기' 국면인 업종이 없습니다. 업종 ETF {data?.groups.length ?? 0}개 중 주도 {count('LEADING')} · 과열 {count('LATE')} · 중립 {count('NEUTRAL')} · 하락 {count('DOWN')}개입니다. 기준을 낮춰 억지로 채우지 않으며, 업종 전체 국면은 탐색 화면의 섹터 표에서 볼 수 있습니다.</p>
+      )}
+      {state === 'ok' && !(compact && !groups.length) && (
         <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th /><th>업종 (ETF)</th><th>국면</th><th>3개월</th><th>12개월</th><th>2년</th><th>200일선 대비</th><th>2년 고점 대비</th><th>시장 대비 3M</th><th>가격 연동 차트 후보</th></tr></thead>
