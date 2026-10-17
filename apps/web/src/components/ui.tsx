@@ -56,7 +56,7 @@ export function ErrorBox({ error, hint }: { error: string; hint?: ReactNode }) {
 export function PanelHead({ kicker, title, right }: { kicker: string; title: ReactNode; right?: ReactNode }) {
   return (
     <div className="panel-head">
-      <div><span className="panel-kicker">{kicker}</span><h2>{title} <span className="tiny-star">✳</span></h2></div>
+      <div><span className="panel-kicker">{kicker}</span><h2>{title}</h2></div>
       {right}
     </div>
   );

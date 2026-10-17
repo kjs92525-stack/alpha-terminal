@@ -48,7 +48,7 @@ export function PriceChart({ bars, analysis, show, intraday, height = 420, water
     const chart: IChartApi = createChart(el, {
       autoSize: true,
       localization: { locale: 'en-US' },
-      layout: { background: { color: C.bg }, textColor: C.text, fontSize: 11, fontFamily: 'Inter, sans-serif', panes: { separatorColor: '#23264d', separatorHoverColor: '#3a3f7a' } },
+      layout: { background: { color: C.bg }, textColor: C.text, fontSize: 11, fontFamily: "'Pretendard Variable', Pretendard, sans-serif", panes: { separatorColor: '#23264d', separatorHoverColor: '#3a3f7a' } },
       grid: { vertLines: { color: C.grid }, horzLines: { color: C.grid } },
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: '#23264d' },

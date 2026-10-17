@@ -41,7 +41,7 @@ function Shell() {
           <div className="page-intro">
             <div>
               <div className="eyebrow">ALPHA / {code} <span className="eyebrow-line" /></div>
-              <h1>{title}<span className="title-spark">✳</span></h1>
+              <h1>{title}</h1>
               <p>{sub}</p>
             </div>
           </div>
