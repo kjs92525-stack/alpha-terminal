@@ -2,7 +2,8 @@
 // Material for, and publishing of, the Claude-written Telegram channel digest (run by a scheduled
 // Claude session on a checkout of the data branch).
 //   node scripts/telegram-digest.mjs context --data data-branch [--hours 14] > material.md   (prints NO_NEW_POSTS when there is nothing new)
-//     --hours: only posts of the last N hours, for sessions that cannot publish (and so never move the last digest forward)
+//     --hours: only posts collected in the last N hours (by collectedAt, so a post the 30-minute collector
+//     picks up late is not skipped), for sessions that do not publish; the last digest is then ignored
 //   node scripts/telegram-digest.mjs publish --data data-branch --text digest.txt
 // The material is kept compact (post text and lists capped) so each digest costs little to write.
 import fs from 'node:fs';
@@ -20,9 +21,9 @@ const cmd = process.argv[2];
 
 if (cmd === 'context') {
   const hours = Number(arg('hours', 0));
-  const cut = [last?.through ? Date.parse(last.through) : null, hours > 0 ? Date.now() - hours * 3600000 : null].filter(Number.isFinite);
-  const since = cut.length ? new Date(Math.max(...cut)).toISOString() : null;
-  const posts = (readJson('telegram/posts.json', { posts: [] }).posts ?? []).filter((p) => !since || (Date.parse(p.date ?? 0) || 0) > Date.parse(since));
+  const since = hours > 0 ? new Date(Date.now() - hours * 3600000).toISOString() : last?.through ?? null;
+  const at = (p) => Date.parse((hours > 0 && p.collectedAt) || p.date || 0) || 0;
+  const posts = (readJson('telegram/posts.json', { posts: [] }).posts ?? []).filter((p) => !since || at(p) > Date.parse(since));
   if (!posts.length) { console.log('NO_NEW_POSTS'); process.exit(0); }
   const shown = posts.slice(-60);
   const out = [`# 채널 글 ${posts.length}건 (${since ? `${since.slice(0, 16)} UTC 이후` : '첫 브리핑'})${posts.length > shown.length ? ` · 최근 ${shown.length}건만 표시` : ''}`];
