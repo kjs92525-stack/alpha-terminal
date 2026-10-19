@@ -1,5 +1,5 @@
-# Every 30 minutes: fact-check new posts of public Telegram channels against the site data and
-# send the result to the owner's bot. Settings → Secrets and variables → Actions:
+# Every 30 minutes: fact-check new posts of public Telegram channels against the site data for the
+# site panel (telegram/latest.json). Bot messages are sent by the Worker's 1-minute check. Settings → Secrets and variables → Actions:
 #   secret   TELEGRAM_BOT_TOKEN  (from @BotFather)
 #   variable TELEGRAM_CHANNELS   (public channel names, comma-separated, e.g. "channelA,channelB")
 name: Telegram watch
@@ -20,6 +20,8 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       TELEGRAM_CHANNELS: ${{ vars.TELEGRAM_CHANNELS }}
+      # messages come from the Worker's 1-minute check (wrangler.toml [triggers]); this job keeps the site panel
+      TELEGRAM_SEND: '0'
     steps:
       - name: Check settings
         id: check

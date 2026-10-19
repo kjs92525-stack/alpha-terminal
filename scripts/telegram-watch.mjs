@@ -14,6 +14,8 @@ const log = (m) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 const channels = String(process.env.TELEGRAM_CHANNELS ?? '').split(/[,\s]+/).map((c) => c.replace(/^@|^https?:\/\/t\.me\/(s\/)?/g, '').replace(/\/.*$/, '')).filter((c) => /^[A-Za-z0-9_]{4,64}$/.test(c));
 const token = process.env.TELEGRAM_BOT_TOKEN ?? '';
+// the Worker's 1-minute check sends the messages; this job then only refreshes the site panel
+const sendEnabled = process.env.TELEGRAM_SEND !== '0';
 if (!channels.length) { console.log('::notice::TELEGRAM_CHANNELS 비어 있음 — 분석할 채널 없음'); process.exit(0); }
 
 const stateFile = path.join(dataDir, 'telegram', 'state.json');
@@ -72,7 +74,7 @@ for (const ch of channels) {
     if (!a.items.length) continue;
     analysed++;
     latest.posts.unshift({ ...a, analysedAt: new Date().toISOString() });
-    if (token && chatId) {
+    if (sendEnabled && token && chatId) {
       try { await bot('sendMessage', { chat_id: chatId, text: formatReport(a, gate), disable_web_page_preview: true }); sent++; } catch (e) { console.log(`::warning::전송 실패: ${e.message}`); }
     }
   }

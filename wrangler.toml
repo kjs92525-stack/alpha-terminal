@@ -24,6 +24,17 @@ enabled = true
 ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
 SCREEN_MAX = "5"
+# public Telegram channels checked every minute (names only — the bot token is a secret)
+TELEGRAM_CHANNELS = "sceret_taver"
+
+# 1-minute Telegram channel check (apps/api/src/telegram-watch.ts)
+[triggers]
+crons = ["* * * * *"]
+
+# last-seen post per channel and the linked bot chat
+[[kv_namespaces]]
+binding = "TG_STATE"
+id = "dd91a3ab139a4dce876613799ef484da"
 
 # Secrets (Worker > Settings > Variables and Secrets, type "Secret"):
 #   SEC_USER_AGENT     e.g. "AlphaTerminal/0.6 you@example.com"

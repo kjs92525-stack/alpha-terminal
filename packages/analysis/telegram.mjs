@@ -86,3 +86,18 @@ export function formatReport(a, gate) {
   const g = gate?.state ? `\n\n시장 판정: ${gate.label ?? gate.state}${gate.state === 'WAIT' ? ' — 신규 매수는 대기' : ''}` : '';
   return `${head}${body}${g}\n\n※ 사이트 데이터 기준 사실 점검이며 매수 추천이 아닙니다.`.slice(0, 4000);
 }
+
+/** Compact per-ticker facts for the Worker (the full setups.json is too large to parse every minute). */
+export function buildLookup({ asOf, candidates, symbols, gate }) {
+  const setups = {};
+  for (const r of candidates ?? []) {
+    const prev = setups[r.symbol];
+    if (prev && (prev.plan || !r.plan)) continue;
+    const d = r.edge?.dilution;
+    setups[r.symbol] = { name: r.name ?? null, stage: r.stage ?? null, ret63: r.ret63 ?? null, ret21: r.ret21 ?? null,
+      plan: r.plan ? { entry: r.plan.entry, stop: r.plan.stop } : null,
+      earnings: r.earnings ? { date: r.earnings.date, sessions: r.earnings.sessions } : null,
+      edge: d ? { dilution: { offering: Boolean(d.offering), shelf: Boolean(d.shelf) } } : null };
+  }
+  return { asOf, gate: gate ?? null, symbols: [...new Set(symbols ?? [])].sort(), setups };
+}
