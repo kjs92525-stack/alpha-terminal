@@ -96,6 +96,14 @@ export interface SectorGroup {
 }
 export interface Sectors { asOf: string; generatedAt: string; method: string; caveat: string; groups: SectorGroup[] }
 export const fetchSectors = () => get<Sectors>('sectors.json');
+export interface NextCycleStock { symbol: string; name: string; price: number; mcap: number | null; filed: string; revYoY: number; prevYoY: number; niImproved: boolean; posIn52w: number | null; ret63: number | null; dilution: '424B' | 'S-3' | null; dilutionChecked: boolean }
+export interface NextCycleSector { sector: string; ko: string; etf: string; status: 'candidate' | 'watch' | 'priced' | 'none' | 'insufficient'; pts: number; why: string[]; risks: string[]; check: string[]; macro: string; phase: CyclePhase | null; phaseKo: string | null;
+  breadth: { n: number; accel: number; share: number | null; prevShare: number | null; delta: number | null; medYoY: number | null; prevMedYoY: number | null; since: string } | null;
+  metrics: Record<string, number>; themes: Array<{ etf: string; name: string; phase: CyclePhase; phaseKo: string; rs3m: number | null; rs24m: number | null }>; stocks: NextCycleStock[] }
+export interface NextCycle { asOf: string; generatedAt: string; model: string; method: string; caveat: string;
+  market: { state: string | null; label: string | null; reasons: string[]; macro: { period: string; headlineMonthly: number; headlineAnnual: number; coreMonthly: number; coreAnnual: number } | null; vix: number | null; asOf: string | null } | null;
+  sectors: NextCycleSector[]; track: Array<{ id: string; week: string; etf: string; sector: string; pts: number; close: number; d60: { ret: number; vsSpy: number | null } | null; d120: { ret: number; vsSpy: number | null } | null }> }
+export const fetchNextCycle = () => get<NextCycle>('next-cycle.json');
 export type SurgeRow = { symbol: string; name: string | null; sector: string; mcap: number | null; adv20: number | null } & import('../../../../packages/analysis/volume-surge.d.mts').VolumeSurge & import('../../../../packages/analysis/volume-surge.d.mts').SurgeExplanation;
 export interface VolumeSurges { asOf: string; generatedAt: string; method: string; caveat: string; stats: { detected: number; shown: number; newsRequests: number }; items: SurgeRow[] }
 export const fetchVolumeSurges = () => get<VolumeSurges>('volume-surges.json');
