@@ -57,7 +57,7 @@ const DOSSIERS = {
   },
 };
 
-export function companyDossier(row, asOf) {
+export function companyDossier(row, asOf, now = Date.now()) {
   const story = buildEarlyStory(row, asOf);
   const report = financialReview(row.ticker, asOf, row.reportPeriod ?? row.revenueYoY?.at(-1)?.end);
   const dossier = DOSSIERS[row.ticker];
@@ -65,7 +65,7 @@ export function companyDossier(row, asOf) {
   const cap = row.marketCap;
   const hasCap = typeof cap === 'number' && Number.isFinite(cap) && cap > 0;
   const date = Date.parse(asOf);
-  const usablePrice = Number.isFinite(date) && date <= Date.now() && Date.now()-date <= 5*86400000;
+  const usablePrice = Number.isFinite(date) && date <= now && now-date <= 5*86400000;
   const business = demandStory(row.ticker, asOf);
   return { ...dossier, story, report, ready: false, business,
     headline:business?.title ?? dossier.headline,
