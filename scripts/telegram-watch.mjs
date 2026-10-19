@@ -27,7 +27,10 @@ const bot = async (method, body) => {
 let chatId = process.env.TELEGRAM_CHAT_ID || state.chatId;
 if (token && !chatId) {
   try {
+    const me = await bot('getMe');
     const ups = await bot('getUpdates', { limit: 100 });
+    // which bot the token belongs to, and what it has received (no message text is logged)
+    log(`봇 @${me.username} · 받은 업데이트 ${ups.length}건 (${[...new Set(ups.map((u) => Object.keys(u).find((k) => k !== 'update_id') + ':' + (u.message?.chat?.type ?? u.my_chat_member?.chat?.type ?? '-')))].join(', ') || '없음'})`);
     // any private message to the bot links the chat (the Start button sends /start)
     const start = ups.map((u) => u.message).filter((m) => m?.chat?.type === 'private').at(-1);
     if (start) {
@@ -35,7 +38,7 @@ if (token && !chatId) {
       // confirm the link once, so the owner sees it works before any ticker post arrives
       try { await bot('sendMessage', { chat_id: chatId, text: `✅ 연결됐습니다. ${channels.join(', ')} 채널의 새 글을 30분마다 확인해 종목이 나오면 사이트 데이터로 점검한 결과를 보내드립니다.` }); } catch (e) { console.log(`::warning::연결 확인 메시지 실패: ${e.message}`); }
     }
-    else console.log('::notice::봇과의 대화방에서 아무 메시지나(/start 등) 보내세요 — 그 전까지 결과는 사이트에만 저장됩니다.');
+    else console.log(`::notice::@${me.username} 봇과의 대화방에서 아무 메시지나(/start 등) 보내세요 — 그 전까지 결과는 사이트에만 저장됩니다.`);
   } catch (e) { console.log(`::warning::봇 확인 실패: ${e.message}`); }
 }
 
