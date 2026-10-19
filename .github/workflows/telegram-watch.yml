@@ -1,0 +1,49 @@
+# Every 30 minutes: fact-check new posts of public Telegram channels against the site data and
+# send the result to the owner's bot. Settings → Secrets and variables → Actions:
+#   secret   TELEGRAM_BOT_TOKEN  (from @BotFather)
+#   variable TELEGRAM_CHANNELS   (public channel names, comma-separated, e.g. "channelA,channelB")
+name: Telegram watch
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: telegram-watch
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      TELEGRAM_CHANNELS: ${{ vars.TELEGRAM_CHANNELS }}
+    steps:
+      - name: Check settings
+        id: check
+        run: |
+          if [ -z "$TELEGRAM_CHANNELS" ]; then echo "ok=false" >> "$GITHUB_OUTPUT"; echo "::notice::TELEGRAM_CHANNELS 변수가 없어 건너뜀"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.check.outputs.ok == 'true'
+        uses: actions/checkout@v4
+      - if: steps.check.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: steps.check.outputs.ok == 'true'
+        name: Check out data branch
+        run: |
+          git fetch origin data --depth=1
+          git worktree add -B data data-branch origin/data
+      - if: steps.check.outputs.ok == 'true'
+        run: node scripts/telegram-watch.mjs --data data-branch
+      - if: steps.check.outputs.ok == 'true'
+        name: Publish
+        run: |
+          cd data-branch
+          git add telegram
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "telegram: channel check $(date -u +%FT%H:%M)"
+          for i in 1 2 3; do git pull --rebase -q origin data && git push -q origin data && exit 0; sleep $((i*5)); done
+          exit 1
