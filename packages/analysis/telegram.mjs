@@ -87,17 +87,28 @@ export function formatReport(a, gate) {
   return `${head}${body}${g}\n\n※ 사이트 데이터 기준 사실 점검이며 매수 추천이 아닙니다.`.slice(0, 4000);
 }
 
-/** Compact per-ticker facts for the Worker (the full setups.json is too large to parse every minute). */
-export function buildLookup({ asOf, candidates, symbols, gate }) {
-  const setups = {};
-  for (const r of candidates ?? []) {
-    const prev = setups[r.symbol];
-    if (prev && (prev.plan || !r.plan)) continue;
-    const d = r.edge?.dilution;
-    setups[r.symbol] = { name: r.name ?? null, stage: r.stage ?? null, ret63: r.ret63 ?? null, ret21: r.ret21 ?? null,
-      plan: r.plan ? { entry: r.plan.entry, stop: r.plan.stop } : null,
-      earnings: r.earnings ? { date: r.earnings.date, sessions: r.earnings.sessions } : null,
-      edge: d ? { dilution: { offering: Boolean(d.offering), shelf: Boolean(d.shelf) } } : null };
+/** Rolling archive of channel posts (full text) for the Claude digest: dedupe by channel/id, drop older than `days`, newest `max`. */
+export function mergePosts(prev, fresh, now = Date.now(), days = 7, max = 500) {
+  const byKey = new Map();
+  for (const p of [...(prev ?? []), ...(fresh ?? [])]) byKey.set(`${p.channel}/${p.id}`, p);
+  const cut = now - days * 86400000;
+  return [...byKey.values()]
+    .filter((p) => !p.date || Date.parse(p.date) >= cut)
+    .sort((a, b) => (Date.parse(a.date ?? 0) || 0) - (Date.parse(b.date ?? 0) || 0) || a.id - b.id)
+    .slice(-max);
+}
+
+/** Split a long text into Telegram-sized chunks (limit 4096), at paragraph or line breaks where possible. */
+export function splitMessage(text, max = 4000) {
+  const out = [];
+  let rest = String(text ?? '').trim();
+  while (rest.length > max) {
+    let cut = rest.lastIndexOf('\n\n', max);
+    if (cut < max / 2) cut = rest.lastIndexOf('\n', max);
+    if (cut < max / 2) cut = max;
+    out.push(rest.slice(0, cut).trimEnd());
+    rest = rest.slice(cut).trimStart();
   }
-  return { asOf, gate: gate ?? null, symbols: [...new Set(symbols ?? [])].sort(), setups };
+  if (rest) out.push(rest);
+  return out;
 }

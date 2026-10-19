@@ -24,14 +24,11 @@ enabled = true
 ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
 SCREEN_MAX = "5"
-# public Telegram channels checked every minute (names only — the bot token is a secret)
-TELEGRAM_CHANNELS = "sceret_taver"
-
-# 1-minute Telegram channel check (apps/api/src/telegram-watch.ts)
+# 1-minute check for a new Claude channel digest to send to the bot (apps/api/src/telegram-watch.ts)
 [triggers]
 crons = ["* * * * *"]
 
-# last-seen post per channel and the linked bot chat
+# linked bot chat and the last digest sent
 [[kv_namespaces]]
 binding = "TG_STATE"
 id = "dd91a3ab139a4dce876613799ef484da"

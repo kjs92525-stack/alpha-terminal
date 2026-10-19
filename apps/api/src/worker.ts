@@ -13,7 +13,7 @@ export default {
     if (pathname.startsWith('/api/') || pathname === '/health') return handle(req, env, ctx);
     return env.ASSETS.fetch(req);
   },
-  // Cron Trigger (wrangler.toml [triggers]): 1-minute Telegram channel check
+  // Cron Trigger (wrangler.toml [triggers]): send a new Telegram channel digest
   scheduled(_event: unknown, env: AssetsEnv, ctx: ExecutionContext): void {
     ctx.waitUntil(telegramTick(env).catch(() => undefined));
   },

@@ -22,7 +22,6 @@ import { earlyIssues } from '../analysis/discovery-rules.mjs';
 import { thesisChecks } from '../analysis/thesis-checks.mjs';
 import { sectorBreadth, rankNextCycle, SECTOR_MAP } from '../analysis/next-cycle.mjs';
 import { storyAsOf } from '../analysis/story-pit.mjs';
-import { buildLookup } from '../analysis/telegram.mjs';
 import { simulatePaperTrade, summarizePaper, PAPER_RULES } from '../analysis/paper-trade.mjs';
 import { recordFilingEvent, evaluateFilingEvent, storyEventGroups } from './story-events.mjs';
 import { summarize as summarizeEvents } from './backtest.mjs';
@@ -663,11 +662,6 @@ export async function runNightly({
     groups: Object.fromEntries(Object.entries(storyEventGroups(filingEvals)).map(([g, ts]) => [g, Object.fromEntries([20, 60, 120].map((h) => [`${h}d`, summarizeEvents(ts, h)]))])),
   };
   stats.filingEvents = { recorded: filingLedger.length, newToday: filingNew };
-  // compact ticker facts for the Worker's 1-minute Telegram channel check
-  try {
-    const mb = readJson(path.join(outDir, 'market-brief', 'latest.json'), null);
-    writeJson(path.join(outDir, 'telegram', 'lookup.json'), buildLookup({ asOf, candidates: setups, symbols: rows.map((r) => r.ticker ?? r.symbol), gate: mb?.decision ? { state: mb.decision.state, label: mb.decision.label } : null }));
-  } catch (e) { stats.telegramLookupError = String(e?.message ?? e); }
   writeJson(path.join(paperDir, 'latest.json'), {
     asOf, generatedAt: new Date().toISOString(), rules: PAPER_RULES,
     method: '상승 초입·자산 전환형 목록에 오른 종목을 그날 한 번 기록(이후 수정 없음). 다음 거래일부터 10거래일 안에 주문 가격에 닿으면 체결, 그 전에 무효화 가격을 깨면 취소. 체결 뒤 +1R이면 손절가를 매수가로, +2R이면 절반 익절, 그 뒤 50일선 아래 종가면 나머지 매도. 40거래일 동안 +0.5R 미만이면 시간 손절, 최대 120거래일. 같은 날 손절과 익절이 겹치면 손절로 처리합니다.',
