@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Material for, and publishing of, the Claude-written Telegram channel digest (run by a scheduled
 // Claude session on a checkout of the data branch).
-//   node scripts/telegram-digest.mjs context --data data-branch  > material.md   (prints NO_NEW_POSTS when there is nothing new)
+//   node scripts/telegram-digest.mjs context --data data-branch [--hours 14] > material.md   (prints NO_NEW_POSTS when there is nothing new)
+//     --hours: only posts of the last N hours, for sessions that cannot publish (and so never move the last digest forward)
 //   node scripts/telegram-digest.mjs publish --data data-branch --text digest.txt
 // The material is kept compact (post text and lists capped) so each digest costs little to write.
 import fs from 'node:fs';
@@ -18,7 +19,9 @@ const last = readJson('telegram/digest/latest.json', null);
 const cmd = process.argv[2];
 
 if (cmd === 'context') {
-  const since = last?.through ?? null;
+  const hours = Number(arg('hours', 0));
+  const cut = [last?.through ? Date.parse(last.through) : null, hours > 0 ? Date.now() - hours * 3600000 : null].filter(Number.isFinite);
+  const since = cut.length ? new Date(Math.max(...cut)).toISOString() : null;
   const posts = (readJson('telegram/posts.json', { posts: [] }).posts ?? []).filter((p) => !since || (Date.parse(p.date ?? 0) || 0) > Date.parse(since));
   if (!posts.length) { console.log('NO_NEW_POSTS'); process.exit(0); }
   const shown = posts.slice(-60);
