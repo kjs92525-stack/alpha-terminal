@@ -18,6 +18,7 @@ test('tickers: $-tagged or listed upper-case words; macro acronyms ignored', () 
   assert.deepEqual(extractTickers('$IREN 흑자 전환, JAKK 수주', known), ['IREN', 'JAKK']);
   assert.deepEqual(extractTickers('CPI 3.7%, FOMC next week', known), []);
   assert.deepEqual(extractTickers('$ZZZZ unknown', known), []);
+  assert.deepEqual(extractTickers('AP통신에 따르면 IREN 급등', new Set(['AP', 'IREN'])), ['IREN'], 'news agency is not a ticker');
 });
 
 test('claims are checked against filings; dilution and chase risk are flagged', () => {

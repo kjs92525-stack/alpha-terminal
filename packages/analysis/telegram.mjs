@@ -26,12 +26,13 @@ export function parseChannelHtml(html, channel) {
   return out.sort((a, b) => a.id - b.id);
 }
 
-const STOP = new Set(['A', 'I', 'AI', 'CEO', 'CFO', 'IPO', 'ETF', 'USA', 'US', 'EPS', 'FDA', 'SEC', 'GDP', 'CPI', 'FOMC', 'PER', 'PBR', 'ROE', 'YOY', 'QOQ', 'ATH', 'DM', 'OK', 'TP', 'SL', 'PM', 'AM', 'ET', 'KST', 'NYSE', 'NASDAQ', 'AMEX', 'OTC', 'LLC', 'INC', 'LTD', 'Q1', 'Q2', 'Q3', 'Q4', 'EV', 'IT', 'TV', 'VS', 'BUY', 'SELL', 'HOLD', 'NEW', 'ALL', 'FOR', 'THE', 'AND', 'ON', 'AT', 'BY', 'TO', 'UP', 'GO']);
+const STOP = new Set(['AP', 'AFP', 'CNBC', 'CNN', 'BBC', 'WSJ', 'NYT', 'FT', 'IMF', 'OPEC', 'NATO', 'EU', 'UN', 'WHO', 'WTO', 'ECB', 'BOJ', 'FED', 'GPU', 'CPU', 'HBM', 'DRAM', 'API', 'USD', 'KRW', 'JPY', 'CNY', 'EUR', 'A', 'I', 'AI', 'CEO', 'CFO', 'IPO', 'ETF', 'USA', 'US', 'EPS', 'FDA', 'SEC', 'GDP', 'CPI', 'FOMC', 'PER', 'PBR', 'ROE', 'YOY', 'QOQ', 'ATH', 'DM', 'OK', 'TP', 'SL', 'PM', 'AM', 'ET', 'KST', 'NYSE', 'NASDAQ', 'AMEX', 'OTC', 'LLC', 'INC', 'LTD', 'Q1', 'Q2', 'Q3', 'Q4', 'EV', 'IT', 'TV', 'VS', 'BUY', 'SELL', 'HOLD', 'NEW', 'ALL', 'FOR', 'THE', 'AND', 'ON', 'AT', 'BY', 'TO', 'UP', 'GO']);
 /** Tickers named in a post: $TICKER always; bare upper-case words only when they are listed symbols. */
 export function extractTickers(postText, known) {
   const found = new Set();
   for (const m of postText.matchAll(/\$([A-Za-z]{1,5}(?:\.[A-Za-z])?)\b/g)) found.add(m[1].toUpperCase());
-  for (const m of postText.matchAll(/(?<![A-Za-z$])([A-Z]{2,5})(?![A-Za-z])/g)) if (!STOP.has(m[1]) && known.has(m[1])) found.add(m[1]);
+  // bare words: 3+ letters only (2-letter words collide with news agencies, units and Korean-English mixes such as 'AP통신')
+  for (const m of postText.matchAll(/(?<![A-Za-z$])([A-Z]{3,5})(?![A-Za-z])/g)) if (!STOP.has(m[1]) && known.has(m[1])) found.add(m[1]);
   return [...found].filter((t) => known.has(t)).slice(0, 6);
 }
 

@@ -28,9 +28,10 @@ let chatId = process.env.TELEGRAM_CHAT_ID || state.chatId;
 if (token && !chatId) {
   try {
     const ups = await bot('getUpdates', { limit: 100 });
-    const start = ups.map((u) => u.message).filter((m) => m?.chat?.type === 'private' && /^\/start/.test(m.text ?? '')).at(-1);
+    // any private message to the bot links the chat (the Start button sends /start)
+    const start = ups.map((u) => u.message).filter((m) => m?.chat?.type === 'private').at(-1);
     if (start) { chatId = String(start.chat.id); state.chatId = chatId; log('봇 대화 연결됨'); }
-    else console.log('::notice::봇에게 텔레그램에서 /start 를 먼저 보내세요 — 그 전까지 결과는 사이트에만 저장됩니다.');
+    else console.log('::notice::봇과의 대화방에서 아무 메시지나(/start 등) 보내세요 — 그 전까지 결과는 사이트에만 저장됩니다.');
   } catch (e) { console.log(`::warning::봇 확인 실패: ${e.message}`); }
 }
 
