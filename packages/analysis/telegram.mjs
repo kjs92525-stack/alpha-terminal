@@ -86,3 +86,29 @@ export function formatReport(a, gate) {
   const g = gate?.state ? `\n\n시장 판정: ${gate.label ?? gate.state}${gate.state === 'WAIT' ? ' — 신규 매수는 대기' : ''}` : '';
   return `${head}${body}${g}\n\n※ 사이트 데이터 기준 사실 점검이며 매수 추천이 아닙니다.`.slice(0, 4000);
 }
+
+/** Rolling archive of channel posts (full text) for the Claude digest: dedupe by channel/id, drop older than `days`, newest `max`. */
+export function mergePosts(prev, fresh, now = Date.now(), days = 7, max = 500) {
+  const byKey = new Map();
+  for (const p of [...(prev ?? []), ...(fresh ?? [])]) byKey.set(`${p.channel}/${p.id}`, p);
+  const cut = now - days * 86400000;
+  return [...byKey.values()]
+    .filter((p) => !p.date || Date.parse(p.date) >= cut)
+    .sort((a, b) => (Date.parse(a.date ?? 0) || 0) - (Date.parse(b.date ?? 0) || 0) || a.id - b.id)
+    .slice(-max);
+}
+
+/** Split a long text into Telegram-sized chunks (limit 4096), at paragraph or line breaks where possible. */
+export function splitMessage(text, max = 4000) {
+  const out = [];
+  let rest = String(text ?? '').trim();
+  while (rest.length > max) {
+    let cut = rest.lastIndexOf('\n\n', max);
+    if (cut < max / 2) cut = rest.lastIndexOf('\n', max);
+    if (cut < max / 2) cut = max;
+    out.push(rest.slice(0, cut).trimEnd());
+    rest = rest.slice(cut).trimStart();
+  }
+  if (rest) out.push(rest);
+  return out;
+}

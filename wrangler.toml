@@ -24,6 +24,14 @@ enabled = true
 ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
 SCREEN_MAX = "5"
+# 1-minute check for a new Claude channel digest to send to the bot (apps/api/src/telegram-watch.ts)
+[triggers]
+crons = ["* * * * *"]
+
+# linked bot chat and the last digest sent
+[[kv_namespaces]]
+binding = "TG_STATE"
+id = "dd91a3ab139a4dce876613799ef484da"
 
 # Secrets (Worker > Settings > Variables and Secrets, type "Secret"):
 #   SEC_USER_AGENT     e.g. "AlphaTerminal/0.6 you@example.com"

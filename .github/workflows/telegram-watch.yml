@@ -1,5 +1,5 @@
-# Every 30 minutes: fact-check new posts of public Telegram channels against the site data and
-# send the result to the owner's bot. Settings → Secrets and variables → Actions:
+# Every 30 minutes: collect new posts of public Telegram channels into telegram/posts.json for the
+# scheduled Claude digest (sent to the bot by the Worker's 1-minute check). Settings → Secrets and variables → Actions:
 #   secret   TELEGRAM_BOT_TOKEN  (from @BotFather)
 #   variable TELEGRAM_CHANNELS   (public channel names, comma-separated, e.g. "channelA,channelB")
 name: Telegram watch
