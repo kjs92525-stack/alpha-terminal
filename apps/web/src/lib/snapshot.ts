@@ -104,8 +104,8 @@ export interface NextCycle { asOf: string; generatedAt: string; model: string; m
   market: { state: string | null; label: string | null; reasons: string[]; macro: { period: string; headlineMonthly: number; headlineAnnual: number; coreMonthly: number; coreAnnual: number } | null; vix: number | null; asOf: string | null } | null;
   sectors: NextCycleSector[]; track: Array<{ id: string; week: string; etf: string; sector: string; pts: number; close: number; d60: { ret: number; vsSpy: number | null } | null; d120: { ret: number; vsSpy: number | null } | null }> }
 export const fetchNextCycle = () => get<NextCycle>('next-cycle.json');
-export interface TelegramCheck { updatedAt: string; dataAsOf: string; channels: string[]; posts: Array<{ id: number; channel: string; url: string; date: string | null; text: string; claims: string[]; analysedAt: string; items: Array<{ symbol: string; name: string | null; verdict: string; lines: string[]; checks: string[] }> }> }
-export const fetchTelegram = () => get<TelegramCheck>('telegram/latest.json');
+export interface TelegramDigest { id: string; createdAt: string; through: string; text: string }
+export const fetchTelegramDigest = () => get<TelegramDigest>('telegram/digest/latest.json');
 export type SurgeRow = { symbol: string; name: string | null; sector: string; mcap: number | null; adv20: number | null } & import('../../../../packages/analysis/volume-surge.d.mts').VolumeSurge & import('../../../../packages/analysis/volume-surge.d.mts').SurgeExplanation;
 export interface VolumeSurges { asOf: string; generatedAt: string; method: string; caveat: string; stats: { detected: number; shown: number; newsRequests: number }; items: SurgeRow[] }
 export const fetchVolumeSurges = () => get<VolumeSurges>('volume-surges.json');
