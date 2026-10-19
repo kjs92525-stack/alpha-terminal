@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { companyDossier } from '../packages/analysis/company-dossier.mjs';
+import { companyDossier as dossierAt } from '../packages/analysis/company-dossier.mjs';
+// the price-freshness check reads the clock; pin it to the day after the fixtures' as-of date
+const companyDossier=(r,asOf)=>dossierAt(r,asOf,Date.parse('2026-10-14T12:00:00Z'));
 const row={ticker:'ICHR',name:'Ichor',status:'watch',evidence:[],reasons:[],risk:{level:'unknown',checked:false},marketCap:1.8e9,reportPeriod:'2026-06-26'};
 test('company thesis ties economics to price and competing explanations without a buy verdict',()=>{
   const d=companyDossier(row,'2026-10-13');
