@@ -95,16 +95,17 @@ export async function fetchNews({ symbol, start, keyId, secretKey, fetchImpl = f
  */
 const ALPACA_EXCHANGE = { NASDAQ: 'Nasdaq', NYSE: 'NYSE', AMEX: 'NYSE', BATS: 'CBOE' };
 const ASSET_NAME_EXCLUDE = /\b(ETF|ETN|Fund|Warrants?|Units?|Rights|Preferred|Notes due|Depositary Shares)\b/i;
-export async function fetchAssets({ keyId, secretKey, fetchImpl = fetch, wait } = {}) {
+export async function fetchAssets({ keyId, secretKey, fetchImpl = fetch, wait, status = 'active' } = {}) {
   if (!keyId || !secretKey) throw new Error('Alpaca API keys missing');
   const headers = { 'APCA-API-KEY-ID': keyId, 'APCA-API-SECRET-KEY': secretKey, Accept: 'application/json' };
   let lastStatus = null;
   for (const host of ['https://paper-api.alpaca.markets', 'https://api.alpaca.markets']) {
-    const res = await fetchRetry(`${host}/v2/assets?status=active&asset_class=us_equity`, { headers }, { fetchImpl, wait, retries: 2 });
+    const res = await fetchRetry(`${host}/v2/assets?status=${status}&asset_class=us_equity`, { headers }, { fetchImpl, wait, retries: 2 });
     if (!res.ok) { lastStatus = res.status; continue; }
     const arr = await res.json();
     return (Array.isArray(arr) ? arr : [])
-      .filter((a) => a.tradable && ALPACA_EXCHANGE[a.exchange] && !ASSET_NAME_EXCLUDE.test(a.name ?? ''))
+      // delisted (inactive) assets are no longer tradable, so only active ones must be
+      .filter((a) => (status !== 'active' || a.tradable) && ALPACA_EXCHANGE[a.exchange] && !ASSET_NAME_EXCLUDE.test(a.name ?? ''))
       .map((a) => ({ cik: null, name: String(a.name ?? ''), ticker: String(a.symbol).toUpperCase().replace('.', '-'), exchange: ALPACA_EXCHANGE[a.exchange] }));
   }
   throw new Error(`Alpaca assets HTTP ${lastStatus}`);
