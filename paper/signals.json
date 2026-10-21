@@ -28,5 +28,20 @@
   "target": 22.55,
   "entryType": "buy-stop",
   "recordedAt": "2026-10-16T22:15:45.733Z"
+ },
+ {
+  "id": "2026-10-21:SIBN:early",
+  "symbol": "SIBN",
+  "name": "SI-BONE Inc",
+  "sector": "Health Care",
+  "mode": "early",
+  "type": "breakout",
+  "stage": "NEAR_PIVOT",
+  "signalDate": "2026-10-21",
+  "entry": 21.89,
+  "stop": 19.19,
+  "target": 32.3,
+  "entryType": "buy-stop",
+  "recordedAt": "2026-10-21T22:16:18.599Z"
  }
 ]
