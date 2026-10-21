@@ -55,11 +55,15 @@ jobs:
       - if: steps.check.outputs.ok == 'true'
         run: node scripts/backtest.mjs --cache .backtest-cache --out data-branch --limit "${{ github.event.inputs.limit || '0' }}"
       - if: steps.check.outputs.ok == 'true'
+        name: Market gate backtest (price rules)
+        continue-on-error: true
+        run: node scripts/market-gate-backtest.mjs --cache .backtest-cache --out data-branch
+      - if: steps.check.outputs.ok == 'true'
         name: Publish
         run: |
           cd data-branch
           git add backtest
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "backtest: breakouts $(date -u +%F)"
-          git pull --rebase -q origin data || true
-          git push origin data
+          for i in 1 2 3 4; do git pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; sleep $((i*5)); done
+          echo "::error::push to data failed after retries"; exit 1

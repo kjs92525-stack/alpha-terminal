@@ -50,7 +50,7 @@ export function buildMarketBrief({barsBy={},breadth=null,vix=null,news=[],newsSt
  const metrics=Object.fromEntries(MARKET_ETFS.map(s=>[s,marketMetrics(barsBy[s],asOf,now)]));
  const missing=[];for(const s of ['SPY','QQQ','IWM'])if(!metrics[s]||metrics[s].asOf!==asOf||metrics[s].ma200===null)missing.push(`${s} 당일·200일 가격`);
  const b=breadth?.asOf===asOf&&finite(breadth.sample)&&breadth.sample>=MARKET_RULES.minBreadth&&finite(breadth.coverage)&&breadth.coverage>=MARKET_RULES.minCoverage&&breadth.coverage<=1&&[breadth.above50,breadth.above200].every(x=>finite(x)&&x>=0&&x<=1)?breadth:null;
- if(!b)missing.push('충분한 당일 시장 참여도 표본');
+ if(!b)missing.push(!breadth?'시장 참여도 파일이 없습니다(야간 수집 확인 필요)':breadth.asOf!==asOf?`시장 참여도 표본이 ${breadth.asOf} 기준으로 오래되어 ${asOf}와 맞지 않습니다(야간 수집 실패 가능)`:'충분한 당일 시장 참여도 표본');
  const v=vix?.asOf===asOf&&finite(vix.close)&&vix.close>0?vix:null;
  const hyg=metrics.HYG,lqd=metrics.LQD;
  const credit=hyg?.asOf===asOf&&lqd?.asOf===asOf&&finite(hyg.ret21)&&finite(lqd.ret21)?hyg.ret21-lqd.ret21:null;
@@ -78,7 +78,7 @@ export function buildMarketBrief({barsBy={},breadth=null,vix=null,news=[],newsSt
  let state=stress.length?'WAIT':missing.length?'UNKNOWN':caution.length?'LIMIT':'SELECTIVE';
  const freshness=briefingFreshness({asOf,generatedAt:new Date(now).toISOString()},now);
  if(!freshness.fresh){state='UNKNOWN';missing.push(freshness.reason);}
- const labels={WAIT:'신규 진입 대기',UNKNOWN:'자료 확인 전 진입 대기',LIMIT:'신규 진입 축소',SELECTIVE:'선별 진입 검토'};
+ const labels={WAIT:'신규 진입 대기',UNKNOWN:'시황 자료 부족 — 판정 보류',LIMIT:'신규 진입 축소',SELECTIVE:'선별 진입 검토'};
  const reasons=state==='UNKNOWN'?missing:stress.length?stress:caution.length?caution:['주요 지수 추세·시장 참여도·변동성 조건이 함께 충족'];
  const actions=state==='WAIT'||state==='UNKNOWN'?['새 매수와 손실 만회를 위한 물타기는 대기합니다.','관심 종목과 사업 가설은 계속 추적하고, 시장과 종목 조건이 회복되는지 확인합니다.']:state==='LIMIT'?['평소보다 신규 진입을 줄이고, 추격 대신 확인된 종목만 검토합니다.','진입 전 계좌 손실 한도·유동성·이벤트 및 증자 위험을 다시 확인합니다.']:['시장 조건을 통과한 상태이며 개별 종목의 매수 신호는 아닙니다.','사업 근거·가격·희석·손실 한도를 통과한 종목만 선별합니다.'];
  const paragraphs=[];
