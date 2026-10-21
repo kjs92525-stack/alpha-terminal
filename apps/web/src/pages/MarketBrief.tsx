@@ -7,7 +7,7 @@ export function MarketBrief(){
  const{data:d,error,loading,refresh,now}=useMarketBrief();const freshness=briefingFreshness(d,now),state=error||!freshness.fresh?'UNKNOWN':d!.decision.state;
  return <div className="market-brief-page">
   <div className="market-brief-heading"><div><span className="ea-kicker">BEFORE YOU BUY</span><h2>종목보다 먼저,<br/>오늘의 시장을 읽습니다.</h2><p>매일 오전 7:15 한국시간 갱신 작업 · 실행 지연 가능 · 야간 전 종목 갱신과 연동<br/>주말·휴장일에도 갱신하며 가격은 마지막 거래일 종가를 유지합니다.</p></div><button className="ea-button" disabled={loading} onClick={()=>void refresh()}>{loading?'확인 중…':'새로고침'}</button></div>
-  <section className={`market-verdict state-${state.toLowerCase()}`} aria-live="polite"><small>미국 소형주 신규 진입 · 규칙 기반 위험 점검</small><h2>{state==='UNKNOWN'?'자료 확인 전 신규 진입 대기':d!.decision.label}</h2><p>{error||freshness.reason||d?.story.lead}</p>{d&&<p className="market-dates">가격 기준 {d.metrics.SPY?.asOf?`${d.metrics.SPY.asOf} 미국 종가`:'수집 미확인'} · 브리핑 갱신 {kst(d.generatedAt)} 한국시간 · 실시간 아님</p>}</section>
+  <section className={`market-verdict state-${state.toLowerCase()}`} aria-live="polite"><small>미국 소형주 신규 진입 · 규칙 기반 위험 점검</small><h2>{state==='UNKNOWN'?'시황 자료 부족 — 판정 보류(시장이 나쁘다는 뜻은 아님)':d!.decision.label}</h2><p>{error||freshness.reason||d?.story.lead}</p>{d&&<p className="market-dates">가격 기준 {d.metrics.SPY?.asOf?`${d.metrics.SPY.asOf} 미국 종가`:'수집 미확인'} · 브리핑 갱신 {kst(d.generatedAt)} 한국시간 · 실시간 아님</p>}</section>
   {!d&&<p>{loading?'최신 시황 자료를 확인하고 있습니다.':'자료를 확보하기 전에는 이전의 긍정 판정을 사용하지 않습니다.'}</p>}
   {d&&<>
    {!freshness.fresh&&<p className="ea-risk">아래는 과거 기준 자료입니다. 현재 진입 환경으로 사용하지 않습니다.</p>}

@@ -108,4 +108,6 @@ jobs:
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           ASOF=$(node -e "console.log(require('./latest.json').asOf)")
           git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: ${ASOF}"
-          git push origin data
+          # other writers (telegram collector) push to data meanwhile: rebase and retry instead of failing
+          for i in 1 2 3 4; do git pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; sleep $((i*5)); done
+          echo "::error::push to data failed after retries"; exit 1

@@ -31,6 +31,7 @@ if (cmd === 'context') {
 
   const mb = readJson('market-brief/latest.json', null);
   if (mb) {
+    if (mb.decision?.state === 'UNKNOWN') out.push('\n(주의: 아래 판정은 시장이 나쁘다는 뜻이 아니라 사이트 시황 자료가 부족해 판단을 보류한 상태입니다.)');
     out.push(`\n# 사이트 시장 판정 (${mb.asOf}): ${mb.decision?.label ?? '—'}`, ...(mb.decision?.reasons ?? []).map((r) => `- ${r}`));
     if (mb.story?.paragraphs) out.push(...mb.story.paragraphs.slice(0, 5).map((r) => `- ${r}`));
     const m = mb.macro;
