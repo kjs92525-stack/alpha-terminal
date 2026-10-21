@@ -32,7 +32,7 @@ const brief = (r) => ({
   from: r.from, to: r.to, days: r.days, score: Number(score(r).toFixed(3)),
   share: Object.fromEntries(Object.entries(r.byState).map(([k, v]) => [k, v.share])),
   iwm21: Object.fromEntries(Object.entries(r.byState).map(([k, v]) => [k, { n: v.fwd[21].n, avg: v.fwd[21].avg, hit: v.fwd[21].hitRate, worst: v.fwd[21].worst }])),
-  hold: r.holdIwm, gated: { total: r.gatedIwm.total, maxDrawdown: r.gatedIwm.maxDrawdown },
+  hold: r.holdIwm, gated: { total: r.gatedIwm.total, maxDrawdown: r.gatedIwm.maxDrawdown }, constant: r.constantIwm,
 });
 const rulesKey = (R) => ({ shockDay: R.shockDay, shockWeek: R.shockWeek, cautionWeek: R.growthCautionWeek, confirmSessions: R.confirmSessions });
 

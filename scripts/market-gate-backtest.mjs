@@ -59,10 +59,14 @@ export function runGateBacktest(bars, { warmup = 200, now = Date.now(), rules = 
   const allNext = rows.map((x) => x.next);
   const gated = rows.map((x) => (x.state === 'SELECTIVE' ? x.next : x.state === 'LIMIT' ? x.next / 2 : 0));
   const total = (a) => a.reduce((e, r) => e * (1 + r), 1) - 1;
+  // same average exposure as the gate, held every day — tells timing apart from simply holding less
+  const exposure = rows.length ? mean(rows.map((x) => (x.state === 'SELECTIVE' ? 1 : x.state === 'LIMIT' ? 0.5 : 0))) : 0;
+  const constant = allNext.map((r) => r * exposure);
   return {
     model: 'market-gate-price-only-v1', from: rows[0]?.asOf ?? null, to: rows.at(-1)?.asOf ?? null, days: rows.length, byState: by,
     holdIwm: { total: total(allNext), maxDrawdown: maxDrawdown(allNext) },
     gatedIwm: { rule: 'SELECTIVE=100% LIMIT=50% WAIT=0% of IWM, next-day return', total: total(gated), maxDrawdown: maxDrawdown(gated) },
+    constantIwm: { rule: 'IWM at the gate\'s average exposure every day', exposure, total: total(constant), maxDrawdown: maxDrawdown(constant) },
     caveat: '가격 규칙만 검증했습니다(참여도·VIX·신용은 시점별 과거 자료가 없음). 임계값은 같은 기간에 맞춰 조정하지 않았습니다. 한 시장 국면의 결과일 수 있고 거래비용·세금은 반영하지 않았습니다.',
   };
 }
@@ -80,5 +84,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const report = runGateBacktest({ SPY: all.SPY, QQQ: all.QQQ, IWM: all.IWM });
   fs.mkdirSync(path.join(outDir, 'backtest'), { recursive: true });
   fs.writeFileSync(path.join(outDir, 'backtest', 'market-gate.json'), JSON.stringify(report, null, 1));
-  console.log(JSON.stringify({ from: report.from, to: report.to, days: report.days, byState: Object.fromEntries(Object.entries(report.byState).map(([k, v]) => [k, { days: v.days, avg21: v.fwd[21].avg, worst21: v.fwd[21].worst }])), holdIwm: report.holdIwm, gatedIwm: report.gatedIwm }, null, 1));
+  console.log(JSON.stringify({ from: report.from, to: report.to, days: report.days, byState: Object.fromEntries(Object.entries(report.byState).map(([k, v]) => [k, { days: v.days, avg21: v.fwd[21].avg, worst21: v.fwd[21].worst }])), holdIwm: report.holdIwm, gatedIwm: report.gatedIwm, constantIwm: report.constantIwm }, null, 1));
 }
