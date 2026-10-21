@@ -430,5 +430,59 @@
    "improving": true
   },
   "recordedAt": "2026-10-16T22:15:45.775Z"
+ },
+ {
+  "id": "2026-10-16:ACN",
+  "symbol": "ACN",
+  "filed": "2026-10-16",
+  "recordedAsOf": "2026-10-20",
+  "close": 239.12,
+  "posIn52w": 0.7280061695438096,
+  "story": {
+   "known": true,
+   "filed": "2026-10-16",
+   "revYoY": 0.06153870197416955,
+   "prevYoY": 0.05585961224559899,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-10-21T05:52:54.442Z"
+ },
+ {
+  "id": "2026-10-16:CMC",
+  "symbol": "CMC",
+  "filed": "2026-10-16",
+  "recordedAsOf": "2026-10-20",
+  "close": 64.65,
+  "posIn52w": 0.31796116504854405,
+  "story": {
+   "known": true,
+   "filed": "2026-10-16",
+   "revYoY": 0.25718201500294624,
+   "prevYoY": 0.22933894525897225,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-10-21T05:52:54.452Z"
+ },
+ {
+  "id": "2026-10-16:TRV",
+  "symbol": "TRV",
+  "filed": "2026-10-16",
+  "recordedAsOf": "2026-10-20",
+  "close": 395.73,
+  "posIn52w": 0.9883670520231217,
+  "story": {
+   "known": true,
+   "filed": "2026-10-16",
+   "revYoY": -0.0046511627906976605,
+   "prevYoY": 0.00305381313965003,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-10-21T05:52:54.467Z"
  }
 ]
