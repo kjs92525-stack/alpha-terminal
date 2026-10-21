@@ -12,29 +12,41 @@ import { loadBarsDir } from '../packages/pipeline/backtest.mjs';
 
 const FWD = [5, 21, 63];
 
-export function priceGateState(m) {
+export function priceGateState(m, R = MARKET_RULES) {
   const { SPY: spy, QQQ: qqq, IWM: iwm } = m;
   if (!spy || !qqq || !iwm || spy.ma200 === null || qqq.ma200 === null || iwm.ma200 === null) return null;
-  const R = MARKET_RULES, stress = [], caution = [];
+  const stress = [], caution = [];
   if (qqq.ret1 <= R.growthShockDay || qqq.ret5 <= R.growthShockWeek || spy.ret1 <= R.shockDay || spy.ret5 <= R.shockWeek) stress.push('shock');
   if (spy.above200 === false && qqq.above200 === false) stress.push('below200');
   if (qqq.ret5 <= R.growthCautionWeek || qqq.above50 === false || spy.above50 === false || iwm.above50 === false) caution.push('trend');
-  if (!['SPY', 'QQQ', 'IWM'].every((s) => m[s].confirmation)) caution.push('confirmation');
+  // confirmSessions 1 = above both averages today; otherwise the 3-session confirmation of marketMetrics
+  const confirmed = (x) => (R.confirmSessions === 1 ? x.above50 && x.above200 : x.confirmation);
+  if (!['SPY', 'QQQ', 'IWM'].every((s) => confirmed(m[s]))) caution.push('confirmation');
   return stress.length ? 'WAIT' : caution.length ? 'LIMIT' : 'SELECTIVE';
 }
 
 const maxDrawdown = (rets) => { let eq = 1, peak = 1, dd = 0; for (const r of rets) { eq *= 1 + r; peak = Math.max(peak, eq); dd = Math.min(dd, eq / peak - 1); } return dd; };
 const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 
-export function runGateBacktest(bars, { warmup = 200, now = Date.now() } = {}) {
+/** Per-day SPY/QQQ/IWM metrics, computed once so several rule sets can be scored on the same days. */
+export function gateDays(bars, { warmup = 200, now = Date.now() } = {}) {
   const { SPY, QQQ, IWM } = bars;
-  const days = IWM.map((b) => b.time);
-  const rows = [];
+  const out = [];
   for (let i = warmup; i < IWM.length - 1; i++) {
-    const asOf = new Date(days[i] * 1000).toISOString().slice(0, 10);
+    const asOf = new Date(IWM[i].time * 1000).toISOString().slice(0, 10);
     const m = { SPY: marketMetrics(SPY, asOf, now), QQQ: marketMetrics(QQQ, asOf, now), IWM: marketMetrics(IWM, asOf, now) };
     if (['SPY', 'QQQ', 'IWM'].some((s) => m[s]?.asOf !== asOf)) continue;
-    const state = priceGateState(m);
+    out.push({ i, asOf, m });
+  }
+  return out;
+}
+
+export function runGateBacktest(bars, { warmup = 200, now = Date.now(), rules = MARKET_RULES, from = null, to = null, days = null } = {}) {
+  const { IWM } = bars;
+  const rows = [];
+  for (const { i, asOf, m } of days ?? gateDays(bars, { warmup, now })) {
+    if ((from && asOf < from) || (to && asOf > to)) continue;
+    const state = priceGateState(m, rules);
     if (!state) continue;
     // the state is known at the close of day i; the next-day return is the first one it can influence
     rows.push({ i, asOf, state, next: IWM[i + 1].close / IWM[i].close - 1, fwd: Object.fromEntries(FWD.map((k) => [k, i + k < IWM.length ? IWM[i + k].close / IWM[i].close - 1 : null])) });
