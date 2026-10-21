@@ -33,3 +33,10 @@ test('research: rule grid is fixed in advance and one-day confirmation differs f
   assert.equal(half.to <= days[200].asOf, true);
   assert.ok(Number.isFinite(score(one)));
 });
+
+test('IWM-only variant: a small-cap crash is WAIT even when large caps hold up', async () => {
+  const { iwmGateState } = await import('../scripts/market-gate-backtest.mjs');
+  const up = (i) => 100 * 1.001 ** i, crash = (i) => (i < 400 ? up(i) : up(400) * 0.97 ** (i - 400));
+  const r = runGateBacktest({ SPY: mk(450, up), QQQ: mk(450, up), IWM: mk(450, crash) }, { now, stateOf: iwmGateState });
+  assert.ok(r.byState.WAIT.days > 0);
+});

@@ -25,6 +25,16 @@ export function priceGateState(m, R = MARKET_RULES) {
   return stress.length ? 'WAIT' : caution.length ? 'LIMIT' : 'SELECTIVE';
 }
 
+/** Small-cap-only variant, declared before any run: IWM shock (-2.5% day / -5% week) or IWM under its 200-day
+ *  average is stress; IWM under its 50-day average or without the 3-session confirmation is caution. */
+export function iwmGateState(m) {
+  const iwm = m.IWM;
+  if (!iwm || iwm.ma200 === null) return null;
+  if (iwm.ret1 <= -0.025 || iwm.ret5 <= -0.05 || iwm.above200 === false) return 'WAIT';
+  if (iwm.above50 === false || !iwm.confirmation) return 'LIMIT';
+  return 'SELECTIVE';
+}
+
 const maxDrawdown = (rets) => { let eq = 1, peak = 1, dd = 0; for (const r of rets) { eq *= 1 + r; peak = Math.max(peak, eq); dd = Math.min(dd, eq / peak - 1); } return dd; };
 const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 
@@ -64,12 +74,12 @@ export function gateDays(bars, { warmup = 200, now = Date.now() } = {}) {
   return out;
 }
 
-export function runGateBacktest(bars, { warmup = 200, now = Date.now(), rules = MARKET_RULES, from = null, to = null, days = null } = {}) {
+export function runGateBacktest(bars, { warmup = 200, now = Date.now(), rules = MARKET_RULES, from = null, to = null, days = null, stateOf = null } = {}) {
   const { IWM } = bars;
   const rows = [];
   for (const { i, asOf, m } of days ?? gateDays(bars, { warmup, now })) {
     if ((from && asOf < from) || (to && asOf > to)) continue;
-    const state = priceGateState(m, rules);
+    const state = stateOf ? stateOf(m) : priceGateState(m, rules);
     if (!state) continue;
     // the state is known at the close of day i; the next-day return is the first one it can influence
     rows.push({ i, asOf, state, next: IWM[i + 1].close / IWM[i].close - 1, fwd: Object.fromEntries(FWD.map((k) => [k, i + k < IWM.length ? IWM[i + k].close / IWM[i].close - 1 : null])) });

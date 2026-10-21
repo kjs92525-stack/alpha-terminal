@@ -9,7 +9,7 @@ import path from 'node:path';
 import { MARKET_RULES } from '../packages/analysis/market-brief.mjs';
 import { fetchDailyBars } from '../packages/pipeline/alpaca.mjs';
 import { loadBarsDir } from '../packages/pipeline/backtest.mjs';
-import { gateDays, runGateBacktest } from './market-gate-backtest.mjs';
+import { gateDays, runGateBacktest, iwmGateState } from './market-gate-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 
@@ -56,6 +56,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     model: 'market-gate-research-v1', split, objective: 'gated CAGR / |gated max drawdown|, picked on the tuning period only', grid: GRID.length,
     current: { rules: rulesKey(MARKET_RULES), full: brief(base.full), train: brief(base.train), test: brief(base.test) },
     picked: { rules: rulesKey(best.R), train: brief(best.train), test: brief(run(best.R, split, null)) },
+    iwmOnly: { rule: 'IWM -2.5%/day, -5%/week or under 200d = WAIT; under 50d or unconfirmed = LIMIT (declared before running)', ...Object.fromEntries([['full', null, null], ['train', null, trainTo], ['test', split, null]].map(([k, from, to]) => [k, brief(runGateBacktest(bars, { from, to, days, stateOf: iwmGateState }))])) },
     top5OnTrain: ranked.slice(0, 5).map((x) => ({ rules: rulesKey(x.R), trainScore: Number(score(x.train).toFixed(3)), testScore: Number(score(run(x.R, split, null)).toFixed(3)) })),
     caveat: '가격 규칙만(참여도·VIX·신용 제외). 다음 날 IWM 수익률 기준, 비용·세금 미반영. 21일 이후 수익률은 구간 경계에서 다음 구간 가격을 일부 포함.',
   };
