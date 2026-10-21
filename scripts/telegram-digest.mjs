@@ -33,6 +33,7 @@ if (cmd === 'context') {
   if (mb) {
     if (mb.decision?.state === 'UNKNOWN') out.push('\n(주의: 아래 판정은 시장이 나쁘다는 뜻이 아니라 사이트 시황 자료가 부족해 판단을 보류한 상태입니다.)');
     out.push(`\n# 사이트 시장 판정 (${mb.asOf}): ${mb.decision?.label ?? '—'}`, ...(mb.decision?.reasons ?? []).map((r) => `- ${r}`));
+    out.push('(참고: 이 판정은 신규 진입 위험 점검이며, 가격 규칙만 2016~2026 실제 시세로 검증했을 때 손실 구간 회피 효과가 확인되지 않았습니다. 판정만으로 매수·매도 방향을 정하지 마세요.)');
     if (mb.story?.paragraphs) out.push(...mb.story.paragraphs.slice(0, 5).map((r) => `- ${r}`));
     const m = mb.macro;
     if (m?.period) out.push(`- CPI ${m.period}: 전년 ${m.headlineAnnual}% · 전월 ${m.headlineMonthly}% · 근원 전년 ${m.coreAnnual}%`);

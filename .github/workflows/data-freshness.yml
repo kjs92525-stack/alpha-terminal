@@ -1,0 +1,36 @@
+# Weekday check after the nightly pipeline (21:30 UTC) and the market brief (22:15 UTC): fails — and so
+# sends GitHub's failed-workflow notice — when market breadth lags the brief's price date or the verdict
+# is UNKNOWN, so a stuck data push is noticed the same day instead of days later.
+name: Data freshness
+on:
+  schedule:
+    - cron: '50 23 * * 1-5'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          sparse-checkout: |
+            market-breadth.json
+            market-brief/latest.json
+          sparse-checkout-cone-mode: false
+      - name: Compare dates
+        run: |
+          node -e '
+            const fs = require("fs");
+            const read = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
+            const breadth = read("market-breadth.json"), brief = read("market-brief/latest.json");
+            const problems = [];
+            if (!brief) problems.push("market-brief/latest.json 없음");
+            if (!breadth) problems.push("market-breadth.json 없음");
+            if (brief && breadth && breadth.asOf !== brief.asOf) problems.push(`참여도 ${breadth.asOf} ≠ 시황 가격 기준일 ${brief.asOf} (야간 파이프라인 data 푸시 확인)`);
+            if (brief?.decision?.state === "UNKNOWN") problems.push(`판정 UNKNOWN: ${(brief.decision.reasons ?? []).join(" / ")}`);
+            console.log(`breadth ${breadth?.asOf ?? "-"} · brief ${brief?.asOf ?? "-"} (${brief?.decision?.state ?? "-"})`);
+            if (problems.length) { for (const p of problems) console.log(`::error::${p}`); process.exit(1); }
+          '
