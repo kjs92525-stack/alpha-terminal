@@ -484,5 +484,23 @@
    "improving": true
   },
   "recordedAt": "2026-10-21T05:52:54.467Z"
+ },
+ {
+  "id": "2026-10-21:MLI",
+  "symbol": "MLI",
+  "filed": "2026-10-21",
+  "recordedAsOf": "2026-10-22",
+  "close": 54.53,
+  "posIn52w": 0.1914158855451407,
+  "story": {
+   "known": true,
+   "filed": "2026-10-21",
+   "revYoY": 0.31616850246422423,
+   "prevYoY": 0.25457465604965157,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-10-22T22:18:19.296Z"
  }
 ]

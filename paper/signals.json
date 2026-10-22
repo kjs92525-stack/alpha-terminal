@@ -43,5 +43,20 @@
   "target": 32.3,
   "entryType": "buy-stop",
   "recordedAt": "2026-10-21T22:16:18.599Z"
+ },
+ {
+  "id": "2026-10-22:HOG:early",
+  "symbol": "HOG",
+  "name": "Harley-Davidson Inc",
+  "sector": "Consumer Discretionary",
+  "mode": "early",
+  "type": "breakout",
+  "stage": "NEAR_PIVOT",
+  "signalDate": "2026-10-22",
+  "entry": 30.24,
+  "stop": 26.48,
+  "target": 43.64,
+  "entryType": "buy-stop",
+  "recordedAt": "2026-10-22T22:18:19.251Z"
  }
 ]
