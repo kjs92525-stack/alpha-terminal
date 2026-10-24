@@ -1,22 +1,6 @@
 {
  "posts": [
   {
-   "id": 6822,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6822",
-   "date": "2026-10-17T13:08:30+00:00",
-   "text": "케빈 워시(미 연방준비제도 의장): 연준 의장(The Chair)은 기준금리를 결정하는 통화정책에만 머물지 않고, 중앙은행의 모든 기능과 부서(All functions of the central bank)를 총괄 통할하고 책임지는 수장이 되어야 한다.",
-   "collectedAt": "2026-10-19T05:33:54.457Z"
-  },
-  {
-   "id": 6823,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6823",
-   "date": "2026-10-17T13:12:43+00:00",
-   "text": "케빈 워시(미 연방준비제도 의장): 연준의 그 어떤 부서나 기능이든 실수를 저지르거나 비틀거린다면(금융감독이나 지급결제망 등에서 문제가 발생하면), 그것은 곧바로 연준 전체의 제도적 신뢰성에 치명적인 타격을 입히게 된다.",
-   "collectedAt": "2026-10-19T05:33:54.457Z"
-  },
-  {
    "id": 6824,
    "channel": "sceret_taver",
    "url": "https://t.me/sceret_taver/6824",
@@ -817,7 +801,7 @@
    "collectedAt": "2026-10-24T13:03:45.139Z"
   }
  ],
- "updatedAt": "2026-10-24T13:03:45.140Z",
+ "updatedAt": "2026-10-24T13:52:28.829Z",
  "channels": [
   "sceret_taver"
  ]
