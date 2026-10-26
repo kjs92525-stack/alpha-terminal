@@ -1,22 +1,6 @@
 {
  "posts": [
   {
-   "id": 6837,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6837",
-   "date": "2026-10-19T02:02:05+00:00",
-   "text": "🇰🇷🇯🇵🇺🇸📈 코/닛/나 일단 상승하는 중...!",
-   "collectedAt": "2026-10-19T05:33:54.457Z"
-  },
-  {
-   "id": 6840,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6840",
-   "date": "2026-10-19T02:03:06+00:00",
-   "text": "🇨🇳📉 홍콩 휴장인 상황에서 상하이는 하락하는 중",
-   "collectedAt": "2026-10-19T05:33:54.457Z"
-  },
-  {
    "id": 6841,
    "channel": "sceret_taver",
    "url": "https://t.me/sceret_taver/6841",
@@ -777,7 +761,7 @@
    "collectedAt": "2026-10-26T01:19:52.361Z"
   }
  ],
- "updatedAt": "2026-10-26T01:19:52.362Z",
+ "updatedAt": "2026-10-26T02:04:14.648Z",
  "channels": [
   "sceret_taver"
  ]
