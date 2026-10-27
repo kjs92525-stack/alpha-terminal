@@ -1,14 +1,6 @@
 {
  "posts": [
   {
-   "id": 6890,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6890",
-   "date": "2026-10-20T17:11:50+00:00",
-   "text": "🇮🇷 2시간 정도 전에 나왔던 뉴스에 대한 상세보도입니다.",
-   "collectedAt": "2026-10-20T17:54:41.401Z"
-  },
-  {
    "id": 6891,
    "channel": "sceret_taver",
    "url": "https://t.me/sceret_taver/6891",
@@ -649,7 +641,7 @@
    "collectedAt": "2026-10-27T14:37:21.049Z"
   }
  ],
- "updatedAt": "2026-10-27T16:36:01.865Z",
+ "updatedAt": "2026-10-27T17:38:17.882Z",
  "channels": [
   "sceret_taver"
  ]
