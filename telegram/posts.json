@@ -1,14 +1,6 @@
 {
  "posts": [
   {
-   "id": 6864,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6864",
-   "date": "2026-10-20T09:01:16+00:00",
-   "text": "🖥✏️ 삼성은 스마트폰도 있고, 가전도 있고, 이어폰도 있는데, LLM이 없구나........\n\nhttps://www.edaily.co.kr/News/Read?newsId=03522726645614888&mediaCodeNo=257&utm_source=naver&utm_medium=referral&utm_campaign=news_syndication&utm_content=original_article",
-   "collectedAt": "2026-10-20T09:01:26.998Z"
-  },
-  {
    "id": 6865,
    "channel": "sceret_taver",
    "url": "https://t.me/sceret_taver/6865",
@@ -785,7 +777,7 @@
    "collectedAt": "2026-10-26T21:57:16.239Z"
   }
  ],
- "updatedAt": "2026-10-27T08:29:13.975Z",
+ "updatedAt": "2026-10-27T09:11:50.648Z",
  "channels": [
   "sceret_taver"
  ]
