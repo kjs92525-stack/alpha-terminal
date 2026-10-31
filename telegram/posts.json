@@ -1,14 +1,6 @@
 {
  "posts": [
   {
-   "id": 6962,
-   "channel": "sceret_taver",
-   "url": "https://t.me/sceret_taver/6962",
-   "date": "2026-10-24T01:48:04+00:00",
-   "text": "• 틱톡 US: AI 데이터센터 인프라 확장을 위해 2030년대 초까지 최대 4GW(기가와트) 규모 초대형 연산 전력 확보 추진",
-   "collectedAt": "2026-10-24T01:58:56.523Z"
-  },
-  {
    "id": 6963,
    "channel": "sceret_taver",
    "url": "https://t.me/sceret_taver/6963",
@@ -977,7 +969,7 @@
    "collectedAt": "2026-10-30T19:14:34.501Z"
   }
  ],
- "updatedAt": "2026-10-31T01:44:45.585Z",
+ "updatedAt": "2026-10-31T02:34:29.661Z",
  "channels": [
   "sceret_taver"
  ]
