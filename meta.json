@@ -1,16 +1,16 @@
 {
- "startedAt": "2026-10-29T22:11:31.052Z",
+ "startedAt": "2026-11-02T22:15:13.064Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
- "universe": 5283,
- "alpacaRequests": 226,
- "fullFetches": 6,
- "monthlyFetched": 2,
- "asOf": "2026-10-29",
+ "universe": 5255,
+ "alpacaRequests": 233,
+ "fullFetches": 86,
+ "monthlyFetched": 5,
+ "asOf": "2026-11-02",
  "marketBrief": {
   "state": "LIMIT",
-  "sample": 3493,
+  "sample": 3476,
   "missing": []
  },
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
@@ -20,33 +20,33 @@
   "requests": 2
  },
  "finnhub": {
-  "needed": 5283,
-  "cached": 5251,
+  "needed": 5255,
+  "cached": 5240,
   "reportedCalendar": "ok",
-  "dueAfterEarnings": 700,
+  "dueAfterEarnings": 1120,
   "attempted": 500,
   "fetched": 500,
-  "withRevenue": 342,
+  "withRevenue": 381,
   "errors": [],
   "calls": 1501
  },
  "secPublished": {
-  "companyFilesWritten": 5106,
-  "recentFilings": 8
+  "companyFilesWritten": 5094,
+  "recentFilings": 1
  },
- "withFeatures": 5277,
+ "withFeatures": 5250,
  "ranked": {
-  "mid": 2621,
-  "short": 3484
+  "mid": 2610,
+  "short": 3461
  },
  "surges": {
-  "detected": 157,
+  "detected": 154,
   "shown": 60,
   "newsRequests": 56
  },
  "earnings": {
   "status": "ok",
-  "count": 1495
+  "count": 1494
  },
  "edge": {
   "status": "ok",
@@ -54,86 +54,88 @@
   "errors": 0
  },
  "setups": {
-  "scanned": 5277,
-  "candidates": 1410,
+  "scanned": 5250,
+  "candidates": 1311,
   "newsRequests": 200,
   "byStage": {
-   "NEAR_PIVOT": 47,
-   "POST_BREAKOUT": 11,
-   "BREAKOUT": 3
+   "BREAKOUT": 3,
+   "POST_BREAKOUT": 13,
+   "NEAR_PIVOT": 37
   },
   "byType": {
    "breakout": {
-    "NEAR_PIVOT": 47,
-    "POST_BREAKOUT": 11,
-    "BREAKOUT": 3
+    "BREAKOUT": 3,
+    "POST_BREAKOUT": 13,
+    "NEAR_PIVOT": 37
    },
    "base": {
-    "IN_BASE": 481
+    "IN_BASE": 466
    },
    "pullback": {
-    "BOUNCE": 290,
-    "AT_SUPPORT": 281,
-    "APPROACHING": 1
+    "BOUNCE": 167,
+    "AT_SUPPORT": 278,
+    "APPROACHING": 15
    },
    "weekly_bottom": {
-    "TURNING": 34,
-    "AT_BOTTOM": 156
+    "TURNING": 45,
+    "AT_BOTTOM": 166
    },
    "monthly_bottom": {
-    "TURNING": 1,
-    "AT_BOTTOM": 105
+    "TURNING": 2,
+    "AT_BOTTOM": 119
    }
   }
  },
  "nextCycle": {
-  "candidates": [],
-  "watch": 5,
-  "ledger": 0
+  "candidates": [
+   "XLI"
+  ],
+  "watch": 1,
+  "ledger": 1
  },
  "sectors": {
   "groups": 37,
   "byPhase": {
-   "LEADING": 8,
+   "LEADING": 7,
    "NEUTRAL": 18,
-   "DOWN": 11
+   "DOWN": 12
   },
-  "grouped": 652
+  "grouped": 598
  },
  "filingEvents": {
-  "recorded": 185,
-  "newToday": 33
+  "recorded": 414,
+  "newToday": 229
  },
  "paper": {
   "signals": 4,
   "filled": 3,
   "closed": 0,
   "open": 3,
-  "pending": 1,
-  "expiredOrInvalidated": 0,
+  "pending": 0,
+  "expiredOrInvalidated": 1,
   "winRate": null,
   "avgR": null,
   "totalR": 0,
   "avgReturn": null,
   "avgVsSpy": null,
-  "openR": 0.3302343093279315,
+  "openR": 0.020459959603645106,
   "enough": false
  },
  "ledgerWritten": true,
  "earlyAlpha": {
-  "scanned": 5277,
-  "eligible": 1514,
+  "scanned": 5250,
+  "eligible": 1535,
   "candidates": 0,
-  "researchCandidates": 96,
+  "researchCandidates": 103,
   "filingRequests": 30,
   "filingFailures": 0,
   "filingMetadata": 30,
-  "unverifiedRisk": 1514,
+  "unverifiedRisk": 1535,
   "newsRequests": 80,
   "newsFailures": 0,
   "newsFailureCodes": {},
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 2171
+ "seconds": 2269
 }

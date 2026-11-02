@@ -1,1 +1,11 @@
-[]
+[
+ {
+  "id": "2026-11-02:XLI",
+  "week": "2026-11-02",
+  "recordedAsOf": "2026-11-02",
+  "etf": "XLI",
+  "sector": "Industrials",
+  "pts": 4,
+  "close": 169.71
+ }
+]
