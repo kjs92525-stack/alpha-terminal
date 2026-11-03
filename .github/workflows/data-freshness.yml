@@ -1,6 +1,6 @@
 # Weekday check after the nightly pipeline (21:30 UTC) and the market brief (22:15 UTC): fails — and so
 # sends GitHub's failed-workflow notice — when market breadth lags the brief's price date or the verdict
-# is UNKNOWN, so a stuck data push is noticed the same day instead of days later.
+# is UNKNOWN, or the Nasdaq chart / VIX lag the price date, so stuck data is noticed the same day.
 name: Data freshness
 on:
   schedule:
@@ -31,6 +31,8 @@ jobs:
             if (!breadth) problems.push("market-breadth.json 없음");
             if (brief && breadth && breadth.asOf !== brief.asOf) problems.push(`참여도 ${breadth.asOf} ≠ 시황 가격 기준일 ${brief.asOf} (야간 파이프라인 data 푸시 확인)`);
             if (brief?.decision?.state === "UNKNOWN") problems.push(`판정 UNKNOWN: ${(brief.decision.reasons ?? []).join(" / ")}`);
+            if (brief && brief.nasdaq?.asOf !== brief.asOf) problems.push(`나스닥 차트 ${brief.nasdaq?.asOf ?? "없음"} ≠ 가격 기준일 ${brief.asOf}`);
+            if (brief && !brief.vix) problems.push(`당일 VIX 없음 (마지막 확보 ${brief.vixObserved?.asOf ?? "-"})`);
             console.log(`breadth ${breadth?.asOf ?? "-"} · brief ${brief?.asOf ?? "-"} (${brief?.decision?.state ?? "-"})`);
             if (problems.length) { for (const p of problems) console.log(`::error::${p}`); process.exit(1); }
           '
