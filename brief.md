@@ -1,6 +1,6 @@
 # ALPHA TERMINAL 데일리 브리프 — 기준일 2026-11-02
 
-생성 2026-11-02T22:52:22.704Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
+생성 2026-11-03T01:07:46.780Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
 
 읽는 법: 손절폭 = 매수가에서 손절가까지 하락률, R = (1차 목표-매수가)/(매수가-손절가). "스토리"는 재무·뉴스 규칙 기반 자동 요약(AI 해석 아님)이라 직접 검증이 필요합니다. 백테스트상 차트 신호만으로는 시장(SPY) 대비 우위가 확인되지 않았습니다.
 
@@ -72,11 +72,11 @@
 | ATMU Atmus Filtration Technologie | $47.7 | 전환 시작 | 주봉 전환 시작 — 현재가 부근 매수 가능, 바닥 $40.75~$44.01로 밀리면 추가 · 손절 $39.53 | 17% | 0.7 | 66/30 | 이미 흑자에 성장도 빨라지는 실적 모멘텀형입니다. |
 | MRVL Marvell Technology Inc | $171.4 | 바닥권 | 주봉 바닥 $162.86~$175.89 구간 분할매수(1/3씩) · 확인 후 매수는 $301.20 돌파 시 · 손절 $157.97 | 8% | 3.7 | 49/52 | 이미 흑자에 성장도 빨라지는 실적 모멘텀형입니다. |
 | ULS UL Solutions Inc | $75.1 | 전환 시작 | 주봉 반등 고점 $76.75 돌파 시 매수 (전환 확인) · 손절 $61.27 | 20% | 0.5 | 76/17 | 실적에 뚜렷한 변화는 아직 보이지 않습니다. |
+| TCMD Tactile Systems Technology I | $22.9 | 전환 시작 | 주봉 반등 고점 $24.58 돌파 시 매수 (전환 확인) · 손절 $19.91 | 19% | 1.0 | 78/12 | 성장이 느려지는 중이라, 차트가 좋아도 실적 뒷받침은 약합니다. |
 | FISV Fiserv Inc | $51.9 | 전환 시작 | 주봉 전환 시작 — 현재가 부근 매수 가능, 바닥 $43.87~$47.38로 밀리면 추가 · 손절 $42.55 | 18% | 9.5 | 86/0 | 이익은 1년 전보다 크게 줄었습니다 — 실적 뒷받침이 약합니다. |
 | POST Post Holdings Inc | $85.7 | 전환 시작 | 주봉 전환 시작 — 현재가 부근 매수 가능, 바닥 $71.45~$77.17로 밀리면 추가 · 손절 $69.31 | 19% | 0.8 | 83/0 | 이익은 1년 전보다 크게 줄었습니다 — 실적 뒷받침이 약합니다. |
 | TREE Lendingtree Inc | $27.1 | 전환 시작 | 주봉 반등 고점 $28.28 돌파 시 매수 (전환 확인) · 손절 $22.79 | 19% | 1.1 | 75/10 | 실적에 뚜렷한 변화는 아직 보이지 않습니다. |
 | ACM AECOM | $65.7 | 전환 시작 | 주봉 전환 시작 — 현재가 부근 매수 가능, 바닥 $56.10~$60.59로 밀리면 추가 · 손절 $54.42 | 17% | 2.6 | 81/0 | 실적에 뚜렷한 변화는 아직 보이지 않습니다. |
-| MU Micron Technology Inc | $833.6 | 바닥권 | 주봉 바닥 $737.76~$796.78 구간 분할매수(1/3씩) · 확인 후 매수는 $1109 돌파 시 · 손절 $715.63 | 10% | 1.2 | 47/42 | 이미 흑자에 성장도 빨라지는 실적 모멘텀형입니다. |
 
 ## 월봉 바닥 — 상위 12개 (전체 121개 중)
 
@@ -95,7 +95,7 @@
 | CLPT Clearpoint Neuro Inc | $9.95 | 바닥권 | 월봉 바닥 $8.27~$8.93 구간 분할매수(1/3씩) · 확인 후 매수는 $19.63 돌파 시 · 손절 $7.86 | 12% | 4.3 | 51/20 | 적자가 커지는 중이라, 스토리보다 위험이 큽니다. |
 | CLW Clearwater Paper Corp | $13.7 | 바닥권 | 월봉 바닥 $11.73~$12.67 구간 분할매수(1/3씩) · 확인 후 매수는 $23.59 돌파 시 · 손절 $11.14 | 12% | 4.2 | 52/18 | 아직 적자지만 개선 중입니다 — 다음 분기에 적자가 더 줄어드는지가 관건입니다. |
 
-## 거래량 급증 — 상위 12개 (감지 154개)
+## 거래량 급증 — 상위 12개 (감지 156개)
 
 | 종목 | 날짜 | 거래량 | 당일 | 위치 | 이유(분류) | 근거 기사 |
 |---|---|---|---|---|---|---|
@@ -104,11 +104,11 @@
 | PERI Perion Network Ltd | 2026-11-02 | 19.6배 | +31.1% | 1년 신고가 부근 | 인수·합병 | Perion Lands $420 Million Buyout Deal As Affle Eyes Global Advertising Expansion |
 | NUWE Nuwellis Inc | 2026-10-29 | 19.8배 | +2.1% | 3개월 -25% 넘게 빠진 하락 추세 중 | 실적·전망 | Nuwellis Announces Publication of ULTRA-Peds Registry Study Results in Pediatric Nephrolog |
 | OFRM Once Upon A Farm PBC | 2026-11-02 | 21.4배 | -37.1% | 1년 저점 부근 | 확인된 이유 없음 | Crude Oil Tumbles 7%; ISM Manufacturing PMI Rises In October |
-| VCIG VCI Global Ltd | 2026-11-02 | 20.6배 | +168.4% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | Trading Halt: Halt status updated at 8:55:00 AM ET: Quotation Resumption: News and Resumpt |
+| VCIG VCI Global Ltd | 2026-11-02 | 21.4배 | +168.4% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | Trading Halt: Halt status updated at 8:55:00 AM ET: Quotation Resumption: News and Resumpt |
 | DRUG Bright Minds Biosciences | 2026-11-02 | 15.6배 | -52.3% | 1년 저점 부근 | FDA·임상·승인 | FDA Setback Clouds Timeline For Bright Minds Biosciences' Pediatric Epilepsy Trials |
 | NRXP NRX Pharmaceuticals Inc | 2026-10-30 | 21.8배 | -14.7% | 1년 범위 중간 | FDA·임상·승인 | NRx Pharmaceuticals Receives FDA Approval for Preservative-Free Ketamine |
 | AVPT AvePoint Inc | 2026-10-30 | 12.9배 | -1.5% | 1년 범위 중간 | 확인된 이유 없음 | AvePoint to Join S&P SmallCap 600 |
-| CLRO Clearone Inc | 2026-11-02 | 10.4배 | +65.7% | 1년 범위 중간 | 확인된 이유 없음 | 12 Information Technology Stocks Moving In Monday's Intraday Session |
+| CLRO Clearone Inc | 2026-11-02 | 10.5배 | +65.7% | 1년 범위 중간 | 확인된 이유 없음 | 12 Information Technology Stocks Moving In Monday's Intraday Session |
 | HURN Huron Consulting Group I | 2026-11-02 | 9.1배 | +0.3% | 1년 범위 중간 | 확인된 이유 없음 | 기사 없음 |
 | BFAM Bright Horizons Family S | 2026-10-30 | 8.9배 | -17.9% | 1년 저점 부근 | 실적·전망 | Bright Horizons Family Q3 2026 Earnings Call Transcript |
 
