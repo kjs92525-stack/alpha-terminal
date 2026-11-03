@@ -3,10 +3,30 @@ import { reviewedMarketEvents, reviewedCpi } from '../analysis/market-events.mjs
 import { parseNasdaqCsv, buildNasdaqContext, parseBlsCpi, parseFredCpi, FRED_CPI, macroReading } from '../analysis/market-context.mjs';
 import path from 'node:path';
 import { MARKET_ETFS,buildMarketBrief } from '../analysis/market-brief.mjs';
-import { isDailyBarClosed } from '../analysis/market.mjs';
+import { isDailyBarClosed, parseYahooChart, parseStooqCsv } from '../analysis/market.mjs';
 import { fetchDailyBars } from './alpaca.mjs';
 export const VIX_CSV='https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv';
 export const FRED_VIX='https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS';
+// Same-day index closes when FRED/Cboe publish late: Yahoo chart API, then Stooq. Values are the
+// official index closes (not an ETF proxy) and are accepted only if they agree with an overlapping
+// close from the primary source within 0.5%.
+export const INDEX_FALLBACKS={NASDAQCOM:{yahoo:'%5EIXIC',stooq:'%5Endq',label:'Nasdaq Composite'},VIX:{yahoo:'%5EVIX',stooq:'%5Evix',label:'VIX'}};
+export async function fetchIndexFallback(key,{asOf,fetchImpl=fetch}){
+ const f=INDEX_FALLBACKS[key],day=t=>new Date(t*1000).toISOString().slice(0,10);
+ const tries=[[`https://query1.finance.yahoo.com/v8/finance/chart/${f.yahoo}?range=2y&interval=1d`,'Yahoo Finance',async r=>parseYahooChart(await r.json(),{daily:true}).bars],
+  [`https://stooq.com/q/d/l/?s=${f.stooq}&i=d`,'Stooq',async r=>parseStooqCsv(await r.text())]];
+ for(const [url,source,parse] of tries){try{const r=await fetchImpl(url,{headers:{'user-agent':'Mozilla/5.0 (alpha-terminal daily brief)'},signal:AbortSignal.timeout(15000)});if(!r.ok)continue;const bars=(await parse(r)).filter(b=>day(b.time)<=asOf).map(b=>({time:Date.parse(day(b.time))/1000,close:b.close}));if(bars.length)return {bars,source,url}}catch{}}
+ return null;
+}
+/** Primary bars extended with fallback closes for later dates, if both agree where they overlap. */
+export function extendWithFallback(primary,fallback,tolerance=0.005){
+ if(!fallback?.bars?.length)return {bars:primary,added:0};
+ const byDay=new Map(primary.map(b=>[b.time,b.close])),last=primary.at(-1)?.time??-Infinity;
+ const overlap=fallback.bars.filter(b=>byDay.has(b.time)).slice(-5);
+ if(primary.length&&(!overlap.length||overlap.some(b=>Math.abs(b.close/byDay.get(b.time)-1)>tolerance)))return {bars:primary,added:0};
+ const extra=fallback.bars.filter(b=>b.time>last);
+ return {bars:primary.length?[...primary,...extra]:fallback.bars,added:primary.length?extra.length:fallback.bars.length};
+}
 const read=(f,fallback=null)=>{try{return JSON.parse(fs.readFileSync(f,'utf8'))}catch{return fallback}};
 const write=(f,x)=>{fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,JSON.stringify(x))};
 export function parseVix(text,asOf){
@@ -36,8 +56,12 @@ export async function publishMarketBrief({barsBy,breadth,asOf,outDir,env={},fetc
  try{const r=await fetchImpl(VIX_CSV,{signal:AbortSignal.timeout(15000)});if(r.ok)vix=parseVix(await r.text(),asOf);}catch{}
  if(!vix||vix.asOf!==asOf){try{const start=new Date(Date.parse(asOf)-10*86400000).toISOString().slice(0,10);const r=await fetchImpl(`${FRED_VIX}&cosd=${start}&coed=${asOf}`,{signal:AbortSignal.timeout(15000)});if(r.ok){const f=parseFredVix(await r.text(),asOf);if(f&&(!vix||f.asOf>vix.asOf))vix=f}}catch{}}
  if(env.FINNHUB_API_KEY){try{const r=await fetchImpl('https://finnhub.io/api/v1/news?category=general',{headers:{'X-Finnhub-Token':env.FINNHUB_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('news unavailable');const data=await r.json();if(!Array.isArray(data))throw Error('news schema');news=selectMarketNews(data,now);newsStatus=news.length?'ok':'no_recent_relevant_headlines';}catch{newsStatus='error';}}
+ if(!vix||vix.asOf!==asOf){const fb=await fetchIndexFallback('VIX',{asOf,fetchImpl});const b=fb?.bars.at(-1);if(b&&new Date(b.time*1000).toISOString().slice(0,10)===asOf&&b.close>0)vix={asOf,close:b.close,source:`Cboe VIX (${fb.source} 종가)`,url:fb.url};}
  const brief=buildMarketBrief({barsBy,breadth,vix,news,newsStatus,asOf,now,source});
+ let nasdaqSource=null;
+ if((nasdaqBars.at(-1)?new Date(nasdaqBars.at(-1).time*1000).toISOString().slice(0,10):'')<asOf){const fb=await fetchIndexFallback('NASDAQCOM',{asOf,fetchImpl});const x=extendWithFallback(nasdaqBars,fb);if(x.added){nasdaqBars=x.bars;nasdaqSource=`Nasdaq, Inc. via FRED · 최근 ${x.added}일은 ${fb.source} 종가`;contextStatus.nasdaq='ok'}}
  brief.nasdaq=buildNasdaqContext({bars:nasdaqBars,qqqBars:barsBy?.QQQ,asOf,now});
+ if(brief.nasdaq&&nasdaqSource&&brief.nasdaq.instrument==='NASDAQCOM')brief.nasdaq.source=nasdaqSource;
  brief.macro=macroReading(cpi);brief.reviewedEvents=reviewedMarketEvents(now);brief.contextStatus=contextStatus;
  write(path.join(outDir,'market-brief','latest.json'),brief);
  // Daily reports may refresh, unlike immutable recommendation ledgers.
