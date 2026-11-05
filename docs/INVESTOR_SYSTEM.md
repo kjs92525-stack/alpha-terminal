@@ -145,11 +145,14 @@
 
 ## 7. 아직 남은 약점 (다음 과제)
 
-1. **SEC 자료 차단 (해결 방법):** 2026-10-12 첫 실행부터 매일 403입니다. SEC는 자동 요청에 `회사명 이메일` 형식의 User-Agent를 요구하고, 예시 주소(example.com)나 이메일 없는 값은 막습니다.
-   - 저장소 Settings → Secrets → `SEC_USER_AGENT`를 `AlphaTerminal 본인이름 실제이메일@gmail.com` 형식으로 다시 저장합니다.
-   - `Simulator real bars and analyst desk` 워크플로의 'SEC access check' 단계가 매번 응답 코드와 SEC가 보낸 거절 사유를 로그에 남깁니다.
-   - 값을 고쳐도 403이면 SEC가 GitHub Actions 주소 자체를 막는 것입니다. 이때는 Cloudflare Worker(이미 배포된 API)의 예약 실행에서 공시를 받아 data 브랜치에 넣는 방식으로 옮겨야 합니다.
-   - 지금 랭킹은 Finnhub 재무로 대신 돌고 있어 공시 기반 희석 경고가 비어 있습니다.
+1. **SEC 자료 차단 (원인 확인됨):** 2026-10-12 첫 실행부터 매일 403입니다. 2026-11-05 진단 단계(`SEC access check`)의 응답 내용은 다음과 같습니다.
+   - `Request Rate Threshold Exceeded`, `Your Request Originates from an Undeclared Automated Tool`
+   - 첫 요청부터 거절됐고, `SEC_USER_AGENT`에는 이메일이 들어 있습니다.
+   - 따라서 원인은 User-Agent가 아니라 **GitHub Actions의 공용 IP(Azure) 대역 차단**입니다. 다른 사용자들의 과도한 요청 때문에 막힌 것이라 비밀 값을 바꿔도 풀리지 않습니다.
+   - **해결 방법:** SEC 요청을 다른 네트워크에서 보냅니다.
+     - (a) 이미 배포된 Cloudflare Worker에서 `/api/v1/sec/filings/AAPL`이 열리는지 브라우저로 확인합니다. 열리면 야간 작업이 SEC 대신 그 API를 거쳐 받게 바꿉니다.
+     - (b) 집 PC를 GitHub self-hosted runner로 등록해 SEC 단계만 거기서 돌립니다.
+   - 그 전까지 랭킹은 Finnhub 재무로 대신 돌고, 공시 기반 증자·희석 경고는 비어 있습니다.
 2. **백테스트의 한계:** 3년 백테스트(`scripts/desk-backtest.mjs`)는 지금 상장된 거래대금 상위 종목만 쓰므로 생존 편향이 있다. 당시 랭킹 점수 대신 같은 점수를 쓰고, 시장 판정은 SPY 이평선으로 대신한다. 상장폐지 종목까지 포함한 시세로 다시 돌리는 것이 다음 단계다.
 3. **가격이 묶인 종목:** 인수합병이 진행 중인 종목은 하루 변동폭이 0.2% 수준이라 '수축'처럼 보인다(CBZ). 하루 변동폭 0.8% 미만은 제외하고 손절폭을 최소 2%로 두도록 고쳤다.
 4. **하락장 대응이 현금뿐:** 지수 헤지나 공매도는 없다. 대신 시장 판정과 낙폭 한도로 노출을 줄인다.
