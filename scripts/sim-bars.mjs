@@ -53,7 +53,7 @@ async function main() {
       docs.push({ asOf: l.asOf, mid: l.recommendations.mid.map((s) => by('mid').get(s)).filter(Boolean), short: l.recommendations.short.map((s) => by('short').get(s)).filter(Boolean) });
     }
   }
-  const symbols = [...new Set(['SPY', 'QQQ', ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? [])].map((x) => x.symbol))])];
+  const symbols = [...new Set(['SPY', 'QQQ', ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? []), ...(d.setups ?? []), ...(d.pullback ?? [])].map((x) => x.symbol))])];
   const first = docs[0]?.asOf ?? new Date().toISOString().slice(0, 10);
   const start = new Date(Date.parse(first) - HISTORY_DAYS * 864e5).toISOString().slice(0, 10);
   const end = new Date().toISOString().slice(0, 10);

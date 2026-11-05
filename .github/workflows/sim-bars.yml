@@ -1,11 +1,13 @@
-# Real daily bars for the portfolio simulator (apps/simulator, /simulator.html).
-# Fetches every symbol the recommendation ledgers have named, plus SPY and QQQ, from Alpaca.
-#  - main (after the nightly pipeline, or manual): publishes sim/bars.json to the `data` branch,
+# Real daily bars for the portfolio simulator (apps/simulator, /simulator.html) and the analyst desk.
+# Fetches every symbol the recommendation ledgers have named, plus SPY and QQQ, from Alpaca, then runs
+# scripts/analyst-desk.mjs: tonight's picks are written once to desk/ledger/YYYY-MM-DD.json and the paper
+# account (win rate, P&L) is replayed from all stored picks into desk/account.json.
+#  - main (after the nightly pipeline, or manual): publishes sim/bars.json and desk/ to the `data` branch,
 #    which /simulator.html reads at runtime.
 #  - any other branch (push that touches the simulator): rebuilds apps/simulator/simulator.html with
 #    the real bars embedded and commits it to that same branch, for previewing before merge.
 # Required repository secrets: ALPACA_KEY_ID, ALPACA_SECRET_KEY.
-name: Simulator real bars
+name: Simulator real bars and analyst desk
 on:
   workflow_run:
     workflows: ['Nightly pipeline']
@@ -17,6 +19,8 @@ on:
     paths:
       - 'scripts/sim-bars.mjs'
       - 'scripts/build-simulator.mjs'
+      - 'scripts/analyst-desk.mjs'
+      - 'packages/analysis/analyst-desk.mjs'
       - 'apps/simulator/template.html'
       - '.github/workflows/sim-bars.yml'
 permissions:
@@ -51,20 +55,29 @@ jobs:
           git worktree add -B data data-branch origin/data
       - name: Fetch real bars
         run: node scripts/sim-bars.mjs --data data-branch --out data-branch/sim/bars.json
+      - name: Analyst desk (main)
+        if: env.PUBLISH_DATA == 'true'
+        run: node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out data-branch
       - name: Publish to data branch (main)
         if: env.PUBLISH_DATA == 'true'
         run: |
           cd data-branch
-          git add sim/bars.json
+          # Guard: a stored desk pick must never change.
+          if git diff --name-only --diff-filter=MD HEAD -- desk/ledger/ | grep -q .; then
+            echo "::error::Existing desk/ledger files were modified — refusing to publish."; exit 1
+          fi
+          git add sim/bars.json desk/
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
-          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: simulator bars $(node -e "console.log(require('./sim/bars.json').asOf)")"
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: simulator bars + desk $(node -e "console.log(require('./sim/bars.json').asOf)")"
           for i in 1 2 3 4; do git pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; sleep $((i*5)); done
           echo "::error::push to data failed after retries"; exit 1
       - name: Commit preview build (feature branch)
         if: env.PUBLISH_DATA != 'true'
         run: |
           git fetch origin data --depth=1
-          node scripts/build-simulator.mjs --bars data-branch/sim/bars.json
+          mkdir -p desk-preview
+          node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out desk-preview
+          node scripts/build-simulator.mjs --bars data-branch/sim/bars.json --desk desk-preview/desk/account.json
           git add apps/simulator/simulator.html
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "simulator: embed real bars to $(node -e "console.log(require('./data-branch/sim/bars.json').asOf)")"
