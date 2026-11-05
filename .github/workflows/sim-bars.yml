@@ -1,0 +1,71 @@
+# Real daily bars for the portfolio simulator (apps/simulator, /simulator.html).
+# Fetches every symbol the recommendation ledgers have named, plus SPY and QQQ, from Alpaca.
+#  - main (after the nightly pipeline, or manual): publishes sim/bars.json to the `data` branch,
+#    which /simulator.html reads at runtime.
+#  - any other branch (push that touches the simulator): rebuilds apps/simulator/simulator.html with
+#    the real bars embedded and commits it to that same branch, for previewing before merge.
+# Required repository secrets: ALPACA_KEY_ID, ALPACA_SECRET_KEY.
+name: Simulator real bars
+on:
+  workflow_run:
+    workflows: ['Nightly pipeline']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  push:
+    branches-ignore: [main, data]
+    paths:
+      - 'scripts/sim-bars.mjs'
+      - 'scripts/build-simulator.mjs'
+      - 'apps/simulator/template.html'
+      - '.github/workflows/sim-bars.yml'
+permissions:
+  contents: write
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && 'data-branch-writer' || format('sim-bars-{0}', github.ref) }}
+  cancel-in-progress: false
+jobs:
+  bars:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      PUBLISH_DATA: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+    steps:
+      - name: Check secrets
+        run: |
+          if [ -z "$ALPACA_KEY_ID" ] || [ -z "$ALPACA_SECRET_KEY" ]; then
+            echo "::error::ALPACA_KEY_ID / ALPACA_SECRET_KEY 비밀 값이 없습니다 — Settings → Secrets and variables → Actions에 등록하세요."; exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check out data branch
+        run: |
+          git fetch origin data --depth=1
+          git worktree add -B data data-branch origin/data
+      - name: Fetch real bars
+        run: node scripts/sim-bars.mjs --data data-branch --out data-branch/sim/bars.json
+      - name: Publish to data branch (main)
+        if: env.PUBLISH_DATA == 'true'
+        run: |
+          cd data-branch
+          git add sim/bars.json
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: simulator bars $(node -e "console.log(require('./sim/bars.json').asOf)")"
+          for i in 1 2 3 4; do git pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; sleep $((i*5)); done
+          echo "::error::push to data failed after retries"; exit 1
+      - name: Commit preview build (feature branch)
+        if: env.PUBLISH_DATA != 'true'
+        run: |
+          git fetch origin data --depth=1
+          node scripts/build-simulator.mjs --bars data-branch/sim/bars.json
+          git add apps/simulator/simulator.html
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "simulator: embed real bars to $(node -e "console.log(require('./data-branch/sim/bars.json').asOf)")"
+          git push -q origin HEAD:${GITHUB_REF_NAME}

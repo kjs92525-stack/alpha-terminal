@@ -23,7 +23,7 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.55;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
-.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px;min-width:0;width:100%}
 h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 h1{font-size:26px;font-weight:700;letter-spacing:-.01em}
 h2{font-size:18px;font-weight:700}
@@ -77,7 +77,7 @@ tr.off td{color:var(--muted)}
 .tabs button{font-family:var(--mono);font-size:12.5px;padding:5px 10px}
 .tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .detail{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,4fr);gap:18px}
-#candle{height:380px} #rsi{height:120px}
+.candle{height:380px} .rsi{height:120px} [hidden]{display:none!important}
 .patterns{display:flex;flex-direction:column;gap:10px}
 .pcard{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
 .pcard b{font-size:13.5px}
@@ -90,102 +90,174 @@ details summary{cursor:pointer;color:var(--ink-2);font-size:13px}
 .method{font-size:13px;color:var(--ink-2);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 24px}
 .method p{margin:0}
 footer{font-size:12px;color:var(--muted)}
-@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2,.grid-weights,.detail,.method{grid-template-columns:minmax(0,1fr)}#candle{height:320px}.status{margin-left:0}}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2,.grid-weights,.detail,.method{grid-template-columns:minmax(0,1fr)}.candle{height:320px}.status{margin-left:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
+<style>
+.views{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.views button{font-size:14px;font-weight:600;padding:8px 16px;border-radius:999px}
+.views button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.views .src{font-size:12px;color:var(--muted);margin-left:auto}
+.cohorts{display:flex;flex-wrap:wrap;gap:6px}
+.cohorts button{font-family:var(--mono);font-size:12px;padding:4px 9px}
+.cohorts button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.state{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--chip);white-space:nowrap}
+.state.hold{color:var(--ok)} .state.out{color:var(--muted)} .state.stop{color:var(--up)} .state.wait{color:var(--warn)}
+</style>
 <div class="wrap">
   <header>
     <div>
       <div class="eyebrow" id="eyebrow">ALPHA TERMINAL · 추천 원장 기준</div>
       <h1>추천 포트폴리오 모의투자</h1>
-      <p class="lede">야간 랭킹이 고른 종목을 <b>추천일 다음 거래일 시가에 샀다고 가정</b>하고, 비중·이평선·손절 규칙을 적용해 앞으로의 가상 시나리오 수백 개를 돌립니다.</p>
+      <p class="lede">야간 랭킹이 고른 종목을 <b>추천일 다음 거래일 시가에 샀다고 가정</b>하고, 비중·이평선·손절 규칙을 적용합니다. 지나간 추천은 실제 시세로 복기하고, 앞으로는 가상 시나리오 수백 개로 돌립니다.</p>
     </div>
     <div class="gate" id="gate"><b>시장 판정</b><span>불러오는 중</span></div>
   </header>
 
-  <div class="notice">미래 주가는 아무도 모르므로 <b>실제 시세가 아니라 가상 경로</b>입니다. 각 종목의 실제 지표(종가, 60일 변동성, ATR, 12·6개월 모멘텀, RSI, 200일선 괴리)로 성격을 맞추고, 시장 국면(평온/스트레스)이 바뀌는 확률 모형으로 미래를 만듭니다. 과거 차트도 이 지표들에 맞춰 <b>재구성한 근사</b>입니다. 투자 자문이 아닙니다.</div>
+  <div class="views" role="group" aria-label="보기 선택">
+    <button id="v-real" data-view="real" aria-pressed="true">실제 시세로 복기</button>
+    <button id="v-future" data-view="future" aria-pressed="false">앞으로 가상 시나리오</button>
+    <span class="src" id="src"></span>
+  </div>
+
+  <div class="notice" id="notice"></div>
 
   <div class="controls">
-    <div class="ctl"><label for="paths">시나리오 수</label>
-      <select id="paths"><option value="200">200개</option><option value="400" selected>400개</option><option value="800">800개</option></select></div>
-    <div class="ctl"><label for="horizon">보유 기간</label>
-      <select id="horizon"><option value="20">20거래일 (1개월)</option><option value="60" selected>60거래일 (3개월)</option><option value="120">120거래일 (6개월)</option></select></div>
     <div class="ctl"><label for="ma">이평선 규칙</label>
       <select id="ma"><option value="auto" selected>자동 (종목별 조정)</option><option value="5/20">EMA5 / SMA20</option><option value="10/40">EMA10 / SMA40</option><option value="20/60">EMA20 / SMA60</option><option value="50/200">SMA50 / SMA200</option><option value="hold">이평선 없이 보유만</option></select></div>
     <div class="ctl"><label for="cash">현금 비중</label>
       <select id="cash"><option value="auto" selected>자동 (시장 판정)</option><option value="0.1">10%</option><option value="0.2">20%</option><option value="0.3">30%</option><option value="0.5">50%</option></select></div>
-    <div class="ctl"><label for="seed">시드</label><input id="seed" type="number" value="20261104" style="width:120px"></div>
-    <button class="primary" id="run">다시 돌리기</button>
-    <button id="reseed">새 시드로</button>
-    <span class="status" id="status">계산 중…</span>
+    <div class="ctl fut"><label for="paths">시나리오 수</label>
+      <select id="paths"><option value="200">200개</option><option value="400" selected>400개</option><option value="800">800개</option></select></div>
+    <div class="ctl fut"><label for="horizon">보유 기간</label>
+      <select id="horizon"><option value="20">20거래일 (1개월)</option><option value="60" selected>60거래일 (3개월)</option><option value="120">120거래일 (6개월)</option></select></div>
+    <div class="ctl fut"><label for="seed">시드</label><input id="seed" type="number" value="20261104" style="width:120px"></div>
+    <button class="primary fut" id="run">다시 돌리기</button>
+    <button class="fut" id="reseed">새 시드로</button>
+    <span class="status" id="status">불러오는 중…</span>
   </div>
 
-  <section class="kpis" aria-label="요약">
-    <div class="kpi"><span class="eyebrow">중간 수익률</span><span class="v" id="k-med">–</span><span class="s" id="k-med-s">&nbsp;</span></div>
-    <div class="kpi"><span class="eyebrow">손실 날 확률</span><span class="v" id="k-loss">–</span><span class="s" id="k-loss-s">&nbsp;</span></div>
-    <div class="kpi"><span class="eyebrow">중간 최대낙폭</span><span class="v" id="k-mdd">–</span><span class="s" id="k-mdd-s">&nbsp;</span></div>
-    <div class="kpi"><span class="eyebrow">나쁜 경우 (하위 5%)</span><span class="v" id="k-p5">–</span><span class="s" id="k-p5-s">&nbsp;</span></div>
-  </section>
+  <!-- ================= REAL ================= -->
+  <div id="view-real" class="wrap" style="max-width:none">
+    <section class="kpis" aria-label="실제 성적 요약">
+      <div class="kpi"><span class="eyebrow">내 규칙 평균 수익률</span><span class="v" id="r-rule">–</span><span class="s" id="r-rule-s">&nbsp;</span></div>
+      <div class="kpi"><span class="eyebrow">그냥 보유 평균</span><span class="v" id="r-hold">–</span><span class="s" id="r-hold-s">&nbsp;</span></div>
+      <div class="kpi"><span class="eyebrow">SPY 평균 (같은 기간)</span><span class="v" id="r-spy">–</span><span class="s" id="r-spy-s">&nbsp;</span></div>
+      <div class="kpi"><span class="eyebrow">SPY를 이긴 추천일</span><span class="v" id="r-beat">–</span><span class="s" id="r-beat-s">&nbsp;</span></div>
+    </section>
 
-  <section class="panel">
-    <div class="panel-head"><div><h2>포트폴리오 구성</h2>
-      <p>중장기 추천에서 6개, 단기 추천에서 4개를 골랐습니다. 같은 섹터는 2개까지, 60일 변동성 100% 초과 종목은 제외합니다. 비중은 <b>점수 ÷ 변동성</b>에 비례(흔들리는 종목일수록 적게), 한 종목 최대 12%입니다.</p></div></div>
-    <div class="grid-weights">
-      <div class="chartbox" style="height:340px"><canvas id="c-weights" aria-label="종목별 비중 막대 차트"></canvas></div>
-      <div class="tablewrap"><table id="t-port"></table></div>
-    </div>
-    <ul class="why" id="why"></ul>
-    <details><summary>추천 목록 전체 보기 · 종목 직접 넣고 빼기</summary><div class="tablewrap" style="margin-top:10px"><table id="t-all"></table></div></details>
-  </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>추천일별 실제 성적</h2><p>각 추천일 목록에서 같은 규칙으로 10종목을 골라 다음 날 시가에 샀다면, 지금까지 계좌가 얼마나 변했는지입니다. 현금 몫 포함 계좌 전체 기준입니다.</p></div></div>
+      <div class="legend"><span><i class="box" style="background:var(--accent)"></i>내 규칙</span><span><i class="box" style="background:var(--hold)"></i>그냥 보유</span><span><i class="box" style="background:var(--mkt)"></i>SPY</span></div>
+      <div class="chartbox" style="height:280px"><canvas id="c-cohorts" aria-label="추천일별 수익률 막대 차트"></canvas></div>
+    </section>
 
-  <section class="panel">
-    <div class="panel-head"><div><h2>가상 계좌 흐름</h2><p>시작 금액 1,000만 원. 진한 띠는 시나리오의 가운데 50%, 옅은 띠는 90%가 들어가는 범위입니다.</p></div>
-      <div class="seg" role="group" aria-label="대표 시나리오" id="scen">
-        <button data-q="0.1" aria-pressed="false">나쁜 경우 (하위 10%)</button><button data-q="0.5" aria-pressed="true">보통 (중간)</button><button data-q="0.9" aria-pressed="false">좋은 경우 (상위 10%)</button></div></div>
-    <div class="legend"><span><i style="background:var(--accent)"></i>내 규칙 (중간값)</span><span><i style="background:var(--hold)"></i>그냥 보유 (중간값)</span><span><i style="background:var(--mkt)"></i>시장 (중간값)</span><span><i style="background:var(--ink)"></i>선택한 대표 시나리오</span><span><i class="box" style="background:var(--band2)"></i>가운데 50%</span><span><i class="box" style="background:var(--band1)"></i>90%</span></div>
-    <div class="chartbox" style="height:340px"><canvas id="c-fan" aria-label="가상 계좌 평가액 범위 차트"></canvas></div>
-  </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>추천일 하나 자세히</h2><p id="rc-sub">날짜를 고르면 그날 추천으로 만든 계좌의 하루하루 실제 평가액을 보여 줍니다.</p></div></div>
+      <div class="cohorts" id="rc-tabs" role="group" aria-label="추천일 선택"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>내 규칙</span><span><i style="background:var(--hold)"></i>그냥 보유</span><span><i style="background:var(--mkt)"></i>SPY</span><span><i style="background:var(--slow)"></i>QQQ</span></div>
+      <div class="chartbox" style="height:300px"><canvas id="c-real-eq" aria-label="선택한 추천일 계좌 평가액"></canvas></div>
+      <div class="tablewrap"><table id="t-real"></table></div>
+      <ul class="why" id="rc-why"></ul>
+    </section>
 
-  <section class="grid2">
-    <div class="panel">
-      <div class="panel-head"><div><h2>최종 수익률 분포</h2><p>시나리오마다 기간 끝의 계좌 수익률을 셌습니다.</p></div></div>
-      <div class="legend"><span><i class="box" style="background:var(--accent)"></i>내 규칙</span><span><i class="box" style="background:var(--hold)"></i>그냥 보유</span></div>
-      <div class="chartbox" style="height:280px"><canvas id="c-hist" aria-label="최종 수익률 히스토그램"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><div><h2>종목별 기여</h2><p>각 종목 몫이 계좌 수익률에 보탠 정도 (시나리오 평균, %p · 다 더하면 주식 부분 수익). 빨강은 이익, 파랑은 손실입니다.</p></div></div>
-      <div class="chartbox" style="height:300px"><canvas id="c-contrib" aria-label="종목별 수익 기여 막대 차트"></canvas></div>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head"><div><h2>종목 차트와 패턴</h2><p id="detail-sub">점선 왼쪽은 재구성한 과거, 오른쪽은 선택한 대표 시나리오의 가상 미래입니다. 화살표는 이 규칙이 실제로 사고판 지점입니다.</p></div></div>
-    <div class="tabs" id="tabs" role="group" aria-label="종목 선택"></div>
-    <div class="detail">
-      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-        <div class="legend" id="lw-legend"></div>
-        <div id="candle" class="chartbox"></div>
-        <div class="eyebrow">RSI 14 · 70 과열 / 30 과매도</div>
-        <div id="rsi" class="chartbox"></div>
+    <section class="panel">
+      <div class="panel-head"><div><h2>종목 실제 차트와 매매</h2><p>실제 일봉입니다. '추천일' 표시 오른쪽이 매수 뒤 실제로 움직인 구간이고, 화살표는 규칙이 실제 시세에서 사고판 지점입니다.</p></div></div>
+      <div class="tabs" id="rs-tabs" role="group" aria-label="종목 선택"></div>
+      <div class="detail">
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+          <div class="legend" id="rs-legend"></div>
+          <div id="rs-candle" class="chartbox candle"></div>
+          <div class="eyebrow">RSI 14 · 70 과열 / 30 과매도</div>
+          <div id="rs-rsi" class="chartbox rsi"></div>
+        </div>
+        <div class="patterns">
+          <div><div class="eyebrow">추천일 패턴 (그날 시세 기준)</div><h3 id="rs-title" style="margin-top:4px">–</h3></div>
+          <div id="rs-cards" class="patterns"></div>
+          <div><div class="eyebrow" style="margin-bottom:4px">실제 매매 기록</div><div class="log" id="rs-log"></div></div>
+        </div>
       </div>
-      <div class="patterns">
-        <div><div class="eyebrow">지금 패턴 (실제 지표 기준)</div><h3 id="p-title" style="margin-top:4px">–</h3></div>
-        <div id="p-cards" class="patterns"></div>
-        <div><div class="eyebrow" style="margin-bottom:4px">이 시나리오의 매매 기록</div><div class="log" id="p-log"></div></div>
-        <div><div class="eyebrow" style="margin-bottom:4px">시나리오 전체에서 이 종목</div><div id="p-stats" class="ink2" style="font-size:13px"></div></div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <div class="panel-head"><div><h2>이평선 규칙 비교</h2><p>같은 가상 시나리오에 이평선 규칙만 바꿔 다시 돌렸습니다. 수익률 중간값이 높아도 손실 확률·낙폭이 크면 좋은 규칙이 아닙니다.</p></div></div>
-    <div class="grid2">
-      <div class="tablewrap"><table id="t-ma"></table></div>
-      <div><div class="legend"><span><i class="box" style="background:var(--accent)"></i>중간 수익률</span><span><i class="box" style="background:var(--hold)"></i>중간 최대낙폭</span></div>
-      <div class="chartbox" style="height:240px"><canvas id="c-ma" aria-label="이평선 규칙별 수익률과 낙폭"></canvas></div></div>
-    </div>
-  </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>이평선 규칙 비교 (실제 시세)</h2><p>모든 추천일에 이평선 규칙만 바꿔 실제 시세로 다시 계산했습니다. 추천일이 몇 주치뿐이라 표본이 작습니다.</p></div></div>
+      <div class="grid2">
+        <div class="tablewrap"><table id="t-ma-real"></table></div>
+        <div><div class="legend"><span><i class="box" style="background:var(--accent)"></i>평균 수익률</span><span><i class="box" style="background:var(--hold)"></i>평균 최대낙폭</span></div>
+        <div class="chartbox" style="height:240px"><canvas id="c-ma-real" aria-label="이평선 규칙별 실제 수익률과 낙폭"></canvas></div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= FUTURE ================= -->
+  <div id="view-future" class="wrap" style="max-width:none" hidden>
+    <section class="kpis" aria-label="요약">
+      <div class="kpi"><span class="eyebrow">중간 수익률</span><span class="v" id="k-med">–</span><span class="s" id="k-med-s">&nbsp;</span></div>
+      <div class="kpi"><span class="eyebrow">손실 날 확률</span><span class="v" id="k-loss">–</span><span class="s" id="k-loss-s">&nbsp;</span></div>
+      <div class="kpi"><span class="eyebrow">중간 최대낙폭</span><span class="v" id="k-mdd">–</span><span class="s" id="k-mdd-s">&nbsp;</span></div>
+      <div class="kpi"><span class="eyebrow">나쁜 경우 (하위 5%)</span><span class="v" id="k-p5">–</span><span class="s" id="k-p5-s">&nbsp;</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>포트폴리오 구성</h2>
+        <p>중장기 추천에서 6개, 단기 추천에서 4개를 골랐습니다. 같은 섹터는 2개까지, 60일 변동성 100% 초과 종목은 제외합니다. 비중은 <b>점수 ÷ 변동성</b>에 비례(흔들리는 종목일수록 적게), 한 종목 최대 12%입니다.</p></div></div>
+      <div class="grid-weights">
+        <div class="chartbox" style="height:340px"><canvas id="c-weights" aria-label="종목별 비중 막대 차트"></canvas></div>
+        <div class="tablewrap"><table id="t-port"></table></div>
+      </div>
+      <ul class="why" id="why"></ul>
+      <details><summary>추천 목록 전체 보기 · 종목 직접 넣고 빼기</summary><div class="tablewrap" style="margin-top:10px"><table id="t-all"></table></div></details>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>가상 계좌 흐름</h2><p>시작 금액 1,000만 원. 진한 띠는 시나리오의 가운데 50%, 옅은 띠는 90%가 들어가는 범위입니다.</p></div>
+        <div class="seg" role="group" aria-label="대표 시나리오" id="scen">
+          <button data-q="0.1" aria-pressed="false">나쁜 경우 (하위 10%)</button><button data-q="0.5" aria-pressed="true">보통 (중간)</button><button data-q="0.9" aria-pressed="false">좋은 경우 (상위 10%)</button></div></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>내 규칙 (중간값)</span><span><i style="background:var(--hold)"></i>그냥 보유 (중간값)</span><span><i style="background:var(--mkt)"></i>시장 (중간값)</span><span><i style="background:var(--ink)"></i>선택한 대표 시나리오</span><span><i class="box" style="background:var(--band2)"></i>가운데 50%</span><span><i class="box" style="background:var(--band1)"></i>90%</span></div>
+      <div class="chartbox" style="height:340px"><canvas id="c-fan" aria-label="가상 계좌 평가액 범위 차트"></canvas></div>
+    </section>
+
+    <section class="grid2">
+      <div class="panel">
+        <div class="panel-head"><div><h2>최종 수익률 분포</h2><p>시나리오마다 기간 끝의 계좌 수익률을 셌습니다.</p></div></div>
+        <div class="legend"><span><i class="box" style="background:var(--accent)"></i>내 규칙</span><span><i class="box" style="background:var(--hold)"></i>그냥 보유</span></div>
+        <div class="chartbox" style="height:280px"><canvas id="c-hist" aria-label="최종 수익률 히스토그램"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>종목별 기여</h2><p>각 종목 몫이 계좌 수익률에 보탠 정도 (시나리오 평균, %p · 다 더하면 주식 부분 수익). 빨강은 이익, 파랑은 손실입니다.</p></div></div>
+        <div class="chartbox" style="height:300px"><canvas id="c-contrib" aria-label="종목별 수익 기여 막대 차트"></canvas></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>종목 차트와 패턴</h2><p id="detail-sub"></p></div></div>
+      <div class="tabs" id="tabs" role="group" aria-label="종목 선택"></div>
+      <div class="detail">
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+          <div class="legend" id="lw-legend"></div>
+          <div id="p-candle" class="chartbox candle"></div>
+          <div class="eyebrow">RSI 14 · 70 과열 / 30 과매도</div>
+          <div id="p-rsi" class="chartbox rsi"></div>
+        </div>
+        <div class="patterns">
+          <div><div class="eyebrow">지금 패턴</div><h3 id="p-title" style="margin-top:4px">–</h3></div>
+          <div id="p-cards" class="patterns"></div>
+          <div><div class="eyebrow" style="margin-bottom:4px">이 시나리오의 매매 기록</div><div class="log" id="p-log"></div></div>
+          <div><div class="eyebrow" style="margin-bottom:4px">시나리오 전체에서 이 종목</div><div id="p-stats" class="ink2" style="font-size:13px"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>이평선 규칙 비교</h2><p>같은 가상 시나리오에 이평선 규칙만 바꿔 다시 돌렸습니다. 수익률 중간값이 높아도 손실 확률·낙폭이 크면 좋은 규칙이 아닙니다.</p></div></div>
+      <div class="grid2">
+        <div class="tablewrap"><table id="t-ma"></table></div>
+        <div><div class="legend"><span><i class="box" style="background:var(--accent)"></i>중간 수익률</span><span><i class="box" style="background:var(--hold)"></i>중간 최대낙폭</span></div>
+        <div class="chartbox" style="height:240px"><canvas id="c-ma" aria-label="이평선 규칙별 수익률과 낙폭"></canvas></div></div>
+      </div>
+    </section>
+  </div>
 
   <section class="panel">
     <h2>규칙과 모형</h2>
@@ -194,45 +266,71 @@ footer{font-size:12px;color:var(--muted)}
       <p><b>손절</b> · 매수가 − ATR×(중장기 2.5, 단기 2.0). +2ATR 오르면 손절가를 매수가로 올리고, 이후 최고 종가 − 3ATR로 따라 올립니다.</p>
       <p><b>이평선 매도</b> · 종가가 느린 이평선 아래로 2일 연속이면 다음 날 시가 매도. 빠른 선이 느린 선을 위로 뚫고(골든크로스) 종가가 느린 선 위면 재매수.</p>
       <p><b>이평선 자동 조정</b> · 하루 변동폭(ATR)이 작은 종목은 느린 선(EMA20/SMA60)으로 흔들림을 무시하고, 변동폭이 큰 단기 종목은 빠른 선(EMA5/SMA20~EMA10/SMA30)으로 빨리 대응합니다.</p>
-      <p><b>현금</b> · 시장 판정이 '신규 진입 축소'면 30%, '정상'이면 10%, '중단'이면 50%. 현금은 연 4%로 불어난다고 가정합니다.</p>
-      <p><b>비용</b> · 매수·매도마다 0.1%(수수료+호가 차이). 세금·환율은 빼고 계산합니다.</p>
-      <p><b>가상 시장</b> · 평온 국면(연 +10%, 변동성 13%)과 스트레스 국면(연 −30%, 변동성 30%)을 오가는 2국면 모형. 시장 판정이 나쁠수록 스트레스 국면에서 시작할 확률이 높습니다.</p>
-      <p><b>가상 종목</b> · 시장 민감도(변동성으로 추정) × 시장 + 종목 고유 움직임(추세가 이어지는 성분, 두꺼운 꼬리, 약 63거래일마다 실적 갭). 추천 점수에 따른 기대수익 가산은 연 ±3% 이내로 작게 두었습니다.</p>
+      <p><b>현금</b> · 시장 판정이 '선별 진입'(SELECTIVE)이면 10%, '신규 진입 축소'(LIMIT)나 자료 부족(UNKNOWN)이면 30%, '진입 대기'(WAIT)면 50%. 지난 추천일은 그날의 판정을 씁니다. 현금은 연 4%로 불어난다고 가정합니다.</p>
+      <p><b>비용</b> · 매수·매도마다 0.1%(수수료+호가 차이). 세금·환율은 빼고 계산합니다. 같은 날 손절과 매수 조건이 겹치면 손절을 먼저 처리합니다.</p>
+      <p id="m-future"><b>가상 미래</b> · –</p>
+      <p><b>실제 시세 복기</b> · Alpaca 수정주가 일봉. 패턴과 변동성·ATR은 추천일 종가까지의 시세로만 계산하므로 미래 정보를 쓰지 않습니다. 매수 이후 구간은 실제로 일어난 일입니다.</p>
     </div>
   </section>
-  <footer id="foot">데이터: alpha-terminal data 브랜치 latest.json · market-brief/latest.json</footer>
+  <footer id="foot"></footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 "use strict";
-const DATA = {"asOf":"2026-11-04","model":"xs-v1-prior","generatedAt":"2026-11-05T02:19:17.497Z","market":{"state":"LIMIT","label":"신규 진입 축소","reasons":["Nasdaq-100 QQQ 5거래일 -4.6% 조정","Nasdaq-100 QQQ가 50일선 아래","50일선 위 종목이 55% 미만","대형주·성장주·소형주의 3거래일 추세 확인이 미충족"]},"stocks":[{"symbol":"UVE","name":"Universal Insurance Holdings Inc","sector":"Financials","score":84.2,"price":48.78,"bucket":"mid","factors":{"momentum":77,"quality":null,"value":96,"lowrisk":82,"trend":87},"f":{"mom_12_1":0.4303,"mom_6_1":0.0875,"high52_prox":0.9612,"trend_200":0.2499,"ma_50_200":0.1571,"vol_60":0.234,"max_dd_1y":-0.1775,"rsi_14":62.3783,"dist_ema20":0.0315,"atr_pct":0.028,"ret_5":0.0609,"breakout_20":0,"rel_vol":1.3072}},{"symbol":"HG","name":"Hamilton Insurance Group, Ltd.","sector":"Financials","score":83.4,"price":37.28,"bucket":"mid","factors":{"momentum":85,"quality":79,"value":85,"lowrisk":90,"trend":75},"f":{"mom_12_1":0.5764,"mom_6_1":0.1349,"high52_prox":0.9945,"trend_200":0.1577,"ma_50_200":0.0871,"vol_60":0.2082,"max_dd_1y":-0.1269,"rsi_14":64.4838,"dist_ema20":0.0452,"atr_pct":0.0289,"ret_5":0.075,"breakout_20":1,"rel_vol":1.4738}},{"symbol":"AMAL","name":"Amalgamated Financial Corp","sector":"Financials","score":82.8,"price":50.82,"bucket":"mid","factors":{"momentum":84,"quality":null,"value":77,"lowrisk":91,"trend":77},"f":{"mom_12_1":0.7615,"mom_6_1":0.1452,"high52_prox":0.9751,"trend_200":0.1598,"ma_50_200":0.0965,"vol_60":0.2119,"max_dd_1y":-0.1182,"rsi_14":62.1311,"dist_ema20":0.0308,"atr_pct":0.0241,"ret_5":-0.0027,"breakout_20":0,"rel_vol":1.0014}},{"symbol":"VOYA","name":"Voya Financial, Inc.","sector":"Financials","score":82.6,"price":104.63,"bucket":"mid","factors":{"momentum":84,"quality":null,"value":77,"lowrisk":86,"trend":84},"f":{"mom_12_1":0.3704,"mom_6_1":0.2292,"high52_prox":0.991,"trend_200":0.2153,"ma_50_200":0.1463,"vol_60":0.2133,"max_dd_1y":-0.1652,"rsi_14":70.4173,"dist_ema20":0.0649,"atr_pct":0.0246,"ret_5":0.0836,"breakout_20":0,"rel_vol":1.0782}},{"symbol":"AMTB","name":"Amerant Bancorp Inc.","sector":"Financials","score":82,"price":30.07,"bucket":"mid","factors":{"momentum":87,"quality":null,"value":65,"lowrisk":93,"trend":84},"f":{"mom_12_1":0.7246,"mom_6_1":0.252,"high52_prox":0.9747,"trend_200":0.1941,"ma_50_200":0.1628,"vol_60":0.1894,"max_dd_1y":-0.1211,"rsi_14":56.6068,"dist_ema20":0.016,"atr_pct":0.0276,"ret_5":0.0142,"breakout_20":0,"rel_vol":1.4157}},{"symbol":"THFF","name":"First Financial Corp","sector":"Financials","score":80.7,"price":79.22,"bucket":"mid","factors":{"momentum":77,"quality":null,"value":80,"lowrisk":95,"trend":71},"f":{"mom_12_1":0.4347,"mom_6_1":0.1203,"high52_prox":0.9484,"trend_200":0.1216,"ma_50_200":0.075,"vol_60":0.1741,"max_dd_1y":-0.114,"rsi_14":63.7891,"dist_ema20":0.037,"atr_pct":0.0224,"ret_5":0.0311,"breakout_20":1,"rel_vol":1.4036}},{"symbol":"INSW","name":"International Seaways Inc","sector":"Energy","score":79.2,"price":99.36,"bucket":"mid","factors":{"momentum":79,"quality":93,"value":71,"lowrisk":60,"trend":90},"f":{"mom_12_1":1.6927,"mom_6_1":0.5097,"high52_prox":0.7869,"trend_200":0.2251,"ma_50_200":0.3286,"vol_60":0.4261,"max_dd_1y":-0.2054,"rsi_14":36.1265,"dist_ema20":-0.0935,"atr_pct":0.0529,"ret_5":-0.1108,"breakout_20":0,"rel_vol":1.117}},{"symbol":"PBI","name":"Pitney Bowes Inc.","sector":"Industrials","score":79.2,"price":16.01,"bucket":"mid","factors":{"momentum":73,"quality":null,"value":91,"lowrisk":81,"trend":73},"f":{"mom_12_1":0.736,"mom_6_1":0.1152,"high52_prox":0.8444,"trend_200":0.0786,"ma_50_200":0.1378,"vol_60":0.2647,"max_dd_1y":-0.1571,"rsi_14":39.6817,"dist_ema20":-0.0408,"atr_pct":0.0327,"ret_5":-0.082,"breakout_20":0,"rel_vol":1.426}},{"symbol":"CBL","name":"CBL & Associates Properties Inc","sector":"Real Estate","score":79,"price":49.7,"bucket":"mid","factors":{"momentum":74,"quality":null,"value":93,"lowrisk":77,"trend":70},"f":{"mom_12_1":0.7699,"mom_6_1":0.1604,"high52_prox":0.8324,"trend_200":0.0691,"ma_50_200":0.1146,"vol_60":0.2656,"max_dd_1y":-0.1939,"rsi_14":45.8925,"dist_ema20":-0.0073,"atr_pct":0.0258,"ret_5":0.0014,"breakout_20":0,"rel_vol":0.8813}},{"symbol":"LPG","name":"Dorian LPG Ltd","sector":"Energy","score":78.5,"price":49.43,"bucket":"mid","factors":{"momentum":80,"quality":92,"value":70,"lowrisk":57,"trend":88},"f":{"mom_12_1":1.1001,"mom_6_1":0.5154,"high52_prox":0.8242,"trend_200":0.1916,"ma_50_200":0.3079,"vol_60":0.3914,"max_dd_1y":-0.2713,"rsi_14":36.0248,"dist_ema20":-0.0757,"atr_pct":0.0449,"ret_5":-0.0845,"breakout_20":0,"rel_vol":0.944}},{"symbol":"SAIC","name":"Science Applications International Corp","sector":"Industrials","score":78.5,"price":150.45,"bucket":"mid","factors":{"momentum":83,"quality":null,"value":72,"lowrisk":69,"trend":92},"f":{"mom_12_1":0.3774,"mom_6_1":0.3246,"high52_prox":0.97,"trend_200":0.3572,"ma_50_200":0.206,"vol_60":0.2628,"max_dd_1y":-0.2784,"rsi_14":71.2833,"dist_ema20":0.0508,"atr_pct":0.0313,"ret_5":0.0102,"breakout_20":0,"rel_vol":1.0308}},{"symbol":"APA","name":"APA Corporation","sector":"Energy","score":77.7,"price":44.49,"bucket":"mid","factors":{"momentum":76,"quality":null,"value":95,"lowrisk":54,"trend":85},"f":{"mom_12_1":1.0073,"mom_6_1":0.1596,"high52_prox":0.8401,"trend_200":0.1818,"ma_50_200":0.2123,"vol_60":0.415,"max_dd_1y":-0.2773,"rsi_14":39.2499,"dist_ema20":-0.0801,"atr_pct":0.0424,"ret_5":-0.1295,"breakout_20":0,"rel_vol":1.0697}},{"symbol":"APLE","name":"Apple Hospitality REIT Inc","sector":"Real Estate","score":77.7,"price":18.82,"bucket":"mid","factors":{"momentum":86,"quality":72,"value":54,"lowrisk":94,"trend":88},"f":{"mom_12_1":0.5268,"mom_6_1":0.1947,"high52_prox":0.9929,"trend_200":0.3056,"ma_50_200":0.1462,"vol_60":0.1948,"max_dd_1y":-0.0973,"rsi_14":77.5945,"dist_ema20":0.0556,"atr_pct":0.0199,"ret_5":0.0157,"breakout_20":0,"rel_vol":1.0053}},{"symbol":"PSX","name":"Phillips 66","sector":"Energy","score":77.6,"price":259.63,"bucket":"mid","factors":{"momentum":83,"quality":59,"value":88,"lowrisk":72,"trend":94},"f":{"mom_12_1":1.0141,"mom_6_1":0.5909,"high52_prox":0.8672,"trend_200":0.3009,"ma_50_200":0.3425,"vol_60":0.3331,"max_dd_1y":-0.1728,"rsi_14":39.8033,"dist_ema20":-0.0596,"atr_pct":0.0405,"ret_5":-0.0516,"breakout_20":0,"rel_vol":1.3149}},{"symbol":"DINO","name":"HF Sinclair Corporation","sector":"Energy","score":77.5,"price":104.57,"bucket":"mid","factors":{"momentum":80,"quality":64,"value":93,"lowrisk":62,"trend":95},"f":{"mom_12_1":1.2166,"mom_6_1":0.6336,"high52_prox":0.8083,"trend_200":0.3267,"ma_50_200":0.4305,"vol_60":0.4356,"max_dd_1y":-0.1845,"rsi_14":35.439,"dist_ema20":-0.097,"atr_pct":0.055,"ret_5":-0.066,"breakout_20":0,"rel_vol":1.1382}},{"symbol":"HST","name":"Host Hotels & Resorts, Inc.","sector":"Real Estate","score":77.3,"price":26.11,"bucket":"mid","factors":{"momentum":83,"quality":76,"value":60,"lowrisk":91,"trend":77},"f":{"mom_12_1":0.5037,"mom_6_1":0.086,"high52_prox":0.9977,"trend_200":0.2194,"ma_50_200":0.0752,"vol_60":0.1834,"max_dd_1y":-0.1525,"rsi_14":76.1798,"dist_ema20":0.0589,"atr_pct":0.0195,"ret_5":0.0332,"breakout_20":1,"rel_vol":1.2435}},{"symbol":"AMN","name":"AMN Healthcare Services Inc","sector":"Health Care","score":76.9,"price":47.74,"bucket":"mid","factors":{"momentum":91,"quality":58,"value":84,"lowrisk":59,"trend":97},"f":{"mom_12_1":0.8759,"mom_6_1":0.7515,"high52_prox":0.9621,"trend_200":0.6536,"ma_50_200":0.3139,"vol_60":0.3746,"max_dd_1y":-0.2681,"rsi_14":71.365,"dist_ema20":0.0948,"atr_pct":0.0397,"ret_5":0.0218,"breakout_20":0,"rel_vol":0.9989}},{"symbol":"REPX","name":"Riley Exploration Permian Inc","sector":"Energy","score":76.9,"price":42.88,"bucket":"mid","factors":{"momentum":74,"quality":86,"value":82,"lowrisk":54,"trend":87},"f":{"mom_12_1":0.7156,"mom_6_1":0.2986,"high52_prox":0.7922,"trend_200":0.1979,"ma_50_200":0.2334,"vol_60":0.4691,"max_dd_1y":-0.2296,"rsi_14":38.6631,"dist_ema20":-0.1055,"atr_pct":0.05,"ret_5":-0.1771,"breakout_20":0,"rel_vol":0.9787}},{"symbol":"EXEL","name":"Exelixis Inc","sector":"Health Care","score":76.4,"price":72.75,"bucket":"mid","factors":{"momentum":86,"quality":78,"value":46,"lowrisk":85,"trend":92},"f":{"mom_12_1":0.5326,"mom_6_1":0.1977,"high52_prox":0.9906,"trend_200":0.4175,"ma_50_200":0.1765,"vol_60":0.2592,"max_dd_1y":-0.1259,"rsi_14":86.1689,"dist_ema20":0.1089,"atr_pct":0.0283,"ret_5":0.0976,"breakout_20":0,"rel_vol":1.7576}},{"symbol":"HALO","name":"Halozyme Therapeutics Inc","sector":"Health Care","score":76.4,"price":130.34,"bucket":"mid","factors":{"momentum":90,"quality":89,"value":34,"lowrisk":70,"trend":97},"f":{"mom_12_1":0.6574,"mom_6_1":0.6537,"high52_prox":0.9727,"trend_200":0.5472,"ma_50_200":0.3644,"vol_60":0.2813,"max_dd_1y":-0.2413,"rsi_14":72.7947,"dist_ema20":0.0504,"atr_pct":0.0259,"ret_5":0.0024,"breakout_20":0,"rel_vol":0.8955}},{"symbol":"LTC","name":"LTC Properties, Inc.","sector":"Real Estate","score":76.4,"price":46.33,"bucket":"mid","factors":{"momentum":77,"quality":91,"value":45,"lowrisk":91,"trend":79},"f":{"mom_12_1":0.2669,"mom_6_1":0.1297,"high52_prox":0.9874,"trend_200":0.1946,"ma_50_200":0.0977,"vol_60":0.2102,"max_dd_1y":-0.1231,"rsi_14":69.7576,"dist_ema20":0.0576,"atr_pct":0.0238,"ret_5":0.0842,"breakout_20":1,"rel_vol":1.531}},{"symbol":"CNK","name":"Cinemark Holdings Inc","sector":"Communication Services","score":75.6,"price":40.38,"bucket":"mid","factors":{"momentum":84,"quality":68,"value":74,"lowrisk":65,"trend":89},"f":{"mom_12_1":0.3354,"mom_6_1":0.2797,"high52_prox":0.991,"trend_200":0.2848,"ma_50_200":0.1784,"vol_60":0.3002,"max_dd_1y":-0.2763,"rsi_14":62.0916,"dist_ema20":0.0421,"atr_pct":0.0343,"ret_5":0.0349,"breakout_20":0,"rel_vol":1.1585}},{"symbol":"NUTX","name":"Nutex Health Inc","sector":"Health Care","score":75.5,"price":205.22,"bucket":"mid","factors":{"momentum":84,"quality":null,"value":93,"lowrisk":21,"trend":95},"f":{"mom_12_1":0.6582,"mom_6_1":0.6724,"high52_prox":0.9074,"trend_200":0.3596,"ma_50_200":0.3477,"vol_60":0.5731,"max_dd_1y":-0.5432,"rsi_14":51.9084,"dist_ema20":0.019,"atr_pct":0.0643,"ret_5":-0.0348,"breakout_20":0,"rel_vol":1.0645}},{"symbol":"THC","name":"Tenet Healthcare Corp","sector":"Health Care","score":75.3,"price":292.25,"bucket":"mid","factors":{"momentum":84,"quality":61,"value":87,"lowrisk":56,"trend":91},"f":{"mom_12_1":0.2834,"mom_6_1":0.3288,"high52_prox":0.9937,"trend_200":0.3201,"ma_50_200":0.1961,"vol_60":0.3206,"max_dd_1y":-0.3408,"rsi_14":68.6945,"dist_ema20":0.0837,"atr_pct":0.0372,"ret_5":0.0885,"breakout_20":1,"rel_vol":1.8885}},{"symbol":"ASH","name":"Ashland Inc.","sector":"Materials","score":75.1,"price":76.44,"bucket":"mid","factors":{"momentum":87,"quality":null,"value":52,"lowrisk":77,"trend":82},"f":{"mom_12_1":0.5126,"mom_6_1":0.3172,"high52_prox":0.9825,"trend_200":0.2056,"ma_50_200":0.1278,"vol_60":0.2139,"max_dd_1y":-0.2417,"rsi_14":67.5068,"dist_ema20":0.0499,"atr_pct":0.0244,"ret_5":0.0519,"breakout_20":1,"rel_vol":1.2501}},{"symbol":"LTH","name":"Life Time Group Holdings, Inc.","sector":"Consumer Discretionary","score":74.8,"price":47.39,"bucket":"mid","factors":{"momentum":87,"quality":71,"value":53,"lowrisk":76,"trend":90},"f":{"mom_12_1":0.6236,"mom_6_1":0.2021,"high52_prox":0.9883,"trend_200":0.3345,"ma_50_200":0.1739,"vol_60":0.3133,"max_dd_1y":-0.1649,"rsi_14":71.3471,"dist_ema20":0.1008,"atr_pct":0.0377,"ret_5":0.0985,"breakout_20":1,"rel_vol":1.3631}},{"symbol":"AES","name":"The AES Corporation","sector":"Utilities","score":74.7,"price":14.9,"bucket":"mid","factors":{"momentum":60,"quality":78,"value":92,"lowrisk":90,"trend":54},"f":{"mom_12_1":0.1363,"mom_6_1":0.0543,"high52_prox":0.8749,"trend_200":0.0325,"ma_50_200":0.0202,"vol_60":0.0274,"max_dd_1y":-0.1896,"rsi_14":66.1917,"dist_ema20":0.0052,"atr_pct":0.0032,"ret_5":0.0068,"breakout_20":0,"rel_vol":1.1605}},{"symbol":"ZD","name":"Ziff Davis Inc","sector":"Communication Services","score":74.7,"price":56.75,"bucket":"mid","factors":{"momentum":83,"quality":61,"value":84,"lowrisk":62,"trend":85},"f":{"mom_12_1":0.6114,"mom_6_1":0.2539,"high52_prox":0.9383,"trend_200":0.1913,"ma_50_200":0.1847,"vol_60":0.2677,"max_dd_1y":-0.3379,"rsi_14":52.3267,"dist_ema20":0.0116,"atr_pct":0.0324,"ret_5":0.0249,"breakout_20":0,"rel_vol":1.0108}},{"symbol":"RPRX","name":"Royalty Pharma PLC","sector":"Health Care","score":74.5,"price":67.56,"bucket":"mid","factors":{"momentum":85,"quality":80,"value":36,"lowrisk":87,"trend":86},"f":{"mom_12_1":0.5425,"mom_6_1":0.1223,"high52_prox":0.9979,"trend_200":0.2656,"ma_50_200":0.135,"vol_60":0.2499,"max_dd_1y":-0.1212,"rsi_14":74.4253,"dist_ema20":0.0648,"atr_pct":0.0218,"ret_5":0.0423,"breakout_20":0,"rel_vol":1.1133}},{"symbol":"R","name":"Ryder System, Inc.","sector":"Other","score":74.3,"price":283.12,"bucket":"mid","factors":{"momentum":71,"quality":null,"value":79,"lowrisk":76,"trend":71},"f":{"mom_12_1":0.4269,"mom_6_1":-0.0144,"high52_prox":0.9728,"trend_200":0.19,"ma_50_200":0.0391,"vol_60":0.2854,"max_dd_1y":-0.1839,"rsi_14":72.8024,"dist_ema20":0.0705,"atr_pct":0.0281,"ret_5":0.0272,"breakout_20":0,"rel_vol":1.0949}},{"symbol":"OKTA","name":"Okta Inc","sector":"Information Technology","score":84.5,"price":191.05,"bucket":"short","factors":{"trend":98,"pullback":86,"flow":98,"breakout":45},"f":{"mom_12_1":1.4009,"mom_6_1":1.8237,"high52_prox":0.813,"trend_200":0.5165,"ma_50_200":0.557,"vol_60":0.8272,"max_dd_1y":-0.331,"rsi_14":43.4762,"dist_ema20":-0.0675,"atr_pct":0.0682,"ret_5":-0.142,"breakout_20":0,"rel_vol":2.4173}},{"symbol":"IOVA","name":"Iovance Biotherapeutics Inc","sector":"Health Care","score":83.1,"price":8.7,"bucket":"short","factors":{"trend":98,"pullback":99,"flow":91,"breakout":29},"f":{"mom_12_1":5.6462,"mom_6_1":2.1687,"high52_prox":0.566,"trend_200":0.4673,"ma_50_200":0.9204,"vol_60":1.3131,"max_dd_1y":-0.4603,"rsi_14":33.8554,"dist_ema20":-0.2606,"atr_pct":0.1316,"ret_5":-0.4126,"breakout_20":0,"rel_vol":1.7514}},{"symbol":"CVI","name":"CVR Energy Inc","sector":"Energy","score":82.4,"price":43.01,"bucket":"short","factors":{"trend":89,"pullback":98,"flow":99,"breakout":35},"f":{"mom_12_1":0.5697,"mom_6_1":0.7619,"high52_prox":0.6772,"trend_200":0.195,"ma_50_200":0.4712,"vol_60":0.6326,"max_dd_1y":-0.4417,"rsi_14":28.7144,"dist_ema20":-0.2256,"atr_pct":0.0919,"ret_5":-0.2464,"breakout_20":0,"rel_vol":3.1136}},{"symbol":"ZBRA","name":"Zebra Technologies Corp","sector":"Industrials","score":81.4,"price":332.44,"bucket":"short","factors":{"trend":88,"pullback":89,"flow":94,"breakout":48},"f":{"mom_12_1":0.4258,"mom_6_1":0.6791,"high52_prox":0.8464,"trend_200":0.1813,"ma_50_200":0.3011,"vol_60":0.3205,"max_dd_1y":-0.273,"rsi_14":29.4378,"dist_ema20":-0.0964,"atr_pct":0.046,"ret_5":-0.1358,"breakout_20":0,"rel_vol":1.9659}},{"symbol":"NTRA","name":"Natera Inc","sector":"Health Care","score":81,"price":391.03,"bucket":"short","factors":{"trend":97,"pullback":76,"flow":88,"breakout":53},"f":{"mom_12_1":1.0211,"mom_6_1":0.8627,"high52_prox":0.894,"trend_200":0.4569,"ma_50_200":0.4169,"vol_60":0.4089,"max_dd_1y":-0.282,"rsi_14":47.6696,"dist_ema20":-0.0241,"atr_pct":0.0509,"ret_5":-0.0787,"breakout_20":0,"rel_vol":1.6428}},{"symbol":"HURN","name":"Huron Consulting Group Inc.","sector":"Industrials","score":80.7,"price":173.015,"bucket":"short","factors":{"trend":88,"pullback":83,"flow":99,"breakout":48},"f":{"mom_12_1":-0.0509,"mom_6_1":0.3093,"high52_prox":0.8507,"trend_200":0.2504,"ma_50_200":0.2121,"vol_60":0.455,"max_dd_1y":-0.5142,"rsi_14":43.7427,"dist_ema20":-0.0578,"atr_pct":0.047,"ret_5":-0.1067,"breakout_20":0,"rel_vol":3.0566}},{"symbol":"LIFE","name":"Ethos Technologies Inc","sector":"Financials","score":79.1,"price":37.13,"bucket":"short","factors":{"trend":93,"pullback":87,"flow":85,"breakout":39},"f":{"mom_12_1":null,"mom_6_1":0.516,"high52_prox":0.7429,"trend_200":null,"ma_50_200":null,"vol_60":0.5942,"max_dd_1y":-0.5011,"rsi_14":41.6106,"dist_ema20":-0.0808,"atr_pct":0.0828,"ret_5":-0.1331,"breakout_20":0,"rel_vol":1.5628}},{"symbol":"ECO","name":"Okeanis Eco Tankers Corp","sector":"Energy","score":78.7,"price":84.9,"bucket":"short","factors":{"trend":97,"pullback":87,"flow":68,"breakout":46},"f":{"mom_12_1":2.0104,"mom_6_1":0.797,"high52_prox":0.8278,"trend_200":0.5197,"ma_50_200":0.5017,"vol_60":0.5598,"max_dd_1y":-0.1767,"rsi_14":43.8779,"dist_ema20":-0.0763,"atr_pct":0.0588,"ret_5":-0.1428,"breakout_20":0,"rel_vol":1.3085}},{"symbol":"AMRX","name":"Amneal Pharmaceuticals, Inc","sector":"Health Care","score":78.6,"price":19.95,"bucket":"short","factors":{"trend":91,"pullback":73,"flow":88,"breakout":56},"f":{"mom_12_1":0.8129,"mom_6_1":0.4901,"high52_prox":0.9202,"trend_200":0.259,"ma_50_200":0.2156,"vol_60":0.3836,"max_dd_1y":-0.2225,"rsi_14":48.3876,"dist_ema20":-0.0168,"atr_pct":0.0395,"ret_5":-0.0563,"breakout_20":0,"rel_vol":1.6554}},{"symbol":"FTRE","name":"Fortrea Holdings Inc","sector":"Health Care","score":78.5,"price":20.83,"bucket":"short","factors":{"trend":90,"pullback":87,"flow":83,"breakout":43},"f":{"mom_12_1":1.0534,"mom_6_1":0.3286,"high52_prox":0.7963,"trend_200":0.3214,"ma_50_200":0.295,"vol_60":0.5848,"max_dd_1y":-0.5179,"rsi_14":45.4407,"dist_ema20":-0.0527,"atr_pct":0.0719,"ret_5":-0.1951,"breakout_20":0,"rel_vol":1.5272}},{"symbol":"AMD","name":"Advanced Micro Devices, Inc.","sector":"Information Technology","score":78.2,"price":488.78,"bucket":"short","factors":{"trend":87,"pullback":90,"flow":88,"breakout":39},"f":{"mom_12_1":1.5011,"mom_6_1":0.5411,"high52_prox":0.7422,"trend_200":0.18,"ma_50_200":0.3251,"vol_60":0.6073,"max_dd_1y":-0.2811,"rsi_14":39.4932,"dist_ema20":-0.0901,"atr_pct":0.0638,"ret_5":-0.155,"breakout_20":0,"rel_vol":1.6465}},{"symbol":"CRL","name":"Charles River Laboratories International, Inc.","sector":"Health Care","score":78.2,"price":326.29,"bucket":"short","factors":{"trend":96,"pullback":80,"flow":75,"breakout":49},"f":{"mom_12_1":0.705,"mom_6_1":0.6781,"high52_prox":0.8595,"trend_200":0.4595,"ma_50_200":0.3617,"vol_60":0.448,"max_dd_1y":-0.3388,"rsi_14":49.8727,"dist_ema20":-0.0219,"atr_pct":0.0508,"ret_5":-0.1275,"breakout_20":0,"rel_vol":1.3906}},{"symbol":"TNET","name":"TriNet Group, Inc.","sector":"Industrials","score":77.8,"price":66.77,"bucket":"short","factors":{"trend":91,"pullback":72,"flow":89,"breakout":50},"f":{"mom_12_1":0.0706,"mom_6_1":0.5517,"high52_prox":0.8718,"trend_200":0.2589,"ma_50_200":0.2694,"vol_60":0.4486,"max_dd_1y":-0.4676,"rsi_14":47.9004,"dist_ema20":-0.0183,"atr_pct":0.0522,"ret_5":-0.0517,"breakout_20":0,"rel_vol":1.6768}},{"symbol":"SHOP","name":"Shopify Inc.","sector":"Information Technology","score":76.5,"price":153.03,"bucket":"short","factors":{"trend":87,"pullback":81,"flow":82,"breakout":48},"f":{"mom_12_1":-0.0491,"mom_6_1":0.5596,"high52_prox":0.846,"trend_200":0.1785,"ma_50_200":0.1764,"vol_60":0.5416,"max_dd_1y":-0.4416,"rsi_14":44.0724,"dist_ema20":-0.0503,"atr_pct":0.0559,"ret_5":-0.0903,"breakout_20":0,"rel_vol":1.5193}},{"symbol":"DT","name":"Dynatrace, Inc","sector":"Information Technology","score":76.4,"price":46.78,"bucket":"short","factors":{"trend":75,"pullback":98,"flow":92,"breakout":36},"f":{"mom_12_1":0.2094,"mom_6_1":0.5977,"high52_prox":0.7056,"trend_200":0.0478,"ma_50_200":0.29,"vol_60":0.4927,"max_dd_1y":-0.348,"rsi_14":23.0348,"dist_ema20":-0.1988,"atr_pct":0.0591,"ret_5":-0.2552,"breakout_20":0,"rel_vol":1.804}},{"symbol":"AVPT","name":"AvePoint Inc","sector":"Information Technology","score":76.3,"price":16.9,"bucket":"short","factors":{"trend":93,"pullback":47,"flow":99,"breakout":61},"f":{"mom_12_1":0.0377,"mom_6_1":0.422,"high52_prox":0.9646,"trend_200":0.4154,"ma_50_200":0.2086,"vol_60":0.4183,"max_dd_1y":-0.3704,"rsi_14":64.5213,"dist_ema20":0.0616,"atr_pct":0.037,"ret_5":-0.0174,"breakout_20":0,"rel_vol":3.3622}},{"symbol":"VLO","name":"Valero Energy Corp","sector":"Energy","score":75.9,"price":365.34,"bucket":"short","factors":{"trend":93,"pullback":82,"flow":71,"breakout":43},"f":{"mom_12_1":1.4948,"mom_6_1":0.7865,"high52_prox":0.7916,"trend_200":0.2707,"ma_50_200":0.3899,"vol_60":0.4231,"max_dd_1y":-0.2054,"rsi_14":35.7344,"dist_ema20":-0.0956,"atr_pct":0.053,"ret_5":-0.0596,"breakout_20":0,"rel_vol":1.3309}},{"symbol":"LIND","name":"Lindblad Expeditions Holdings, Inc.","sector":"Consumer Discretionary","score":75.8,"price":33.52,"bucket":"short","factors":{"trend":95,"pullback":76,"flow":69,"breakout":49},"f":{"mom_12_1":1.9574,"mom_6_1":0.6627,"high52_prox":0.8628,"trend_200":0.3571,"ma_50_200":0.2732,"vol_60":0.5156,"max_dd_1y":-0.2665,"rsi_14":47.0204,"dist_ema20":-0.0345,"atr_pct":0.0543,"ret_5":-0.0642,"breakout_20":0,"rel_vol":1.3165}},{"symbol":"PSX","name":"Phillips 66","sector":"Energy","score":75.7,"price":259.63,"bucket":"short","factors":{"trend":93,"pullback":78,"flow":69,"breakout":50},"f":{"mom_12_1":1.0141,"mom_6_1":0.5909,"high52_prox":0.8672,"trend_200":0.3009,"ma_50_200":0.3425,"vol_60":0.3331,"max_dd_1y":-0.1728,"rsi_14":39.8033,"dist_ema20":-0.0596,"atr_pct":0.0405,"ret_5":-0.0516,"breakout_20":0,"rel_vol":1.3149}},{"symbol":"NSIT","name":"Insight Enterprises Inc","sector":"Industrials","score":75.4,"price":175.62,"bucket":"short","factors":{"trend":98,"pullback":54,"flow":77,"breakout":61},"f":{"mom_12_1":0.6283,"mom_6_1":1.3111,"high52_prox":0.9643,"trend_200":0.5351,"ma_50_200":0.4218,"vol_60":0.391,"max_dd_1y":-0.3216,"rsi_14":59.0075,"dist_ema20":0.0348,"atr_pct":0.041,"ret_5":-0.0125,"breakout_20":0,"rel_vol":1.4319}}]};
+let DATA = {"asOf":"2026-11-04","model":"xs-v1-prior","generatedAt":"2026-11-05T02:19:17.497Z","market":{"state":"LIMIT","label":"신규 진입 축소","reasons":["Nasdaq-100 QQQ 5거래일 -4.6% 조정","Nasdaq-100 QQQ가 50일선 아래","50일선 위 종목이 55% 미만","대형주·성장주·소형주의 3거래일 추세 확인이 미충족"]},"stocks":[{"symbol":"UVE","name":"Universal Insurance Holdings Inc","sector":"Financials","score":84.2,"price":48.78,"bucket":"mid","f":{"mom_12_1":0.4303,"mom_6_1":0.0875,"high52_prox":0.9612,"trend_200":0.2499,"ma_50_200":0.1571,"vol_60":0.234,"max_dd_1y":-0.1775,"rsi_14":62.3783,"dist_ema20":0.0315,"atr_pct":0.028,"ret_5":0.0609,"breakout_20":0,"rel_vol":1.3072}},{"symbol":"HG","name":"Hamilton Insurance Group, Ltd.","sector":"Financials","score":83.4,"price":37.28,"bucket":"mid","f":{"mom_12_1":0.5764,"mom_6_1":0.1349,"high52_prox":0.9945,"trend_200":0.1577,"ma_50_200":0.0871,"vol_60":0.2082,"max_dd_1y":-0.1269,"rsi_14":64.4838,"dist_ema20":0.0452,"atr_pct":0.0289,"ret_5":0.075,"breakout_20":1,"rel_vol":1.4738}},{"symbol":"AMAL","name":"Amalgamated Financial Corp","sector":"Financials","score":82.8,"price":50.82,"bucket":"mid","f":{"mom_12_1":0.7615,"mom_6_1":0.1452,"high52_prox":0.9751,"trend_200":0.1598,"ma_50_200":0.0965,"vol_60":0.2119,"max_dd_1y":-0.1182,"rsi_14":62.1311,"dist_ema20":0.0308,"atr_pct":0.0241,"ret_5":-0.0027,"breakout_20":0,"rel_vol":1.0014}},{"symbol":"VOYA","name":"Voya Financial, Inc.","sector":"Financials","score":82.6,"price":104.63,"bucket":"mid","f":{"mom_12_1":0.3704,"mom_6_1":0.2292,"high52_prox":0.991,"trend_200":0.2153,"ma_50_200":0.1463,"vol_60":0.2133,"max_dd_1y":-0.1652,"rsi_14":70.4173,"dist_ema20":0.0649,"atr_pct":0.0246,"ret_5":0.0836,"breakout_20":0,"rel_vol":1.0782}},{"symbol":"AMTB","name":"Amerant Bancorp Inc.","sector":"Financials","score":82,"price":30.07,"bucket":"mid","f":{"mom_12_1":0.7246,"mom_6_1":0.252,"high52_prox":0.9747,"trend_200":0.1941,"ma_50_200":0.1628,"vol_60":0.1894,"max_dd_1y":-0.1211,"rsi_14":56.6068,"dist_ema20":0.016,"atr_pct":0.0276,"ret_5":0.0142,"breakout_20":0,"rel_vol":1.4157}},{"symbol":"THFF","name":"First Financial Corp","sector":"Financials","score":80.7,"price":79.22,"bucket":"mid","f":{"mom_12_1":0.4347,"mom_6_1":0.1203,"high52_prox":0.9484,"trend_200":0.1216,"ma_50_200":0.075,"vol_60":0.1741,"max_dd_1y":-0.114,"rsi_14":63.7891,"dist_ema20":0.037,"atr_pct":0.0224,"ret_5":0.0311,"breakout_20":1,"rel_vol":1.4036}},{"symbol":"INSW","name":"International Seaways Inc","sector":"Energy","score":79.2,"price":99.36,"bucket":"mid","f":{"mom_12_1":1.6927,"mom_6_1":0.5097,"high52_prox":0.7869,"trend_200":0.2251,"ma_50_200":0.3286,"vol_60":0.4261,"max_dd_1y":-0.2054,"rsi_14":36.1265,"dist_ema20":-0.0935,"atr_pct":0.0529,"ret_5":-0.1108,"breakout_20":0,"rel_vol":1.117}},{"symbol":"PBI","name":"Pitney Bowes Inc.","sector":"Industrials","score":79.2,"price":16.01,"bucket":"mid","f":{"mom_12_1":0.736,"mom_6_1":0.1152,"high52_prox":0.8444,"trend_200":0.0786,"ma_50_200":0.1378,"vol_60":0.2647,"max_dd_1y":-0.1571,"rsi_14":39.6817,"dist_ema20":-0.0408,"atr_pct":0.0327,"ret_5":-0.082,"breakout_20":0,"rel_vol":1.426}},{"symbol":"CBL","name":"CBL & Associates Properties Inc","sector":"Real Estate","score":79,"price":49.7,"bucket":"mid","f":{"mom_12_1":0.7699,"mom_6_1":0.1604,"high52_prox":0.8324,"trend_200":0.0691,"ma_50_200":0.1146,"vol_60":0.2656,"max_dd_1y":-0.1939,"rsi_14":45.8925,"dist_ema20":-0.0073,"atr_pct":0.0258,"ret_5":0.0014,"breakout_20":0,"rel_vol":0.8813}},{"symbol":"LPG","name":"Dorian LPG Ltd","sector":"Energy","score":78.5,"price":49.43,"bucket":"mid","f":{"mom_12_1":1.1001,"mom_6_1":0.5154,"high52_prox":0.8242,"trend_200":0.1916,"ma_50_200":0.3079,"vol_60":0.3914,"max_dd_1y":-0.2713,"rsi_14":36.0248,"dist_ema20":-0.0757,"atr_pct":0.0449,"ret_5":-0.0845,"breakout_20":0,"rel_vol":0.944}},{"symbol":"SAIC","name":"Science Applications International Corp","sector":"Industrials","score":78.5,"price":150.45,"bucket":"mid","f":{"mom_12_1":0.3774,"mom_6_1":0.3246,"high52_prox":0.97,"trend_200":0.3572,"ma_50_200":0.206,"vol_60":0.2628,"max_dd_1y":-0.2784,"rsi_14":71.2833,"dist_ema20":0.0508,"atr_pct":0.0313,"ret_5":0.0102,"breakout_20":0,"rel_vol":1.0308}},{"symbol":"APA","name":"APA Corporation","sector":"Energy","score":77.7,"price":44.49,"bucket":"mid","f":{"mom_12_1":1.0073,"mom_6_1":0.1596,"high52_prox":0.8401,"trend_200":0.1818,"ma_50_200":0.2123,"vol_60":0.415,"max_dd_1y":-0.2773,"rsi_14":39.2499,"dist_ema20":-0.0801,"atr_pct":0.0424,"ret_5":-0.1295,"breakout_20":0,"rel_vol":1.0697}},{"symbol":"APLE","name":"Apple Hospitality REIT Inc","sector":"Real Estate","score":77.7,"price":18.82,"bucket":"mid","f":{"mom_12_1":0.5268,"mom_6_1":0.1947,"high52_prox":0.9929,"trend_200":0.3056,"ma_50_200":0.1462,"vol_60":0.1948,"max_dd_1y":-0.0973,"rsi_14":77.5945,"dist_ema20":0.0556,"atr_pct":0.0199,"ret_5":0.0157,"breakout_20":0,"rel_vol":1.0053}},{"symbol":"PSX","name":"Phillips 66","sector":"Energy","score":77.6,"price":259.63,"bucket":"mid","f":{"mom_12_1":1.0141,"mom_6_1":0.5909,"high52_prox":0.8672,"trend_200":0.3009,"ma_50_200":0.3425,"vol_60":0.3331,"max_dd_1y":-0.1728,"rsi_14":39.8033,"dist_ema20":-0.0596,"atr_pct":0.0405,"ret_5":-0.0516,"breakout_20":0,"rel_vol":1.3149}},{"symbol":"DINO","name":"HF Sinclair Corporation","sector":"Energy","score":77.5,"price":104.57,"bucket":"mid","f":{"mom_12_1":1.2166,"mom_6_1":0.6336,"high52_prox":0.8083,"trend_200":0.3267,"ma_50_200":0.4305,"vol_60":0.4356,"max_dd_1y":-0.1845,"rsi_14":35.439,"dist_ema20":-0.097,"atr_pct":0.055,"ret_5":-0.066,"breakout_20":0,"rel_vol":1.1382}},{"symbol":"HST","name":"Host Hotels & Resorts, Inc.","sector":"Real Estate","score":77.3,"price":26.11,"bucket":"mid","f":{"mom_12_1":0.5037,"mom_6_1":0.086,"high52_prox":0.9977,"trend_200":0.2194,"ma_50_200":0.0752,"vol_60":0.1834,"max_dd_1y":-0.1525,"rsi_14":76.1798,"dist_ema20":0.0589,"atr_pct":0.0195,"ret_5":0.0332,"breakout_20":1,"rel_vol":1.2435}},{"symbol":"AMN","name":"AMN Healthcare Services Inc","sector":"Health Care","score":76.9,"price":47.74,"bucket":"mid","f":{"mom_12_1":0.8759,"mom_6_1":0.7515,"high52_prox":0.9621,"trend_200":0.6536,"ma_50_200":0.3139,"vol_60":0.3746,"max_dd_1y":-0.2681,"rsi_14":71.365,"dist_ema20":0.0948,"atr_pct":0.0397,"ret_5":0.0218,"breakout_20":0,"rel_vol":0.9989}},{"symbol":"REPX","name":"Riley Exploration Permian Inc","sector":"Energy","score":76.9,"price":42.88,"bucket":"mid","f":{"mom_12_1":0.7156,"mom_6_1":0.2986,"high52_prox":0.7922,"trend_200":0.1979,"ma_50_200":0.2334,"vol_60":0.4691,"max_dd_1y":-0.2296,"rsi_14":38.6631,"dist_ema20":-0.1055,"atr_pct":0.05,"ret_5":-0.1771,"breakout_20":0,"rel_vol":0.9787}},{"symbol":"EXEL","name":"Exelixis Inc","sector":"Health Care","score":76.4,"price":72.75,"bucket":"mid","f":{"mom_12_1":0.5326,"mom_6_1":0.1977,"high52_prox":0.9906,"trend_200":0.4175,"ma_50_200":0.1765,"vol_60":0.2592,"max_dd_1y":-0.1259,"rsi_14":86.1689,"dist_ema20":0.1089,"atr_pct":0.0283,"ret_5":0.0976,"breakout_20":0,"rel_vol":1.7576}},{"symbol":"HALO","name":"Halozyme Therapeutics Inc","sector":"Health Care","score":76.4,"price":130.34,"bucket":"mid","f":{"mom_12_1":0.6574,"mom_6_1":0.6537,"high52_prox":0.9727,"trend_200":0.5472,"ma_50_200":0.3644,"vol_60":0.2813,"max_dd_1y":-0.2413,"rsi_14":72.7947,"dist_ema20":0.0504,"atr_pct":0.0259,"ret_5":0.0024,"breakout_20":0,"rel_vol":0.8955}},{"symbol":"LTC","name":"LTC Properties, Inc.","sector":"Real Estate","score":76.4,"price":46.33,"bucket":"mid","f":{"mom_12_1":0.2669,"mom_6_1":0.1297,"high52_prox":0.9874,"trend_200":0.1946,"ma_50_200":0.0977,"vol_60":0.2102,"max_dd_1y":-0.1231,"rsi_14":69.7576,"dist_ema20":0.0576,"atr_pct":0.0238,"ret_5":0.0842,"breakout_20":1,"rel_vol":1.531}},{"symbol":"CNK","name":"Cinemark Holdings Inc","sector":"Communication Services","score":75.6,"price":40.38,"bucket":"mid","f":{"mom_12_1":0.3354,"mom_6_1":0.2797,"high52_prox":0.991,"trend_200":0.2848,"ma_50_200":0.1784,"vol_60":0.3002,"max_dd_1y":-0.2763,"rsi_14":62.0916,"dist_ema20":0.0421,"atr_pct":0.0343,"ret_5":0.0349,"breakout_20":0,"rel_vol":1.1585}},{"symbol":"NUTX","name":"Nutex Health Inc","sector":"Health Care","score":75.5,"price":205.22,"bucket":"mid","f":{"mom_12_1":0.6582,"mom_6_1":0.6724,"high52_prox":0.9074,"trend_200":0.3596,"ma_50_200":0.3477,"vol_60":0.5731,"max_dd_1y":-0.5432,"rsi_14":51.9084,"dist_ema20":0.019,"atr_pct":0.0643,"ret_5":-0.0348,"breakout_20":0,"rel_vol":1.0645}},{"symbol":"THC","name":"Tenet Healthcare Corp","sector":"Health Care","score":75.3,"price":292.25,"bucket":"mid","f":{"mom_12_1":0.2834,"mom_6_1":0.3288,"high52_prox":0.9937,"trend_200":0.3201,"ma_50_200":0.1961,"vol_60":0.3206,"max_dd_1y":-0.3408,"rsi_14":68.6945,"dist_ema20":0.0837,"atr_pct":0.0372,"ret_5":0.0885,"breakout_20":1,"rel_vol":1.8885}},{"symbol":"ASH","name":"Ashland Inc.","sector":"Materials","score":75.1,"price":76.44,"bucket":"mid","f":{"mom_12_1":0.5126,"mom_6_1":0.3172,"high52_prox":0.9825,"trend_200":0.2056,"ma_50_200":0.1278,"vol_60":0.2139,"max_dd_1y":-0.2417,"rsi_14":67.5068,"dist_ema20":0.0499,"atr_pct":0.0244,"ret_5":0.0519,"breakout_20":1,"rel_vol":1.2501}},{"symbol":"LTH","name":"Life Time Group Holdings, Inc.","sector":"Consumer Discretionary","score":74.8,"price":47.39,"bucket":"mid","f":{"mom_12_1":0.6236,"mom_6_1":0.2021,"high52_prox":0.9883,"trend_200":0.3345,"ma_50_200":0.1739,"vol_60":0.3133,"max_dd_1y":-0.1649,"rsi_14":71.3471,"dist_ema20":0.1008,"atr_pct":0.0377,"ret_5":0.0985,"breakout_20":1,"rel_vol":1.3631}},{"symbol":"AES","name":"The AES Corporation","sector":"Utilities","score":74.7,"price":14.9,"bucket":"mid","f":{"mom_12_1":0.1363,"mom_6_1":0.0543,"high52_prox":0.8749,"trend_200":0.0325,"ma_50_200":0.0202,"vol_60":0.0274,"max_dd_1y":-0.1896,"rsi_14":66.1917,"dist_ema20":0.0052,"atr_pct":0.0032,"ret_5":0.0068,"breakout_20":0,"rel_vol":1.1605}},{"symbol":"ZD","name":"Ziff Davis Inc","sector":"Communication Services","score":74.7,"price":56.75,"bucket":"mid","f":{"mom_12_1":0.6114,"mom_6_1":0.2539,"high52_prox":0.9383,"trend_200":0.1913,"ma_50_200":0.1847,"vol_60":0.2677,"max_dd_1y":-0.3379,"rsi_14":52.3267,"dist_ema20":0.0116,"atr_pct":0.0324,"ret_5":0.0249,"breakout_20":0,"rel_vol":1.0108}},{"symbol":"RPRX","name":"Royalty Pharma PLC","sector":"Health Care","score":74.5,"price":67.56,"bucket":"mid","f":{"mom_12_1":0.5425,"mom_6_1":0.1223,"high52_prox":0.9979,"trend_200":0.2656,"ma_50_200":0.135,"vol_60":0.2499,"max_dd_1y":-0.1212,"rsi_14":74.4253,"dist_ema20":0.0648,"atr_pct":0.0218,"ret_5":0.0423,"breakout_20":0,"rel_vol":1.1133}},{"symbol":"R","name":"Ryder System, Inc.","sector":"Other","score":74.3,"price":283.12,"bucket":"mid","f":{"mom_12_1":0.4269,"mom_6_1":-0.0144,"high52_prox":0.9728,"trend_200":0.19,"ma_50_200":0.0391,"vol_60":0.2854,"max_dd_1y":-0.1839,"rsi_14":72.8024,"dist_ema20":0.0705,"atr_pct":0.0281,"ret_5":0.0272,"breakout_20":0,"rel_vol":1.0949}},{"symbol":"OKTA","name":"Okta Inc","sector":"Information Technology","score":84.5,"price":191.05,"bucket":"short","f":{"mom_12_1":1.4009,"mom_6_1":1.8237,"high52_prox":0.813,"trend_200":0.5165,"ma_50_200":0.557,"vol_60":0.8272,"max_dd_1y":-0.331,"rsi_14":43.4762,"dist_ema20":-0.0675,"atr_pct":0.0682,"ret_5":-0.142,"breakout_20":0,"rel_vol":2.4173}},{"symbol":"IOVA","name":"Iovance Biotherapeutics Inc","sector":"Health Care","score":83.1,"price":8.7,"bucket":"short","f":{"mom_12_1":5.6462,"mom_6_1":2.1687,"high52_prox":0.566,"trend_200":0.4673,"ma_50_200":0.9204,"vol_60":1.3131,"max_dd_1y":-0.4603,"rsi_14":33.8554,"dist_ema20":-0.2606,"atr_pct":0.1316,"ret_5":-0.4126,"breakout_20":0,"rel_vol":1.7514}},{"symbol":"CVI","name":"CVR Energy Inc","sector":"Energy","score":82.4,"price":43.01,"bucket":"short","f":{"mom_12_1":0.5697,"mom_6_1":0.7619,"high52_prox":0.6772,"trend_200":0.195,"ma_50_200":0.4712,"vol_60":0.6326,"max_dd_1y":-0.4417,"rsi_14":28.7144,"dist_ema20":-0.2256,"atr_pct":0.0919,"ret_5":-0.2464,"breakout_20":0,"rel_vol":3.1136}},{"symbol":"ZBRA","name":"Zebra Technologies Corp","sector":"Industrials","score":81.4,"price":332.44,"bucket":"short","f":{"mom_12_1":0.4258,"mom_6_1":0.6791,"high52_prox":0.8464,"trend_200":0.1813,"ma_50_200":0.3011,"vol_60":0.3205,"max_dd_1y":-0.273,"rsi_14":29.4378,"dist_ema20":-0.0964,"atr_pct":0.046,"ret_5":-0.1358,"breakout_20":0,"rel_vol":1.9659}},{"symbol":"NTRA","name":"Natera Inc","sector":"Health Care","score":81,"price":391.03,"bucket":"short","f":{"mom_12_1":1.0211,"mom_6_1":0.8627,"high52_prox":0.894,"trend_200":0.4569,"ma_50_200":0.4169,"vol_60":0.4089,"max_dd_1y":-0.282,"rsi_14":47.6696,"dist_ema20":-0.0241,"atr_pct":0.0509,"ret_5":-0.0787,"breakout_20":0,"rel_vol":1.6428}},{"symbol":"HURN","name":"Huron Consulting Group Inc.","sector":"Industrials","score":80.7,"price":173.015,"bucket":"short","f":{"mom_12_1":-0.0509,"mom_6_1":0.3093,"high52_prox":0.8507,"trend_200":0.2504,"ma_50_200":0.2121,"vol_60":0.455,"max_dd_1y":-0.5142,"rsi_14":43.7427,"dist_ema20":-0.0578,"atr_pct":0.047,"ret_5":-0.1067,"breakout_20":0,"rel_vol":3.0566}},{"symbol":"LIFE","name":"Ethos Technologies Inc","sector":"Financials","score":79.1,"price":37.13,"bucket":"short","f":{"mom_12_1":null,"mom_6_1":0.516,"high52_prox":0.7429,"trend_200":null,"ma_50_200":null,"vol_60":0.5942,"max_dd_1y":-0.5011,"rsi_14":41.6106,"dist_ema20":-0.0808,"atr_pct":0.0828,"ret_5":-0.1331,"breakout_20":0,"rel_vol":1.5628}},{"symbol":"ECO","name":"Okeanis Eco Tankers Corp","sector":"Energy","score":78.7,"price":84.9,"bucket":"short","f":{"mom_12_1":2.0104,"mom_6_1":0.797,"high52_prox":0.8278,"trend_200":0.5197,"ma_50_200":0.5017,"vol_60":0.5598,"max_dd_1y":-0.1767,"rsi_14":43.8779,"dist_ema20":-0.0763,"atr_pct":0.0588,"ret_5":-0.1428,"breakout_20":0,"rel_vol":1.3085}},{"symbol":"AMRX","name":"Amneal Pharmaceuticals, Inc","sector":"Health Care","score":78.6,"price":19.95,"bucket":"short","f":{"mom_12_1":0.8129,"mom_6_1":0.4901,"high52_prox":0.9202,"trend_200":0.259,"ma_50_200":0.2156,"vol_60":0.3836,"max_dd_1y":-0.2225,"rsi_14":48.3876,"dist_ema20":-0.0168,"atr_pct":0.0395,"ret_5":-0.0563,"breakout_20":0,"rel_vol":1.6554}},{"symbol":"FTRE","name":"Fortrea Holdings Inc","sector":"Health Care","score":78.5,"price":20.83,"bucket":"short","f":{"mom_12_1":1.0534,"mom_6_1":0.3286,"high52_prox":0.7963,"trend_200":0.3214,"ma_50_200":0.295,"vol_60":0.5848,"max_dd_1y":-0.5179,"rsi_14":45.4407,"dist_ema20":-0.0527,"atr_pct":0.0719,"ret_5":-0.1951,"breakout_20":0,"rel_vol":1.5272}},{"symbol":"AMD","name":"Advanced Micro Devices, Inc.","sector":"Information Technology","score":78.2,"price":488.78,"bucket":"short","f":{"mom_12_1":1.5011,"mom_6_1":0.5411,"high52_prox":0.7422,"trend_200":0.18,"ma_50_200":0.3251,"vol_60":0.6073,"max_dd_1y":-0.2811,"rsi_14":39.4932,"dist_ema20":-0.0901,"atr_pct":0.0638,"ret_5":-0.155,"breakout_20":0,"rel_vol":1.6465}},{"symbol":"CRL","name":"Charles River Laboratories International, Inc.","sector":"Health Care","score":78.2,"price":326.29,"bucket":"short","f":{"mom_12_1":0.705,"mom_6_1":0.6781,"high52_prox":0.8595,"trend_200":0.4595,"ma_50_200":0.3617,"vol_60":0.448,"max_dd_1y":-0.3388,"rsi_14":49.8727,"dist_ema20":-0.0219,"atr_pct":0.0508,"ret_5":-0.1275,"breakout_20":0,"rel_vol":1.3906}},{"symbol":"TNET","name":"TriNet Group, Inc.","sector":"Industrials","score":77.8,"price":66.77,"bucket":"short","f":{"mom_12_1":0.0706,"mom_6_1":0.5517,"high52_prox":0.8718,"trend_200":0.2589,"ma_50_200":0.2694,"vol_60":0.4486,"max_dd_1y":-0.4676,"rsi_14":47.9004,"dist_ema20":-0.0183,"atr_pct":0.0522,"ret_5":-0.0517,"breakout_20":0,"rel_vol":1.6768}},{"symbol":"SHOP","name":"Shopify Inc.","sector":"Information Technology","score":76.5,"price":153.03,"bucket":"short","f":{"mom_12_1":-0.0491,"mom_6_1":0.5596,"high52_prox":0.846,"trend_200":0.1785,"ma_50_200":0.1764,"vol_60":0.5416,"max_dd_1y":-0.4416,"rsi_14":44.0724,"dist_ema20":-0.0503,"atr_pct":0.0559,"ret_5":-0.0903,"breakout_20":0,"rel_vol":1.5193}},{"symbol":"DT","name":"Dynatrace, Inc","sector":"Information Technology","score":76.4,"price":46.78,"bucket":"short","f":{"mom_12_1":0.2094,"mom_6_1":0.5977,"high52_prox":0.7056,"trend_200":0.0478,"ma_50_200":0.29,"vol_60":0.4927,"max_dd_1y":-0.348,"rsi_14":23.0348,"dist_ema20":-0.1988,"atr_pct":0.0591,"ret_5":-0.2552,"breakout_20":0,"rel_vol":1.804}},{"symbol":"AVPT","name":"AvePoint Inc","sector":"Information Technology","score":76.3,"price":16.9,"bucket":"short","f":{"mom_12_1":0.0377,"mom_6_1":0.422,"high52_prox":0.9646,"trend_200":0.4154,"ma_50_200":0.2086,"vol_60":0.4183,"max_dd_1y":-0.3704,"rsi_14":64.5213,"dist_ema20":0.0616,"atr_pct":0.037,"ret_5":-0.0174,"breakout_20":0,"rel_vol":3.3622}},{"symbol":"VLO","name":"Valero Energy Corp","sector":"Energy","score":75.9,"price":365.34,"bucket":"short","f":{"mom_12_1":1.4948,"mom_6_1":0.7865,"high52_prox":0.7916,"trend_200":0.2707,"ma_50_200":0.3899,"vol_60":0.4231,"max_dd_1y":-0.2054,"rsi_14":35.7344,"dist_ema20":-0.0956,"atr_pct":0.053,"ret_5":-0.0596,"breakout_20":0,"rel_vol":1.3309}},{"symbol":"LIND","name":"Lindblad Expeditions Holdings, Inc.","sector":"Consumer Discretionary","score":75.8,"price":33.52,"bucket":"short","f":{"mom_12_1":1.9574,"mom_6_1":0.6627,"high52_prox":0.8628,"trend_200":0.3571,"ma_50_200":0.2732,"vol_60":0.5156,"max_dd_1y":-0.2665,"rsi_14":47.0204,"dist_ema20":-0.0345,"atr_pct":0.0543,"ret_5":-0.0642,"breakout_20":0,"rel_vol":1.3165}},{"symbol":"PSX","name":"Phillips 66","sector":"Energy","score":75.7,"price":259.63,"bucket":"short","f":{"mom_12_1":1.0141,"mom_6_1":0.5909,"high52_prox":0.8672,"trend_200":0.3009,"ma_50_200":0.3425,"vol_60":0.3331,"max_dd_1y":-0.1728,"rsi_14":39.8033,"dist_ema20":-0.0596,"atr_pct":0.0405,"ret_5":-0.0516,"breakout_20":0,"rel_vol":1.3149}},{"symbol":"NSIT","name":"Insight Enterprises Inc","sector":"Industrials","score":75.4,"price":175.62,"bucket":"short","f":{"mom_12_1":0.6283,"mom_6_1":1.3111,"high52_prox":0.9643,"trend_200":0.5351,"ma_50_200":0.4218,"vol_60":0.391,"max_dd_1y":-0.3216,"rsi_14":59.0075,"dist_ema20":0.0348,"atr_pct":0.041,"ret_5":-0.0125,"breakout_20":0,"rel_vol":1.4319}}]};
+const SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const pct = (x, d = 1) => (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
 const pctU = (x, d = 1) => (x * 100).toFixed(d) + '%';
 const sign = (x) => (x >= 0 ? 'up' : 'down');
-const FEE = 0.001, CASH_RATE = 0.04, START = 10_000_000, HIST = 260;
+const FEE = 0.001, CASH_RATE = 0.04, START = 10_000_000, HIST = 260, SHOW = 160;
 
 // ---------- random ----------
 function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function hash(...xs) { let h = 2166136261 >>> 0; for (const x of xs) { const s = String(x); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= 0x9e37; h = Math.imul(h, 16777619); } return h >>> 0; }
 function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
-
-// ---------- dates (weekdays only) ----------
-function tradingDates(asOf, back, fwd) {
-  const d0 = new Date(asOf + 'T00:00:00Z'); const past = [], fut = [];
+function weekdays(from, back, fwd) {
+  const d0 = new Date(from + 'T00:00:00Z'); const past = [], fut = [];
   for (let d = new Date(d0); past.length < back; d.setUTCDate(d.getUTCDate() - 1)) { const w = d.getUTCDay(); if (w && w < 6) past.unshift(d.toISOString().slice(0, 10)); }
   for (let d = new Date(d0); fut.length < fwd;) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w && w < 6) fut.push(d.toISOString().slice(0, 10)); }
   return { past, fut };
 }
 
-// ---------- stock model parameters ----------
+// ---------- indicators ----------
+function sma(cl, n) { const o = new Float64Array(cl.length).fill(NaN); let s = 0; for (let i = 0; i < cl.length; i++) { s += cl[i]; if (i >= n) s -= cl[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
+function ema(cl, n) { const o = new Float64Array(cl.length).fill(NaN), k = 2 / (n + 1); let e = NaN; for (let i = 0; i < cl.length; i++) { if (i === n - 1) { let s = 0; for (let j = 0; j < n; j++) s += cl[j]; e = s / n; } else if (i >= n) e = cl[i] * k + e * (1 - k); o[i] = e; } return o; }
+function rsi(cl, n = 14) { const o = new Float64Array(cl.length).fill(NaN); let g = 0, l = 0; for (let i = 1; i < cl.length; i++) { const d = cl[i] - cl[i - 1], up = Math.max(d, 0), dn = Math.max(-d, 0); if (i <= n) { g += up / n; l += dn / n; if (i === n) o[i] = 100 - 100 / (1 + g / (l || 1e-9)); } else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; o[i] = 100 - 100 / (1 + g / (l || 1e-9)); } } return o; }
+const maArr = (cl, n, type) => type === 'SMA' ? sma(cl, n) : ema(cl, n);
+/** Point-in-time features from bars[0..i] — same fields as the nightly pipeline's `f`. */
+function featuresAt(bars, i) {
+  const c = bars.map((b) => b.c), C = c[i], f = {};
+  const lr = []; for (let k = Math.max(1, i - 59); k <= i; k++) lr.push(Math.log(c[k] / c[k - 1]));
+  const m = lr.reduce((a, b) => a + b, 0) / (lr.length || 1);
+  f.vol_60 = lr.length > 10 ? Math.sqrt(lr.reduce((a, b) => a + (b - m) ** 2, 0) / (lr.length - 1) * 252) : null;
+  let tr = 0, n = 0; for (let k = Math.max(1, i - 13); k <= i; k++) { const b = bars[k]; tr += Math.max(b.h - b.l, Math.abs(b.h - c[k - 1]), Math.abs(b.l - c[k - 1])); n++; }
+  f.atr_pct = n ? tr / n / C : null;
+  const cs = c.slice(0, i + 1); f.rsi_14 = cs.length > 15 ? rsi(cs).at(-1) : null;
+  const e20 = cs.length >= 20 ? ema(cs.slice(-150), 20).at(-1) : NaN; f.dist_ema20 = Number.isFinite(e20) ? C / e20 - 1 : null;
+  const avg = (a, b) => { let s = 0; for (let k = a; k <= b; k++) s += c[k]; return s / (b - a + 1); };
+  const s200 = i >= 199 ? avg(i - 199, i) : null, s50 = i >= 49 ? avg(i - 49, i) : null;
+  f.trend_200 = s200 ? C / s200 - 1 : null; f.ma_50_200 = s200 && s50 ? s50 / s200 - 1 : null;
+  let hi = 0, pk = 0, dd = 0; for (let k = Math.max(0, i - 251); k <= i; k++) { hi = Math.max(hi, bars[k].h); pk = Math.max(pk, c[k]); dd = Math.min(dd, c[k] / pk - 1); }
+  f.high52_prox = C / hi; f.max_dd_1y = dd;
+  f.mom_12_1 = i >= 252 ? c[i - 21] / c[i - 252] - 1 : null; f.mom_6_1 = i >= 126 ? c[i - 21] / c[i - 126] - 1 : null;
+  f.ret_5 = i >= 5 ? C / c[i - 5] - 1 : null;
+  let h20 = 0; for (let k = Math.max(0, i - 20); k < i; k++) h20 = Math.max(h20, bars[k].h); f.breakout_20 = i >= 20 && C > h20 ? 1 : 0;
+  let v20 = 0; for (let k = Math.max(0, i - 19); k <= i; k++) v20 += bars[k].v; f.rel_vol = v20 ? bars[i].v / (v20 / Math.min(20, i + 1)) : null;
+  return f;
+}
+
+// ---------- model parameters, MA choice, patterns ----------
 function params(s) {
   const f = s.f; const vol = clamp(f.vol_60 ?? 0.4, 0.12, 1.4);
   const atr = clamp(f.atr_pct ?? vol / 15, 0.008, 0.15);
-  return { vol, atr, sd: vol / Math.sqrt(252), beta: clamp(0.6 + 0.8 * Math.min(vol, 1), 0.6, 1.5), alpha: 0.03 * clamp((s.score - 78) / 4, -1, 1) };
+  return { vol, atr, sd: vol / Math.sqrt(252), beta: clamp(0.6 + 0.8 * Math.min(vol, 1), 0.6, 1.5), alpha: 0.03 * clamp(((s.score ?? 78) - 78) / 4, -1, 1) };
 }
 function autoMA(s) {
   const a = params(s).atr;
@@ -246,55 +344,139 @@ function maFor(s, mode) {
   return { fast: a, slow: b, fType: a === 50 ? 'SMA' : 'EMA', why: '모든 종목에 같은 선 적용' };
 }
 const maLabel = (m) => m.hold ? '보유만' : `${m.fType}${m.fast} / SMA${m.slow}`;
-
-// ---------- patterns from real features ----------
 function patterns(s) {
   const f = s.f, out = [];
   const add = (tone, label, text) => out.push({ tone, label, text });
-  const t200 = f.trend_200, m52 = f.ma_50_200, hp = f.high52_prox, rsi = f.rsi_14, de = f.dist_ema20, rv = f.rel_vol;
+  const t200 = f.trend_200, m52 = f.ma_50_200, hp = f.high52_prox ?? 0, rsiV = f.rsi_14, de = f.dist_ema20 ?? 0, rv = f.rel_vol ?? 1, r5 = f.ret_5 ?? 0;
   if (t200 != null && m52 != null && t200 > 0 && m52 > 0) add('good', '정배열 상승추세', `주가가 200일선보다 ${pctU(t200, 0)} 위, 50일선이 200일선보다 ${pctU(m52, 0)} 위입니다.`);
   else if (t200 != null && t200 < 0) add('bad', '200일선 아래', `주가가 200일선보다 ${pctU(-t200, 0)} 아래입니다. 큰 추세가 꺾였을 수 있습니다.`);
   if (f.breakout_20 === 1 && hp > 0.97) add('good', '신고가 돌파', `20일 고점을 넘었고 52주 고점의 ${pctU(hp, 0)} 위치입니다.`);
-  else if (hp > 0.95 && rsi >= 55) add('good', '신고가 근처에서 버팀', `52주 고점의 ${pctU(hp, 0)}까지 와 있습니다. 돌파가 나오면 추세가 이어지는 자리입니다.`);
-  if (rsi > 70) add('warn', '단기 과열', `RSI ${rsi.toFixed(0)}. 많이 올라서 며칠 쉬어갈 수 있습니다. 추격보다 눌림을 기다리는 편이 낫습니다.`);
-  if (t200 > 0.08 && de < -0.03 && rsi >= 30 && rsi <= 50) add('info', '상승추세 속 눌림목', `20일 지수이평보다 ${pctU(-de, 1)} 아래로 내려와 RSI ${rsi.toFixed(0)}. 빠른 선을 되찾으면 사는 자리입니다.`);
-  if (rsi < 32) add('warn', '과매도', `RSI ${rsi.toFixed(0)}. 많이 빠져 반등이 나올 수 있지만 하락 이유를 먼저 확인해야 합니다.`);
-  if (f.ret_5 < -0.12) add('bad', '5일 급락', `최근 5거래일 ${pct(f.ret_5, 0)}. 실적·공시 같은 이유가 있었는지 확인하세요.`);
-  if (rv > 1.5) add(f.ret_5 >= 0 ? 'good' : 'warn', '거래량 증가', `거래량이 20일 평균의 ${rv.toFixed(1)}배입니다. ${f.ret_5 >= 0 ? '매수세가 붙었습니다.' : '하락에 거래량이 실려 매도 압력이 큽니다.'}`);
+  else if (hp > 0.95 && rsiV >= 55) add('good', '신고가 근처에서 버팀', `52주 고점의 ${pctU(hp, 0)}까지 와 있습니다. 돌파가 나오면 추세가 이어지는 자리입니다.`);
+  if (rsiV != null && rsiV > 70) add('warn', '단기 과열', `RSI ${rsiV.toFixed(0)}. 많이 올라서 며칠 쉬어갈 수 있습니다. 추격보다 눌림을 기다리는 편이 낫습니다.`);
+  if (t200 > 0.08 && de < -0.03 && rsiV >= 30 && rsiV <= 50) add('info', '상승추세 속 눌림목', `20일 지수이평보다 ${pctU(-de, 1)} 아래로 내려와 RSI ${rsiV.toFixed(0)}. 빠른 선을 되찾으면 사는 자리입니다.`);
+  if (rsiV != null && rsiV < 32) add('warn', '과매도', `RSI ${rsiV.toFixed(0)}. 많이 빠져 반등이 나올 수 있지만 하락 이유를 먼저 확인해야 합니다.`);
+  if (r5 < -0.12) add('bad', '5일 급락', `최근 5거래일 ${pct(r5, 0)}. 실적·공시 같은 이유가 있었는지 확인하세요.`);
+  if (rv > 1.5) add(r5 >= 0 ? 'good' : 'warn', '거래량 증가', `거래량이 20일 평균의 ${rv.toFixed(1)}배입니다. ${r5 >= 0 ? '매수세가 붙었습니다.' : '하락에 거래량이 실려 매도 압력이 큽니다.'}`);
   if (f.mom_12_1 > 1) add('info', '강한 1년 모멘텀', `1년(최근 1개월 제외) ${pct(f.mom_12_1, 0)}. 많이 오른 만큼 되돌림도 깊을 수 있습니다.`);
   const title = out.find((p) => ['신고가 돌파', '상승추세 속 눌림목', '신고가 근처에서 버팀', '과매도', '200일선 아래'].includes(p.label))?.label ?? (out[0]?.label || '뚜렷한 패턴 없음');
   return { title, list: out };
 }
 
 // ---------- portfolio choice (my rules) ----------
+const id = (s) => s.bucket + ':' + s.symbol;
 function chooseDefault(stocks) {
-  const picked = new Set(), excluded = [], sec = {};
+  const picked = new Set(), excluded = [], sec = {}, syms = new Set();
   const take = (bucket, n) => { let k = 0;
     for (const s of stocks.filter((x) => x.bucket === bucket)) {
       if (k >= n) break;
-      if ([...picked].some((id) => id.split(':')[1] === s.symbol)) { excluded.push([s, '이미 다른 목록에서 담음']); continue; }
+      if (syms.has(s.symbol)) { excluded.push([s, '이미 다른 목록에서 담음']); continue; }
       if ((s.f.vol_60 ?? 0) > 1.0) { excluded.push([s, `60일 변동성 ${pctU(s.f.vol_60, 0)} — 너무 거칠어 제외`]); continue; }
-      if ((sec[s.sector] || 0) >= 2) { excluded.push([s, `${s.sector} 이미 2종목`]); continue; }
-      sec[s.sector] = (sec[s.sector] || 0) + 1; picked.add(id(s)); k++;
+      const sc = s.sector && s.sector !== 'Unknown' ? s.sector : null; // unknown sector: no cap to apply
+      if (sc && (sec[sc] || 0) >= 2) { excluded.push([s, `${sc} 이미 2종목`]); continue; }
+      if (sc) sec[sc] = (sec[sc] || 0) + 1;
+      picked.add(id(s)); syms.add(s.symbol); k++;
     } };
   take('mid', 6); take('short', 4);
   return { picked, excluded };
 }
-const id = (s) => s.bucket + ':' + s.symbol;
-function gateCash(state) { return state === 'OK' || state === 'GO' ? 0.1 : state === 'LIMIT' ? 0.3 : state ? 0.5 : 0.2; }
+// market-brief verdicts: SELECTIVE (conditions met) · LIMIT (reduce new entries) · WAIT (stand aside) · UNKNOWN (data gap)
+function gateCash(state) { return state === 'SELECTIVE' ? 0.1 : state === 'WAIT' ? 0.5 : state ? 0.3 : 0.2; }
 function weights(sel, cash) {
-  const inv = 1 - cash, out = new Map();
+  const inv = 1 - cash, out = new Map(), mixed = sel.some((s) => s.bucket === 'mid') && sel.some((s) => s.bucket === 'short');
   for (const [bucket, share] of [['mid', 0.7], ['short', 0.3]]) {
     const xs = sel.filter((s) => s.bucket === bucket); if (!xs.length) continue;
-    const share2 = sel.every((s) => s.bucket === bucket) ? 1 : share;
-    const raw = xs.map((s) => s.score / params(s).vol), tot = raw.reduce((a, b) => a + b, 0);
-    xs.forEach((s, i) => out.set(id(s), Math.min(0.12, inv * share2 * raw[i] / tot)));
+    const raw = xs.map((s) => (s.score ?? 70) / params(s).vol), tot = raw.reduce((a, b) => a + b, 0);
+    xs.forEach((s, i) => out.set(id(s), Math.min(0.12, inv * (mixed ? share : 1) * raw[i] / tot)));
   }
   return out;
 }
 
-// ---------- price paths ----------
-function bridge(r, anchors, sd) { // anchors: [[t, logP]] sorted, t from 0..N
+// ---------- one stock sleeve under the rules ----------
+function runSleeve(s, hist, fut, ma, alloc, record) {
+  const H = fut.length, all = hist.concat(fut), cl = all.map((b) => b.c), h0 = hist.length;
+  const fast = maArr(cl, ma.fast, ma.fType), slow = sma(cl, ma.slow), atrAbs = params(s).atr * s.price;
+  const kStop = s.bucket === 'mid' ? 2.5 : 2.0;
+  const eq = new Float64Array(H + 1), hold = new Float64Array(H + 1); eq.fill(alloc); hold.fill(alloc);
+  const trades = record ? [] : null; let cash = alloc, sh = 0, stop = 0, entry = 0, be = false, hiC = 0, below = 0, nStops = 0, nTrades = 0, lastWhy = '';
+  if (!H) return { eq, hold, trades: trades ?? [], nStops, nTrades, fast, slow, all, h0, state: 'wait', entry: 0 };
+  let pending = null;
+  const confirm = !ma.hold && cl[h0 - 1] < fast[h0 - 1];
+  if (!confirm && !ma.hold) pending = { side: 'buy', why: '추천 다음 날 시가 매수' };
+  let waitLeft = 15, cooldown = 0;
+  const hsh = alloc * (1 - FEE) / fut[0].o;
+  for (let k = 1; k <= H; k++) {
+    const b = fut[k - 1], i = h0 + k - 1;
+    if (pending) {
+      if (pending.side === 'sell' && sh > 0) { cash = sh * b.o * (1 - FEE); if (record) trades.push({ k, side: 'sell', px: b.o, why: pending.why }); sh = 0; cooldown = 3; lastWhy = 'ma'; }
+      else if (pending.side === 'buy' && sh === 0) { sh = cash * (1 - FEE) / b.o; cash = 0; entry = b.o; stop = entry - kStop * atrAbs; be = false; hiC = b.o; below = 0; nTrades++; if (record) trades.push({ k, side: 'buy', px: b.o, why: pending.why }); }
+      pending = null;
+    }
+    if (sh > 0 && !ma.hold) {
+      let px = null, why = '';
+      if (b.o <= stop) { px = b.o; why = '손절가 아래로 갭 하락'; } else if (b.l <= stop) { px = stop; why = stop >= entry ? '본전·추적 손절' : '손절'; }
+      if (px !== null) { cash = sh * px * (1 - FEE); sh = 0; if (stop < entry) nStops++; lastWhy = stop < entry ? 'stop' : 'trail'; if (record) trades.push({ k, side: 'sell', px, why }); cooldown = 3; }
+    }
+    if (sh > 0 && !ma.hold) {
+      if (!be && b.h >= entry + 2 * atrAbs) { stop = Math.max(stop, entry); be = true; if (record) trades.push({ k, side: 'note', px: entry, why: '+2ATR 도달 — 손절가를 매수가로' }); }
+      hiC = Math.max(hiC, b.c); if (be) stop = Math.max(stop, hiC - 3 * atrAbs);
+      below = b.c < slow[i] ? below + 1 : 0;
+      if (below >= 2) pending = { side: 'sell', why: `SMA${ma.slow} 아래 2일 연속 — 다음 날 매도` };
+    } else if (sh === 0 && !ma.hold) {
+      if (cooldown > 0) cooldown--;
+      if (confirm && nTrades === 0 && waitLeft > 0) { waitLeft--; if (b.c > fast[i]) pending = { side: 'buy', why: `${ma.fType}${ma.fast} 위로 회복 — 눌림목 매수` }; }
+      else if (cooldown === 0 && fast[i] > slow[i] && fast[i - 1] <= slow[i - 1] && b.c > slow[i]) pending = { side: 'buy', why: '골든크로스 — 재매수' };
+    }
+    if (ma.hold && k === 1) { sh = hsh; cash = 0; if (record) trades.push({ k, side: 'buy', px: b.o, why: '시가 매수 후 보유' }); }
+    eq[k] = cash + sh * b.c; hold[k] = hsh * b.c;
+  }
+  const state = sh > 0 ? 'hold' : nTrades === 0 ? 'wait' : lastWhy === 'stop' ? 'stop' : 'out';
+  return { eq, hold, trades: trades ?? [], nStops, nTrades, fast, slow, all, h0, state, entry, pending };
+}
+const quant = (arr, q) => { const a = Float64Array.from(arr).sort(); if (!a.length) return NaN; const i = (a.length - 1) * q, lo = Math.floor(i); return a[lo] + (a[Math.min(lo + 1, a.length - 1)] - a[lo]) * (i - lo); };
+const mdd = (e) => { let pk = e[0], m = 0; for (const v of e) { pk = Math.max(pk, v); m = Math.min(m, v / pk - 1); } return m; };
+const mean = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+
+// ---------- real data access ----------
+const REAL = { ok: false, cal: [], series: new Map() };
+function initReal(r) {
+  if (!r?.cal?.length || !r.bars?.SPY) return;
+  REAL.ok = true; REAL.raw = r; REAL.cal = r.cal; REAL.pos = new Map(r.cal.map((d, i) => [d, i]));
+  for (const [sym, { s, d }] of Object.entries(r.bars)) REAL.series.set(sym, { s, bars: d.map(([o, h, l, c, v]) => ({ o, h, l, c, v })) });
+}
+/** calendar index of the last session on or before `date` */
+function calIdx(date) { let lo = 0, hi = REAL.cal.length - 1, ans = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (REAL.cal[m] <= date) { ans = m; lo = m + 1; } else hi = m - 1; } return ans; }
+function barsUntil(sym, ci) { const x = REAL.series.get(sym); if (!x || ci < x.s) return null; return x.bars.slice(0, ci - x.s + 1); }
+function barsAfter(sym, ci) { const x = REAL.series.get(sym); if (!x) return []; return x.bars.slice(Math.max(0, ci - x.s + 1)); }
+
+// ---------- data normalisation ----------
+function stocksFromLatest(latest) {
+  const out = [];
+  for (const bucket of ['mid', 'short']) { const by = new Map(latest[bucket].map((r) => [r.symbol, r]));
+    for (const s of latest.recommendations[bucket]) { const r = by.get(s); if (r) out.push({ symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, price: r.price, bucket, f: r.f }); } }
+  return out;
+}
+/** Stocks of a ledger date with features recomputed from real bars up to that date. */
+function cohortStocks(ledger) {
+  const ci = calIdx(ledger.asOf), out = [];
+  for (const bucket of ['mid', 'short']) for (const r of ledger[bucket] ?? []) {
+    const b = barsUntil(r.symbol, ci); if (!b || b.length < 30) continue;
+    out.push({ symbol: r.symbol, name: r.name ?? r.symbol, sector: r.sector, score: r.score, price: b.at(-1).c, bucket, f: featuresAt(b, b.length - 1) });
+  }
+  return { ci, stocks: out };
+}
+async function fetchJSON(u) { const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }
+async function loadData() {
+  if (DATA && DATA.real) return DATA;
+  if (!DATA) {
+    const [latest, brief] = await Promise.all([fetchJSON(SNAPSHOT + '/latest.json'), fetchJSON(SNAPSHOT + '/market-brief/latest.json').catch(() => null)]);
+    DATA = { asOf: latest.asOf, model: latest.model, generatedAt: latest.generatedAt, market: brief ? { state: brief.decision?.state, label: brief.decision?.label, reasons: brief.decision?.reasons ?? [] } : null, stocks: stocksFromLatest(latest) };
+  }
+  try { DATA.real = await fetchJSON(SNAPSHOT + '/sim/bars.json'); } catch { /* artifact sandbox or not published yet: synthetic mode */ }
+  return DATA;
+}
+
+// ================= SYNTHETIC / BOOTSTRAP ENGINES =================
+function bridge(r, anchors, sd) {
   const lp = new Float64Array(anchors[anchors.length - 1][0] + 1);
   for (let a = 0; a < anchors.length - 1; a++) {
     const [t0, p0] = anchors[a], [t1, p1] = anchors[a + 1], n = t1 - t0; let w = 0; const walk = [0];
@@ -308,170 +490,121 @@ function toBars(r, closes, atr, firstOpen, relVolTail) {
   for (let i = 0; i < closes.length; i++) {
     const c = closes[i], o = prev * Math.exp(gauss(r) * atr * 0.22);
     const h = Math.max(o, c) * (1 + Math.abs(gauss(r)) * atr * 0.32), l = Math.min(o, c) * (1 - Math.abs(gauss(r)) * atr * 0.32);
-    const move = Math.abs(Math.log(c / prev)) / atr;
-    let v = (0.7 + 0.6 * r()) * (1 + 0.5 * move); if (relVolTail && i >= closes.length - 5) v *= relVolTail;
+    let v = (0.7 + 0.6 * r()) * (1 + 0.5 * Math.abs(Math.log(c / prev)) / atr); if (relVolTail && i >= closes.length - 5) v *= relVolTail;
     bars.push({ o, h, l, c, v }); prev = c;
   }
   return bars;
 }
-const histCache = new Map();
-function history(s) {
-  if (histCache.has(s.symbol)) return histCache.get(s.symbol);
-  const r = mulberry(hash('hist', s.symbol)), f = s.f, P = s.price, p = params(s), L = Math.log;
-  const m12 = f.mom_12_1 ?? (f.mom_6_1 != null ? f.mom_6_1 * 1.4 : 0.15), m6 = f.mom_6_1 ?? m12 * 0.5;
-  const N = HIST - 1, anchors = [[0, L(P / (1 + m12))], [N - 126, L(P / (1 + m6))]];
-  const hp = clamp(f.high52_prox ?? 0.9, 0.3, 1);
-  const tPeak = hp > 0.985 ? null : (f.ret_5 ?? 0) < -0.04 ? N - 9 : N - 45;
-  if (tPeak) anchors.push([tPeak, L(P / hp)]);
-  if (f.dist_ema20 != null) anchors.push([N - 12, L(P / (1 + 1.6 * f.dist_ema20))]);
-  if (f.ret_5 != null) anchors.push([N - 5, L(P / (1 + f.ret_5))]);
-  anchors.push([N, L(P)]);
-  anchors.sort((a, b) => a[0] - b[0]);
-  for (let i = anchors.length - 2; i > 0; i--) if (anchors[i + 1][0] - anchors[i][0] < 4) anchors.splice(i, 1);
-  const lp = bridge(r, anchors, p.sd * 0.85), closes = Array.from(lp, Math.exp);
-  const bars = toBars(r, closes, p.atr, null, f.rel_vol ?? 1);
-  histCache.set(s.symbol, bars); return bars;
-}
-function startStress(state) { return state === 'LIMIT' ? 0.35 : state === 'OK' || state === 'GO' ? 0.12 : state ? 0.6 : 0.25; }
-function genMarket(seed, p, H, state) {
-  const r = mulberry(hash(seed, 'mkt', p)); const ret = new Float64Array(H), reg = new Uint8Array(H);
-  let stress = r() < startStress(state);
-  for (let t = 0; t < H; t++) {
-    if (stress ? r() < 0.06 : r() < 0.02) stress = !stress;
-    reg[t] = stress ? 1 : 0;
-    ret[t] = stress ? -0.30 / 252 + gauss(r) * 0.30 / Math.sqrt(252) : 0.10 / 252 + gauss(r) * 0.13 / Math.sqrt(252);
-  }
-  return { ret, reg };
-}
-function genStock(seed, p, s, mkt, H) {
-  const r = mulberry(hash(seed, s.symbol, p)), q = params(s), hist = history(s);
-  const idio = Math.sqrt(Math.max(q.sd * q.sd - q.beta * q.beta * 0.16 * 0.16 / 252, (0.35 * q.sd) ** 2));
-  const earn = Math.floor(r() * 63); let trend = 0, c = hist[hist.length - 1].c; const closes = [];
-  for (let t = 0; t < H; t++) {
-    trend = 0.96 * trend + gauss(r) * idio * 0.09;
-    let e = gauss(r) * idio * (mkt.reg[t] ? 1.3 : 1); if (r() < 0.04) e *= 2.3;
-    if (t % 63 === earn) e += gauss(r) * q.atr * 2.2;
-    c *= Math.exp(q.beta * mkt.ret[t] + q.alpha / 252 + trend + e - 0.5 * idio * idio);
-    closes.push(c);
-  }
-  return toBars(r, closes, q.atr, hist[hist.length - 1].c, null);
-}
-
-// ---------- indicators ----------
-function sma(cl, n) { const o = new Float64Array(cl.length).fill(NaN); let s = 0; for (let i = 0; i < cl.length; i++) { s += cl[i]; if (i >= n) s -= cl[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
-function ema(cl, n) { const o = new Float64Array(cl.length).fill(NaN), k = 2 / (n + 1); let e = NaN; for (let i = 0; i < cl.length; i++) { if (i === n - 1) { let s = 0; for (let j = 0; j < n; j++) s += cl[j]; e = s / n; } else if (i >= n) e = cl[i] * k + e * (1 - k); o[i] = e; } return o; }
-function rsi(cl, n = 14) { const o = new Float64Array(cl.length).fill(NaN); let g = 0, l = 0; for (let i = 1; i < cl.length; i++) { const d = cl[i] - cl[i - 1], up = Math.max(d, 0), dn = Math.max(-d, 0); if (i <= n) { g += up / n; l += dn / n; if (i === n) o[i] = 100 - 100 / (1 + g / (l || 1e-9)); } else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; o[i] = 100 - 100 / (1 + g / (l || 1e-9)); } } return o; }
-const maArr = (cl, n, type) => type === 'SMA' ? sma(cl, n) : ema(cl, n);
-
-// ---------- one stock sleeve under the rules ----------
-function runSleeve(s, hist, fut, ma, alloc, record) {
-  const H = fut.length, all = hist.concat(fut), cl = all.map((b) => b.c), h0 = hist.length;
-  const fast = maArr(cl, ma.fast, ma.fType), slow = sma(cl, ma.slow), q = params(s), atrAbs = q.atr * s.price;
-  const kStop = s.bucket === 'mid' ? 2.5 : 2.0;
-  const eq = new Float64Array(H + 1), hold = new Float64Array(H + 1); eq[0] = hold[0] = alloc;
-  const trades = record ? [] : null; let cash = alloc, sh = 0, stop = 0, entry = 0, be = false, hiC = 0, below = 0, nStops = 0, nTrades = 0;
-  let pending = null; // {side, why}
-  const confirm = !ma.hold && cl[h0 - 1] < fast[h0 - 1];
-  if (!confirm && !ma.hold) pending = { side: 'buy', why: '추천 다음 날 시가 매수' };
-  let waitLeft = 15, cooldown = 0;
-  const hsh = alloc * (1 - FEE) / fut[0].o;
-  for (let k = 1; k <= H; k++) {
-    const b = fut[k - 1], i = h0 + k - 1;
-    if (pending) {
-      if (pending.side === 'sell' && sh > 0) { cash = sh * b.o * (1 - FEE); if (record) trades.push({ k, side: 'sell', px: b.o, why: pending.why }); sh = 0; cooldown = 3; }
-      else if (pending.side === 'buy' && sh === 0) { sh = cash * (1 - FEE) / b.o; cash = 0; entry = b.o; stop = entry - kStop * atrAbs; be = false; hiC = b.o; below = 0; nTrades++; if (record) trades.push({ k, side: 'buy', px: b.o, why: pending.why }); }
-      pending = null;
+function startStress(state) { return state === 'SELECTIVE' ? 0.12 : state === 'WAIT' ? 0.6 : state ? 0.35 : 0.25; }
+const SYNTH = {
+  name: 'synthetic', cache: new Map(),
+  history(s) {
+    if (this.cache.has(s.symbol)) return this.cache.get(s.symbol);
+    const r = mulberry(hash('hist', s.symbol)), f = s.f, P = s.price, p = params(s), L = Math.log;
+    const m12 = f.mom_12_1 ?? (f.mom_6_1 != null ? f.mom_6_1 * 1.4 : 0.15), m6 = f.mom_6_1 ?? m12 * 0.5;
+    const N = HIST - 1, anchors = [[0, L(P / (1 + m12))], [N - 126, L(P / (1 + m6))]];
+    const hp = clamp(f.high52_prox ?? 0.9, 0.3, 1);
+    const tPeak = hp > 0.985 ? null : (f.ret_5 ?? 0) < -0.04 ? N - 9 : N - 45;
+    if (tPeak) anchors.push([tPeak, L(P / hp)]);
+    if (f.dist_ema20 != null) anchors.push([N - 12, L(P / (1 + 1.6 * f.dist_ema20))]);
+    if (f.ret_5 != null) anchors.push([N - 5, L(P / (1 + f.ret_5))]);
+    anchors.push([N, L(P)]); anchors.sort((a, b) => a[0] - b[0]);
+    for (let i = anchors.length - 2; i > 0; i--) if (anchors[i + 1][0] - anchors[i][0] < 4) anchors.splice(i, 1);
+    const closes = Array.from(bridge(r, anchors, p.sd * 0.85), Math.exp);
+    const bars = toBars(r, closes, p.atr, null, f.rel_vol ?? 1); this.cache.set(s.symbol, bars); return bars;
+  },
+  histDates(n) { return weekdays(DATA.asOf, n, 0).past; },
+  market(seed, p, H) {
+    const r = mulberry(hash(seed, 'mkt', p)); const ret = new Float64Array(H), reg = new Uint8Array(H);
+    let stress = r() < startStress(DATA.market?.state);
+    for (let t = 0; t < H; t++) {
+      if (stress ? r() < 0.06 : r() < 0.02) stress = !stress;
+      reg[t] = stress ? 1 : 0;
+      ret[t] = stress ? -0.30 / 252 + gauss(r) * 0.30 / Math.sqrt(252) : 0.10 / 252 + gauss(r) * 0.13 / Math.sqrt(252);
     }
-    if (sh > 0 && !ma.hold) {
-      let px = null, why = '';
-      if (b.o <= stop) { px = b.o; why = '손절가 아래로 갭 하락'; } else if (b.l <= stop) { px = stop; why = stop >= entry ? '본전·추적 손절' : '손절'; }
-      if (px !== null) { cash = sh * px * (1 - FEE); sh = 0; if (stop < entry) nStops++; if (record) trades.push({ k, side: 'sell', px, why }); cooldown = 3; }
+    return { ret, reg };
+  },
+  future(seed, p, s, mkt, H) {
+    const r = mulberry(hash(seed, s.symbol, p)), q = params(s), hist = this.history(s);
+    const idio = Math.sqrt(Math.max(q.sd * q.sd - q.beta * q.beta * 0.16 * 0.16 / 252, (0.35 * q.sd) ** 2));
+    const earn = Math.floor(r() * 63); let trend = 0, c = hist[hist.length - 1].c; const closes = [];
+    for (let t = 0; t < H; t++) {
+      trend = 0.96 * trend + gauss(r) * idio * 0.09;
+      let e = gauss(r) * idio * (mkt.reg[t] ? 1.3 : 1); if (r() < 0.04) e *= 2.3;
+      if (t % 63 === earn) e += gauss(r) * q.atr * 2.2;
+      c *= Math.exp(q.beta * mkt.ret[t] + q.alpha / 252 + trend + e - 0.5 * idio * idio);
+      closes.push(c);
     }
-    if (sh > 0 && !ma.hold) {
-      if (!be && b.h >= entry + 2 * atrAbs) { stop = Math.max(stop, entry); be = true; if (record) trades.push({ k, side: 'note', px: entry, why: '+2ATR 도달 — 손절가를 매수가로' }); }
-      hiC = Math.max(hiC, b.c); if (be) stop = Math.max(stop, hiC - 3 * atrAbs);
-      below = b.c < slow[i] ? below + 1 : 0;
-      if (below >= 2 && k < H) pending = { side: 'sell', why: `SMA${ma.slow} 아래 2일 연속 — 다음 날 매도` };
-    } else if (sh === 0 && !ma.hold && k < H - 1) {
-      if (cooldown > 0) cooldown--;
-      if (confirm && nTrades === 0 && waitLeft > 0) { waitLeft--; if (b.c > fast[i]) pending = { side: 'buy', why: `${ma.fType}${ma.fast} 위로 회복 — 눌림목 매수` }; }
-      else if (cooldown === 0 && fast[i] > slow[i] && fast[i - 1] <= slow[i - 1] && b.c > slow[i]) pending = { side: 'buy', why: '골든크로스 — 재매수' };
+    return toBars(r, closes, q.atr, hist[hist.length - 1].c, null);
+  },
+  describe: '<b>가상 미래</b> · 평온 국면(연 +10%, 변동성 13%)과 스트레스 국면(연 −30%, 변동성 30%)을 오가는 2국면 모형 위에, 종목별 변동성·시장 민감도·추세 지속·두꺼운 꼬리·실적 갭을 얹었습니다. 실제 시세 파일이 없어서 과거 차트도 실제 지표에 맞춘 재구성입니다.',
+};
+/** Block bootstrap of real days: every stock and SPY move as they did on the same sampled day (keeps correlation, fat tails, gaps); each stock's past average return is removed so past momentum does not leak into the future. */
+const BOOT = {
+  name: 'bootstrap', BLOCK: 5, cache: new Map(),
+  get last() { return REAL.cal.length - 1; },
+  history(s) { if (!this.cache.has(s.symbol)) this.cache.set(s.symbol, barsUntil(s.symbol, this.last) ?? SYNTH.history(s)); return this.cache.get(s.symbol); },
+  histDates(n) { return REAL.cal.slice(-n); },
+  range() { const hi = this.last, lo = Math.max(1, hi - 503); return [lo, hi]; },
+  days(seed, p, H) { const r = mulberry(hash(seed, 'boot', p)), [lo, hi] = this.range(), out = new Int32Array(H); for (let t = 0; t < H;) { const st = lo + Math.floor(r() * (hi - lo - this.BLOCK + 2)); for (let k = 0; k < this.BLOCK && t < H; k++, t++) out[t] = Math.min(hi, st + k); } return out; },
+  drift: new Map(),
+  meanLog(sym) {
+    if (this.drift.has(sym)) return this.drift.get(sym);
+    const x = REAL.series.get(sym), [lo, hi] = this.range(); let s = 0, n = 0;
+    if (x) for (let d = Math.max(lo, x.s + 1); d <= hi; d++) { s += Math.log(x.bars[d - x.s].c / x.bars[d - x.s - 1].c); n++; }
+    const m = n ? s / n : 0; this.drift.set(sym, m); return m;
+  },
+  dayBar(sym, d) { const x = REAL.series.get(sym); if (!x || d - 1 < x.s) return null; const b = x.bars[d - x.s], p = x.bars[d - x.s - 1]; return b.v === 0 && b.o === b.c ? null : { b, pc: p.c }; },
+  market(seed, p, H) {
+    const days = this.days(seed, p, H), ret = new Float64Array(H), m = this.meanLog('SPY'), base = 0.07 / 252;
+    for (let t = 0; t < H; t++) { const x = this.dayBar('SPY', days[t]); ret[t] = x ? Math.log(x.b.c / x.pc) - m + base : 0; }
+    return { ret, reg: new Uint8Array(H), days };
+  },
+  future(seed, p, s, mkt, H) {
+    const hist = this.history(s); let prev = hist.at(-1).c; const m = this.meanLog(s.symbol), q = params(s), base = 0.07 / 252 + q.alpha / 252, out = [];
+    const r = mulberry(hash(seed, s.symbol, p));
+    for (let t = 0; t < H; t++) {
+      const x = this.dayBar(s.symbol, mkt.days[t]); let o, h, l, c, v;
+      if (x) { const lr = Math.log(x.b.c / x.pc) - m + base; c = prev * Math.exp(lr); o = prev * x.b.o / x.pc; h = Math.max(o, c, c * x.b.h / x.b.c); l = Math.min(o, c, c * x.b.l / x.b.c); v = x.b.v; }
+      else { c = prev * Math.exp(q.beta * mkt.ret[t] + gauss(r) * q.sd * 0.6); o = prev; h = Math.max(o, c) * (1 + q.atr * 0.3); l = Math.min(o, c) * (1 - q.atr * 0.3); v = hist.at(-1).v; }
+      out.push({ o, h, l, c, v }); prev = c;
     }
-    if (ma.hold && k === 1) { sh = hsh; cash = 0; if (record) trades.push({ k, side: 'buy', px: b.o, why: '시가 매수 후 보유' }); }
-    eq[k] = cash + sh * b.c; hold[k] = hsh * b.c;
-  }
-  return { eq, hold, trades, nStops, nTrades, fast, slow, all };
-}
+    return out;
+  },
+  describe: '<b>가상 미래</b> · 최근 2년 실제 거래일을 5일 묶음으로 무작위로 다시 뽑아 이어 붙입니다(블록 부트스트랩). 같은 날 SPY와 모든 종목이 함께 움직이므로 종목 간 상관·급락일·갭이 실제 그대로 들어갑니다. 과거에 많이 오른 종목의 평균 상승률은 빼고 연 7% 기본 수익만 남겨, 지난 모멘텀이 미래로 그대로 이어진다고 가정하지 않습니다.',
+};
+let ENGINE = SYNTH;
 
-// ---------- full Monte Carlo ----------
 function simulate(cfg) {
-  const { seed, paths, H, maMode, sel, w, cash, state } = cfg;
+  const { seed, paths, H, maMode, sel, w, cash } = cfg;
   const strat = [], hold = [], mkt = [], per = sel.map(() => ({ ret: [], stops: 0, trades: 0 }));
+  const used = cash + sel.reduce((a, s) => a + w.get(id(s)), 0);
   for (let p = 0; p < paths; p++) {
-    const m = genMarket(seed, p, H, state); const se = new Float64Array(H + 1), sh = new Float64Array(H + 1), mk = new Float64Array(H + 1);
-    const cashAmt = START * cash; let mc = 1;
+    const m = ENGINE.market(seed, p, H); const se = new Float64Array(H + 1), sh = new Float64Array(H + 1), mk = new Float64Array(H + 1);
+    const cashAmt = START * (cash + 1 - used); let mc = 1;
     for (let k = 0; k <= H; k++) { const c = cashAmt * (1 + CASH_RATE / 252) ** k; se[k] += c; sh[k] += c; if (k) mc *= Math.exp(m.ret[k - 1]); mk[k] = START * mc; }
     sel.forEach((s, j) => {
-      const alloc = START * w.get(id(s)), fut = genStock(seed, p, s, m, H);
-      const r = runSleeve(s, history(s), fut, maFor(s, maMode), alloc, false);
+      const alloc = START * w.get(id(s)), fut = ENGINE.future(seed, p, s, m, H);
+      const r = runSleeve(s, ENGINE.history(s), fut, maFor(s, maMode), alloc, false);
       for (let k = 0; k <= H; k++) { se[k] += r.eq[k]; sh[k] += r.hold[k]; }
       per[j].ret.push((r.eq[H] - alloc) / START); per[j].stops += r.nStops > 0 ? 1 : 0; per[j].trades += r.nTrades;
     });
-    // un-allocated remainder (position caps) stays as cash too
-    const used = cash + sel.reduce((a, s) => a + w.get(id(s)), 0), rest = START * (1 - used);
-    for (let k = 0; k <= H; k++) { const c = rest * (1 + CASH_RATE / 252) ** k; se[k] += c; sh[k] += c; }
     strat.push(se); hold.push(sh); mkt.push(mk);
   }
   return { strat, hold, mkt, per, H, paths };
 }
-const quant = (arr, q) => { const a = Float64Array.from(arr).sort(); const i = (a.length - 1) * q, lo = Math.floor(i); return a[lo] + (a[Math.min(lo + 1, a.length - 1)] - a[lo]) * (i - lo); };
-const mdd = (e) => { let pk = e[0], m = 0; for (const v of e) { pk = Math.max(pk, v); m = Math.min(m, v / pk - 1); } return m; };
 function summarize(sim, key) {
   const fin = sim[key].map((e) => e[sim.H] / START - 1), dd = sim[key].map(mdd);
   return { fin, med: quant(fin, 0.5), p5: quant(fin, 0.05), loss: fin.filter((x) => x < 0).length / fin.length, mdd: quant(dd, 0.5) };
 }
 
-// ---------- state ----------
-const STOCKS = DATA.stocks, STATE = DATA.market?.state ?? null;
-const def = chooseDefault(STOCKS);
-const ui = { picked: new Set(def.picked), scenarioQ: 0.5, detail: null, sim: null, sum: null, cfg: null };
+// ================= UI STATE =================
+const ui = { view: 'real', scenarioQ: 0.5, detail: null, sim: null, sum: null, cfg: null, cohort: null, rdetail: null };
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const charts = {};
-let lw = null;
-
+const charts = {}, lws = {};
+let STOCKS = [], STATE = null, DEF = null;
 function selection() { return STOCKS.filter((s) => ui.picked.has(id(s))); }
-function cashShare() { const v = $('#cash').value; return v === 'auto' ? gateCash(STATE) : Number(v); }
-
-function renderHeader() {
-  $('#eyebrow').textContent = `ALPHA TERMINAL · ${DATA.asOf} 추천 원장 · 모델 ${DATA.model}`;
-  const g = DATA.market;
-  $('#gate').innerHTML = g ? `<b>${g.state}</b><span><b style="all:unset;font-weight:600;color:var(--ink)">${g.label}</b> · ${g.reasons.slice(0, 2).join(' · ')}</span>` : '<b>판정 없음</b><span>시장 판정 자료가 없어 현금 20%로 둡니다.</span>';
-  $('#foot').textContent = `데이터: alpha-terminal data 브랜치 latest.json (${DATA.generatedAt?.slice(0, 16).replace('T', ' ')} UTC 생성) · market-brief/latest.json · 시세 경로는 모두 가상`;
-}
-
-function renderPortfolio(w, cash) {
-  const sel = selection();
-  const rows = sel.map((s) => ({ s, w: w.get(id(s)), ma: maFor(s, $('#ma').value), pat: patterns(s) })).sort((a, b) => b.w - a.w);
-  const cap = 1 - cash - rows.reduce((a, r) => a + r.w, 0);
-  $('#t-port').innerHTML = `<thead><tr><th>종목</th><th>구분</th><th>지금 패턴</th><th class="r">비중</th><th>이평선</th><th class="r">손절</th></tr></thead><tbody>` +
-    rows.map(({ s, w, ma, pat }) => { const q = params(s), k = s.bucket === 'mid' ? 2.5 : 2; return `<tr><td><b class="mono">${s.symbol}</b><div class="muted" style="font-size:11.5px">${s.name.slice(0, 26)} · ${s.sector}</div></td><td><span class="bucket">${s.bucket === 'mid' ? '중장기' : '단기'}</span></td><td><span class="tag ${pat.list.find((p) => p.label === pat.title)?.tone ?? ''}">${pat.title}</span></td><td class="r num">${pctU(w)}</td><td class="mono" style="font-size:12px">${maLabel(ma)}</td><td class="r num" style="font-size:12px">$${(s.price * (1 - k * q.atr)).toFixed(2)}<div class="muted">−${pctU(k * q.atr)}</div></td></tr>`; }).join('') +
-    `<tr><td><b>현금</b></td><td></td><td class="muted" style="font-size:12px">${$('#cash').value === 'auto' ? '시장 판정 ' + (STATE ?? '없음') : '직접 설정'}${cap > 0.001 ? ` · 상한 초과분 ${pctU(cap)} 포함` : ''}</td><td class="r num">${pctU(cash + Math.max(cap, 0))}</td><td></td><td></td></tr></tbody>`;
-  const why = [
-    `현금 ${pctU(cash, 0)}: 시장 판정이 '${DATA.market?.label ?? '없음'}'이라 ${cash >= 0.3 ? '신규 위험을 줄였습니다' : '대부분 투자합니다'}.`,
-    `중장기 몫 70%, 단기 몫 30%로 나눴습니다. 중장기가 이 랭킹의 1순위 모델입니다.`,
-    ...def.excluded.filter(([s]) => s.bucket === 'short' || STOCKS.filter((x) => x.bucket === 'mid').indexOf(s) < 12).slice(0, 6).map(([s, r]) => `${s.symbol} 제외: ${r}`),
-  ];
-  $('#why').innerHTML = why.map((t) => `<li>${t}</li>`).join('');
-  $('#t-all').innerHTML = `<thead><tr><th>담기</th><th>종목</th><th>구분</th><th class="r">점수</th><th class="r">60일 변동성</th><th class="r">RSI</th><th>패턴</th></tr></thead><tbody>` +
-    STOCKS.map((s) => `<tr class="${ui.picked.has(id(s)) ? '' : 'off'}"><td><input type="checkbox" id="pick-${id(s).replace(':', '-')}" data-id="${id(s)}" ${ui.picked.has(id(s)) ? 'checked' : ''} aria-label="${s.symbol} 담기"></td><td class="mono">${s.symbol}</td><td>${s.bucket === 'mid' ? '중장기' : '단기'}</td><td class="r num">${s.score}</td><td class="r num">${s.f.vol_60 != null ? pctU(s.f.vol_60, 0) : '–'}</td><td class="r num">${s.f.rsi_14?.toFixed(0) ?? '–'}</td><td>${patterns(s).list.slice(0, 3).map((p) => `<span class="tag ${p.tone}">${p.label}</span>`).join('')}</td></tr>`).join('') + '</tbody>';
-  // weights chart
-  const labels = [...rows.map((r) => r.s.symbol), '현금'], vals = [...rows.map((r) => r.w * 100), (cash + Math.max(cap, 0)) * 100];
-  const colors = [...rows.map((r) => r.s.bucket === 'mid' ? css('--accent') : css('--hold')), css('--mkt')];
-  drawChart('c-weights', { type: 'bar', data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderRadius: 4, barThickness: 16 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.raw.toFixed(1)}%` } }, title: { display: true, text: '파랑 중장기 · 주황 단기 · 회색 현금', color: css('--muted'), font: { size: 11 }, align: 'start' } },
-      scales: { x: axis({ ticks: { callback: (v) => v + '%' } }), y: axis({ grid: { display: false }, ticks: { font: { family: css('--mono'), size: 11 } } }) } } });
-}
-
+function cashFor(state) { const v = $('#cash').value; return v === 'auto' ? gateCash(state) : Number(v); }
 function axis(extra = {}) {
   return { grid: { color: css('--line-2'), ...(extra.grid || {}) }, border: { color: css('--line') }, ticks: { color: css('--muted'), font: { size: 11 }, ...(extra.ticks || {}) }, ...Object.fromEntries(Object.entries(extra).filter(([k]) => !['grid', 'ticks'].includes(k))) };
 }
@@ -480,113 +613,208 @@ function drawChart(idc, cfg) {
   cfg.options = { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, ...cfg.options };
   charts[idc] = new Chart(document.getElementById(idc), cfg);
 }
+const line = (data, color, extra = {}) => ({ data, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 0, tension: 0.15, fill: false, ...extra });
 
-function scenarioPath() {
-  const s = ui.sum.strat, order = s.fin.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
-  return order[Math.round((order.length - 1) * ui.scenarioQ)][1];
-}
-
-function renderResults() {
-  const { sim, sum } = ui, H = sim.H;
-  const set = (k, v, cls) => { const el = $(k); el.textContent = v; el.className = 'v ' + (cls || ''); };
-  set('#k-med', pct(sum.strat.med), sign(sum.strat.med)); $('#k-med-s').textContent = `그냥 보유 ${pct(sum.hold.med)} · 시장 ${pct(sum.mkt.med)}`;
-  set('#k-loss', pctU(sum.strat.loss, 0)); $('#k-loss-s').textContent = `그냥 보유 ${pctU(sum.hold.loss, 0)} · ${sim.paths}개 중`;
-  set('#k-mdd', pct(sum.strat.mdd), 'down'); $('#k-mdd-s').textContent = `그냥 보유 ${pct(sum.hold.mdd)} · 기간 중 고점 대비`;
-  set('#k-p5', pct(sum.strat.p5), sign(sum.strat.p5)); $('#k-p5-s').textContent = `그냥 보유 ${pct(sum.hold.p5)} · 20번 중 1번은 이보다 나쁨`;
-  // fan
-  const { past, fut } = tradingDates(DATA.asOf, 1, H); const labels = [DATA.asOf.slice(5), ...fut.map((d) => d.slice(5))];
-  const band = (key, q) => Array.from({ length: H + 1 }, (_, k) => quant(sim[key].map((e) => e[k]), q) / 1e4);
-  const p = scenarioPath();
-  const line = (data, color, extra = {}) => ({ data, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 0, tension: 0.15, fill: false, ...extra });
-  const fill = (data, c) => ({ data, borderWidth: 0, pointRadius: 0, backgroundColor: c, fill: '-1', tension: 0.15 });
-  drawChart('c-fan', { type: 'line', data: { labels, datasets: [
-    { ...line(band('strat', 0.95), 'transparent'), label: '95%' }, { ...fill(band('strat', 0.05), css('--band1')), label: '5%' },
-    { ...line(band('strat', 0.75), 'transparent'), label: '75%' }, { ...fill(band('strat', 0.25), css('--band2')), label: '25%' },
-    { ...line(band('mkt', 0.5), css('--mkt'), { borderDash: [4, 4], borderWidth: 1.5 }), label: '시장 중간' },
-    { ...line(band('hold', 0.5), css('--hold')), label: '보유 중간' },
-    { ...line(band('strat', 0.5), css('--accent'), { borderWidth: 2.5 }), label: '내 규칙 중간' },
-    { ...line(Array.from(sim.strat[p], (v) => v / 1e4), css('--ink'), { borderWidth: 1.5 }), label: '대표 시나리오' },
-  ] }, options: { plugins: { legend: { display: false }, tooltip: { filter: (i) => !['95%', '75%'].includes(i.dataset.label), callbacks: { label: (c) => ` ${c.dataset.label}: ${Math.round(c.raw).toLocaleString()}만 원 (${pct(c.raw / 1000 - 1)})` } } },
-    scales: { x: axis({ ticks: { maxTicksLimit: 8 } }), y: axis({ ticks: { callback: (v) => v.toLocaleString() + '만' } }) } } });
-  // histogram
-  const lo = Math.min(quant(sum.strat.fin, 0.005), quant(sum.hold.fin, 0.005)), hi = Math.max(quant(sum.strat.fin, 0.995), quant(sum.hold.fin, 0.995));
-  const nb = 24, step = (hi - lo) / nb || 0.01; const binsS = new Array(nb).fill(0), binsH = new Array(nb).fill(0);
-  const put = (arr, b) => arr.forEach((x) => b[clamp(Math.floor((x - lo) / step), 0, nb - 1)]++);
-  put(sum.strat.fin, binsS); put(sum.hold.fin, binsH);
-  drawChart('c-hist', { type: 'bar', data: { labels: binsS.map((_, i) => pct(lo + (i + 0.5) * step, 0)), datasets: [
-    { label: '내 규칙', data: binsS, backgroundColor: css('--accent'), borderRadius: 3, categoryPercentage: 0.9, barPercentage: 0.95 },
-    { label: '그냥 보유', data: binsH, backgroundColor: css('--hold'), borderRadius: 3, categoryPercentage: 0.9, barPercentage: 0.95 }] },
-    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i) => `수익률 ${pct(lo + i[0].dataIndex * step, 1)} ~ ${pct(lo + (i[0].dataIndex + 1) * step, 1)}`, label: (c) => ` ${c.dataset.label}: ${c.raw}개` } } },
-      scales: { x: axis({ grid: { display: false }, ticks: { maxTicksLimit: 9, maxRotation: 0 } }), y: axis({ title: { display: true, text: '시나리오 수', color: css('--muted') } }) } } });
-  // contribution
-  const sel = ui.cfg.sel, con = sel.map((s, j) => ({ s, v: sim.per[j].ret.reduce((a, b) => a + b, 0) / sim.per[j].ret.length * 100 })).sort((a, b) => b.v - a.v);
-  drawChart('c-contrib', { type: 'bar', data: { labels: con.map((c) => c.s.symbol), datasets: [{ data: con.map((c) => c.v), backgroundColor: con.map((c) => c.v >= 0 ? css('--up') : css('--down')), borderRadius: 4, barThickness: 14 }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` 평균 기여 ${c.raw >= 0 ? '+' : ''}${c.raw.toFixed(2)}%p` } } },
-      scales: { x: axis({ ticks: { callback: (v) => v + '%p' } }), y: axis({ grid: { display: false }, ticks: { font: { family: css('--mono'), size: 11 } } }) } } });
-  renderTabs(); renderDetail();
-}
-
-function renderTabs() {
-  const sel = ui.cfg.sel; if (!ui.detail || !sel.some((s) => id(s) === ui.detail)) ui.detail = id(sel[0]);
-  $('#tabs').innerHTML = sel.map((s) => `<button aria-pressed="${id(s) === ui.detail}" data-id="${id(s)}">${s.symbol}</button>`).join('');
-}
-
-function renderDetail() {
-  const cfg = ui.cfg, j = cfg.sel.findIndex((s) => id(s) === ui.detail), s = cfg.sel[j]; if (!s) return;
-  const p = scenarioPath(), H = cfg.H, m = genMarket(cfg.seed, p, H, cfg.state), fut = genStock(cfg.seed, p, s, m, H), hist = history(s);
-  const ma = maFor(s, cfg.maMode), alloc = START * cfg.w.get(id(s));
-  const r = runSleeve(s, hist, fut, ma.hold ? autoMA(s) : ma, alloc, true);
-  const rr = ma.hold ? runSleeve(s, hist, fut, ma, alloc, true) : r;
-  const { past, fut: fd } = tradingDates(DATA.asOf, HIST, H), dates = [...past, ...fd];
-  const show = 160, from = HIST - show; // show last 160 history days + future
-  const all = r.all, rs = rsi(all.map((b) => b.c));
-  const up = css('--up'), dn = css('--down');
-  const el = $('#candle'), er = $('#rsi'); el.innerHTML = ''; er.innerHTML = '';
-  if (lw) { lw.forEach((c) => c.remove()); }
+/** Candle + MAs + volume + RSI + markers. all: bars, dates: same length, h0: index of first bar after the signal. */
+function renderCandle(key, { all, dates, h0, fast, slow, ma, trades, stopPx, fadeFuture, legendEl }) {
+  const el = $('#' + key + '-candle'), er = $('#' + key + '-rsi');
+  (lws[key] || []).forEach((c) => c.remove()); el.innerHTML = ''; er.innerHTML = '';
+  const up = css('--up'), dn = css('--down'), from = Math.max(0, h0 - SHOW);
   const base = { layout: { background: { color: css('--panel') }, textColor: css('--muted'), fontFamily: css('--mono'), fontSize: 11 }, grid: { vertLines: { color: css('--line-2') }, horzLines: { color: css('--line-2') } }, rightPriceScale: { borderColor: css('--line') }, timeScale: { borderColor: css('--line') }, crosshair: { mode: 0 }, autoSize: true };
   const c1 = LightweightCharts.createChart(el, base), c2 = LightweightCharts.createChart(er, { ...base, timeScale: { ...base.timeScale, visible: false } });
-  lw = [c1, c2];
-  const cs = c1.addCandlestickSeries({ upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn, borderVisible: false, priceFormat: { type: 'price', precision: 2, minMove: 0.01 } });
-  const rng = [];
-  for (let i = from; i < all.length; i++) rng.push({ time: dates[i], open: all[i].o, high: all[i].h, low: all[i].l, close: all[i].c, ...(i >= HIST ? { color: all[i].c >= all[i].o ? up + '99' : dn + '99', wickColor: all[i].c >= all[i].o ? up + '99' : dn + '99' } : {}) });
-  cs.setData(rng);
+  lws[key] = [c1, c2];
+  const cs = c1.addCandlestickSeries({ upColor: up, downColor: dn, wickUpColor: up, wickDownColor: dn, borderVisible: false });
+  const rows = [];
+  for (let i = from; i < all.length; i++) { const b = all[i], col = (b.c >= b.o ? up : dn) + (fadeFuture && i >= h0 ? '99' : ''); rows.push({ time: dates[i], open: b.o, high: b.h, low: b.l, close: b.c, color: col, wickColor: col }); }
+  cs.setData(rows);
   const vol = c1.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
   c1.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-  vol.setData(rng.map((b, k) => ({ time: b.time, value: all[from + k].v, color: (b.close >= b.open ? up : dn) + '55' })));
-  const lineOf = (arr, color, title) => { const l = c1.addLineSeries({ color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title }); l.setData(rng.map((b, k) => ({ time: b.time, value: arr[from + k] })).filter((x) => Number.isFinite(x.value))); return l; };
-  const mUsed = ma.hold ? autoMA(s) : ma;
-  lineOf(r.fast, css('--fast'), `${mUsed.fType}${mUsed.fast}`); lineOf(r.slow, css('--slow'), `SMA${mUsed.slow}`);
-  $('#lw-legend').innerHTML = `<span><i style="background:var(--fast)"></i>${mUsed.fType}${mUsed.fast} (빠른 선)</span><span><i style="background:var(--slow)"></i>SMA${mUsed.slow} (느린 선)</span><span class="muted">왼쪽 진한 봉 = 재구성 과거 · 오른쪽 옅은 봉 = 가상 미래</span>`;
-  // markers: history crosses + trades
-  const mk = [{ time: dates[HIST - 1], position: 'aboveBar', color: css('--ink'), shape: 'square', text: `추천일 ${DATA.asOf.slice(5)}` }];
-  for (let i = from + 1; i < HIST; i++) {
-    if (r.fast[i] > r.slow[i] && r.fast[i - 1] <= r.slow[i - 1]) mk.push({ time: dates[i], position: 'belowBar', color: css('--ok'), shape: 'circle', text: 'GC' });
-    if (r.fast[i] < r.slow[i] && r.fast[i - 1] >= r.slow[i - 1]) mk.push({ time: dates[i], position: 'aboveBar', color: css('--warn'), shape: 'circle', text: 'DC' });
+  vol.setData(rows.map((b, k) => ({ time: b.time, value: all[from + k].v, color: (b.close >= b.open ? up : dn) + '55' })));
+  const lineOf = (arr, color) => { const l = c1.addLineSeries({ color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); l.setData(rows.map((b, k) => ({ time: b.time, value: arr[from + k] })).filter((x) => Number.isFinite(x.value))); };
+  lineOf(fast, css('--fast')); lineOf(slow, css('--slow'));
+  legendEl.innerHTML = `<span><i style="background:var(--fast)"></i>${ma.fType}${ma.fast} (빠른 선)</span><span><i style="background:var(--slow)"></i>SMA${ma.slow} (느린 선)</span><span class="muted">${fadeFuture ? '왼쪽 진한 봉 = 과거 · 오른쪽 옅은 봉 = 가상 미래' : '모두 실제 일봉'}</span>`;
+  const mk = [{ time: dates[h0 - 1], position: 'aboveBar', color: css('--ink'), shape: 'square', text: `추천일 ${dates[h0 - 1].slice(5)}` }];
+  for (let i = from + 1; i < h0; i++) {
+    if (fast[i] > slow[i] && fast[i - 1] <= slow[i - 1]) mk.push({ time: dates[i], position: 'belowBar', color: css('--ok'), shape: 'circle', text: 'GC' });
+    if (fast[i] < slow[i] && fast[i - 1] >= slow[i - 1]) mk.push({ time: dates[i], position: 'aboveBar', color: css('--warn'), shape: 'circle', text: 'DC' });
   }
-  for (const t of rr.trades) { const time = dates[HIST + t.k - 1];
+  for (const t of trades) { const time = dates[h0 + t.k - 1];
     if (t.side === 'buy') mk.push({ time, position: 'belowBar', color: up, shape: 'arrowUp', text: '매수' });
     else if (t.side === 'sell') mk.push({ time, position: 'aboveBar', color: dn, shape: 'arrowDown', text: '매도' }); }
   mk.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0)); cs.setMarkers(mk);
-  const stopPx = s.price * (1 - (s.bucket === 'mid' ? 2.5 : 2) * params(s).atr);
-  if (!ma.hold) cs.createPriceLine({ price: stopPx, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '첫 손절' });
+  if (stopPx) cs.createPriceLine({ price: stopPx, color: css('--muted'), lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '첫 손절' });
+  const rs = rsi(all.map((b) => b.c));
   const rl = c2.addLineSeries({ color: css('--slow'), lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true });
-  rl.setData(rng.map((b, k) => ({ time: b.time, value: rs[from + k] })).filter((x) => Number.isFinite(x.value)));
-  rl.createPriceLine({ price: 70, color: css('--up'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false }); rl.createPriceLine({ price: 30, color: css('--down'), lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+  rl.setData(rows.map((b, k) => ({ time: b.time, value: rs[from + k] })).filter((x) => Number.isFinite(x.value)));
+  rl.createPriceLine({ price: 70, color: up, lineWidth: 1, lineStyle: 2, axisLabelVisible: false }); rl.createPriceLine({ price: 30, color: dn, lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
   c1.timeScale().fitContent(); c2.timeScale().fitContent();
   c1.timeScale().subscribeVisibleLogicalRangeChange((rg) => rg && c2.timeScale().setVisibleLogicalRange(rg));
-  // pattern cards
-  const pat = patterns(s); $('#p-title').textContent = `${s.symbol} · ${pat.title}`;
-  $('#p-cards').innerHTML = pat.list.map((x) => `<div class="pcard ${x.tone}"><b>${x.label}</b><p>${x.text}</p></div>`).join('') +
-    `<div class="pcard info"><b>이평선 ${maLabel(ma)}</b><p>${ma.hold ? '이평선·손절 없이 끝까지 보유합니다. 비교용입니다.' : mUsed.why + `. 하루 평균 변동폭(ATR) ${pctU(params(s).atr)}.`}</p></div>`;
-  const qn = ['나쁜 경우', '보통', '좋은 경우'][[0.1, 0.5, 0.9].indexOf(ui.scenarioQ)];
-  const endEq = rr.eq[H];
-  $('#p-log').innerHTML = rr.trades.length ? rr.trades.map((t) => `<div><span class="d">${dates[HIST + t.k - 1].slice(5)}</span><span class="${t.side === 'buy' ? 'up' : t.side === 'sell' ? 'down' : 'muted'}">${t.side === 'buy' ? '매수' : t.side === 'sell' ? '매도' : '조정'}</span><span class="num">$${t.px.toFixed(2)}</span><span class="ink2">${t.why}</span></div>`).join('') + `<div><span class="d">끝</span><span class="${sign(endEq - alloc)}">${pct(endEq / alloc - 1)}</span><span class="ink2">${qn} 시나리오에서 이 종목 몫 (${Math.round(alloc / 1e4).toLocaleString()}만 → ${Math.round(endEq / 1e4).toLocaleString()}만 원)</span></div>`
-    : '<div class="muted">이 시나리오에서는 매수 조건이 오지 않아 현금으로 남았습니다.</div>';
-  const per = ui.sim.per[j], sr = per.ret.map((x) => x * START / alloc);
-  $('#p-stats').innerHTML = `${ui.sim.paths}개 시나리오 중 이 종목 몫이 <b>이익으로 끝난 비율 ${pctU(sr.filter((x) => x > 0).length / sr.length, 0)}</b>, 손절이 한 번이라도 나온 비율 ${pctU(per.stops / ui.sim.paths, 0)}, 평균 매수 횟수 ${(per.trades / ui.sim.paths).toFixed(1)}회. 종목 몫 수익률 중간값 <b class="${sign(quant(sr, 0.5))}">${pct(quant(sr, 0.5))}</b> (하위 10% ${pct(quant(sr, 0.1))} · 상위 10% ${pct(quant(sr, 0.9))}).`;
-  $('#detail-sub').textContent = `'추천일' 표시 왼쪽은 실제 지표로 재구성한 과거, 오른쪽은 ${qn} 시나리오의 가상 미래입니다. GC/DC는 과거의 골든·데드크로스, 화살표는 규칙이 사고판 지점입니다.`;
+}
+const firstStop = (s) => s.price * (1 - (s.bucket === 'mid' ? 2.5 : 2) * params(s).atr);
+function patternCards(s, ma) {
+  const pat = patterns(s), mUsed = ma.hold ? autoMA(s) : ma;
+  return { title: `${s.symbol} · ${pat.title}`, html: pat.list.map((x) => `<div class="pcard ${x.tone}"><b>${x.label}</b><p>${x.text}</p></div>`).join('') +
+    `<div class="pcard info"><b>이평선 ${maLabel(ma)}</b><p>${ma.hold ? '이평선·손절 없이 끝까지 보유합니다. 비교용입니다.' : mUsed.why + `. 하루 평균 변동폭(ATR) ${pctU(params(s).atr)}.`}</p></div>` };
+}
+function tradeLog(trades, dates, h0, tail) {
+  return trades.length ? trades.map((t) => `<div><span class="d">${dates[h0 + t.k - 1].slice(5)}</span><span class="${t.side === 'buy' ? 'up' : t.side === 'sell' ? 'down' : 'muted'}">${t.side === 'buy' ? '매수' : t.side === 'sell' ? '매도' : '조정'}</span><span class="num">$${t.px.toFixed(2)}</span><span class="ink2">${t.why}</span></div>`).join('') + tail
+    : '<div class="muted">매수 조건이 오지 않아 아직 현금으로 남아 있습니다.</div>' + tail;
 }
 
+// ================= REAL VIEW =================
+function runCohort(ledger, maMode) {
+  const { ci, stocks } = cohortStocks(ledger);
+  const gate = REAL.raw.gates?.[ledger.asOf] ?? null;
+  const cash = cashFor(gate ?? (ledger.asOf === DATA.asOf ? STATE : null) ?? 'LIMIT');
+  const { picked, excluded } = chooseDefault(stocks), sel = stocks.filter((s) => picked.has(id(s)));
+  const w = weights(sel, cash), dates = REAL.cal.slice(ci + 1), H = dates.length;
+  if (!H || !sel.length) return { ledger, ci, H, empty: true, sel, stocks };
+  const used = cash + sel.reduce((a, s) => a + w.get(id(s)), 0);
+  const strat = new Float64Array(H + 1), hold = new Float64Array(H + 1);
+  for (let k = 0; k <= H; k++) { const c = START * (1 - used + cash) * (1 + CASH_RATE / 252) ** k; strat[k] += c; hold[k] += c; }
+  const sleeves = sel.map((s) => {
+    const hist = barsUntil(s.symbol, ci), fut = barsAfter(s.symbol, ci).slice(0, H), alloc = START * w.get(id(s)), ma = maFor(s, maMode);
+    const r = runSleeve(s, hist, fut, ma, alloc, true);
+    for (let k = 0; k <= H; k++) { const kk = Math.min(k, fut.length); strat[k] += r.eq[kk]; hold[k] += r.hold[kk]; }
+    return { s, r, alloc, ma, ret: r.eq[fut.length] / alloc - 1, hret: r.hold[fut.length] / alloc - 1 };
+  });
+  const bench = (sym) => { const f = barsAfter(sym, ci).slice(0, H); if (!f.length) return null; const e = new Float64Array(H + 1); e[0] = START; for (let k = 1; k <= H; k++) e[k] = START * f[Math.min(k, f.length) - 1].c / f[0].o; return e; };
+  const spy = bench('SPY'), qqq = bench('QQQ');
+  return { ledger, ci, H, dates, sel, stocks, excluded, w, cash, gate, sleeves, strat, hold, spy, qqq,
+    ret: strat[H] / START - 1, hret: hold[H] / START - 1, sret: spy ? spy[H] / START - 1 : 0, mdd: mdd(strat) };
+}
+let COHORTS = [];
+function runReal() {
+  const maMode = $('#ma').value;
+  COHORTS = REAL.raw.ledgers.map((l) => runCohort(l, maMode)).filter((c) => !c.empty);
+  if (!COHORTS.length) { $('#status').textContent = '아직 매수 다음 날 시세가 없습니다'; return; }
+  const set = (k, v, cls) => { const el = $(k); el.textContent = v; el.className = 'v ' + (cls || ''); };
+  const R = COHORTS.map((c) => c.ret), Hh = COHORTS.map((c) => c.hret), S = COHORTS.map((c) => c.sret);
+  set('#r-rule', pct(mean(R)), sign(mean(R))); $('#r-rule-s').textContent = `추천일 ${COHORTS.length}개 · 중간값 ${pct(quant(R, 0.5))}`;
+  set('#r-hold', pct(mean(Hh)), sign(mean(Hh))); $('#r-hold-s').textContent = `같은 종목·비중, 손절·이평선 없이`;
+  set('#r-spy', pct(mean(S)), sign(mean(S))); $('#r-spy-s').textContent = `각 추천일 다음 날 시가부터 ${REAL.cal.at(-1)}까지`;
+  const beat = COHORTS.filter((c) => c.ret > c.sret).length;
+  set('#r-beat', `${beat} / ${COHORTS.length}`); $('#r-beat-s').textContent = `평균 초과수익 ${pct(mean(R) - mean(S))}p · 가장 긴 보유 ${Math.max(...COHORTS.map((c) => c.H))}거래일`;
+  drawChart('c-cohorts', { type: 'bar', data: { labels: COHORTS.map((c) => c.ledger.asOf.slice(5) + ` (${c.H}일)`), datasets: [
+    { label: '내 규칙', data: R.map((x) => x * 100), backgroundColor: css('--accent'), borderRadius: 3 },
+    { label: '그냥 보유', data: Hh.map((x) => x * 100), backgroundColor: css('--hold'), borderRadius: 3 },
+    { label: 'SPY', data: S.map((x) => x * 100), backgroundColor: css('--mkt'), borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.raw >= 0 ? '+' : ''}${c.raw.toFixed(2)}%` } } }, scales: { x: axis({ grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } }), y: axis({ ticks: { callback: (v) => v + '%' } }) } } });
+  if (!ui.cohort || !COHORTS.some((c) => c.ledger.asOf === ui.cohort)) ui.cohort = COHORTS[0].ledger.asOf;
+  $('#rc-tabs').innerHTML = COHORTS.map((c) => `<button aria-pressed="${c.ledger.asOf === ui.cohort}" data-d="${c.ledger.asOf}">${c.ledger.asOf.slice(5)} <span class="${sign(c.ret)}">${pct(c.ret)}</span></button>`).join('');
+  renderCohort();
+  $('#status').textContent = `실제 시세 ${REAL.cal.at(-1)}까지 · 추천일 ${COHORTS.length}개`;
+  setTimeout(renderRealMA, 30);
+}
+function renderCohort() {
+  const c = COHORTS.find((x) => x.ledger.asOf === ui.cohort); if (!c) return;
+  const labels = [c.ledger.asOf.slice(5), ...c.dates.map((d) => d.slice(5))], to = (e) => e ? Array.from(e, (v) => v / 1e4) : [];
+  drawChart('c-real-eq', { type: 'line', data: { labels, datasets: [
+    { ...line(to(c.qqq), css('--slow'), { borderWidth: 1.5, borderDash: [4, 4] }), label: 'QQQ' }, { ...line(to(c.spy), css('--mkt'), { borderWidth: 1.5 }), label: 'SPY' },
+    { ...line(to(c.hold), css('--hold')), label: '그냥 보유' }, { ...line(to(c.strat), css('--accent'), { borderWidth: 2.5 }), label: '내 규칙' }] },
+    options: { plugins: { legend: { display: false }, tooltip: { itemSort: (a, b) => b.datasetIndex - a.datasetIndex, callbacks: { label: (x) => ` ${x.dataset.label}: ${Math.round(x.raw).toLocaleString()}만 원 (${pct(x.raw / 1000 - 1)})` } } },
+      scales: { x: axis({ ticks: { maxTicksLimit: 10 } }), y: axis({ ticks: { callback: (v) => v.toLocaleString() + '만' } }) } } });
+  $('#rc-sub').textContent = `${c.ledger.asOf} 추천으로 ${c.dates[0]} 시가에 산 계좌의 실제 평가액입니다. 지금 ${pct(c.ret)} (그냥 보유 ${pct(c.hret)}, SPY ${pct(c.sret)}), 기간 중 최대낙폭 ${pct(c.mdd)}.`;
+  const stLabel = { hold: ['hold', '보유 중'], out: ['out', '이평선·추적 매도'], stop: ['stop', '손절'], wait: ['wait', '매수 대기'] };
+  const rows = [...c.sleeves].sort((a, b) => b.alloc - a.alloc);
+  $('#t-real').innerHTML = `<thead><tr><th>종목</th><th>추천일 패턴</th><th class="r">비중</th><th>이평선</th><th class="r">첫 매수</th><th class="r">현재가</th><th class="r">내 규칙</th><th class="r">보유만</th><th>상태</th></tr></thead><tbody>` +
+    rows.map(({ s, r, alloc, ma, ret, hret }) => { const st = stLabel[r.state], buy = r.trades.find((t) => t.side === 'buy'); const pat = patterns(s);
+      return `<tr><td><b class="mono">${s.symbol}</b> <span class="bucket">${s.bucket === 'mid' ? '중장기' : '단기'}</span><div class="muted" style="font-size:11.5px">${(s.name || '').slice(0, 26)}</div></td><td><span class="tag ${pat.list.find((p) => p.label === pat.title)?.tone ?? ''}">${pat.title}</span></td><td class="r num">${pctU(alloc / START)}</td><td class="mono" style="font-size:12px">${maLabel(ma)}</td><td class="r num">${buy ? '$' + buy.px.toFixed(2) : '–'}</td><td class="r num">$${r.all.at(-1).c.toFixed(2)}</td><td class="r num ${sign(ret)}">${pct(ret)}</td><td class="r num ${sign(hret)}">${pct(hret)}</td><td><span class="state ${st[0]}">${st[1]}</span>${r.pending?.side === 'sell' ? ' <span class="state stop">내일 매도</span>' : r.pending?.side === 'buy' ? ' <span class="state hold">내일 매수</span>' : ''}</td></tr>`; }).join('') +
+    `<tr><td><b>현금</b></td><td class="muted" style="font-size:12px">그날 시장 판정 ${c.gate ?? '자료 없음'}</td><td class="r num">${pctU(1 - c.sel.reduce((a, s) => a + c.w.get(id(s)), 0))}</td><td colspan="6"></td></tr></tbody>`;
+  $('#rc-why').innerHTML = (c.excluded || []).slice(0, 6).map(([s, r]) => `<li>${s.symbol} 제외: ${r}</li>`).join('');
+  if (!ui.rdetail || !c.sel.some((s) => s.symbol === ui.rdetail)) ui.rdetail = rows[0].s.symbol;
+  $('#rs-tabs').innerHTML = rows.map(({ s }) => `<button aria-pressed="${s.symbol === ui.rdetail}" data-s="${s.symbol}">${s.symbol}</button>`).join('');
+  renderRealStock();
+}
+function renderRealStock() {
+  const c = COHORTS.find((x) => x.ledger.asOf === ui.cohort), sl = c?.sleeves.find((x) => x.s.symbol === ui.rdetail); if (!sl) return;
+  const { s, r, ma } = sl, ser = REAL.series.get(s.symbol), dates = REAL.cal.slice(ser.s, ser.s + r.all.length), mUsed = ma.hold ? autoMA(s) : ma;
+  renderCandle('rs', { all: r.all, dates, h0: r.h0, fast: r.fast, slow: r.slow, ma: mUsed, trades: r.trades, stopPx: ma.hold ? null : firstStop(s), fadeFuture: false, legendEl: $('#rs-legend') });
+  const pc = patternCards(s, ma); $('#rs-title').textContent = pc.title; $('#rs-cards').innerHTML = pc.html;
+  $('#rs-log').innerHTML = tradeLog(r.trades, dates, r.h0, `<div><span class="d">${dates.at(-1).slice(5)}</span><span class="${sign(sl.ret)}">${pct(sl.ret)}</span><span class="ink2">이 종목 몫 (${Math.round(sl.alloc / 1e4).toLocaleString()}만 → ${Math.round(sl.alloc * (1 + sl.ret) / 1e4).toLocaleString()}만 원) · 그냥 보유였다면 ${pct(sl.hret)}</span></div>`);
+}
+function renderRealMA() {
+  const modes = [['auto', '자동 (종목별)', '자동'], ['5/20', 'EMA5 / SMA20', '5/20'], ['10/40', 'EMA10 / SMA40', '10/40'], ['20/60', 'EMA20 / SMA60', '20/60'], ['50/200', 'SMA50 / SMA200', '50/200'], ['hold', '이평선 없이 보유', '보유']];
+  const rows = modes.map(([mode, label, short]) => { const cs = mode === $('#ma').value ? COHORTS : REAL.raw.ledgers.map((l) => runCohort(l, mode)).filter((c) => !c.empty);
+    return { mode, label, short, avg: mean(cs.map((c) => c.ret)), pos: cs.filter((c) => c.ret > 0).length / cs.length, beat: cs.filter((c) => c.ret > c.sret).length / cs.length, dd: mean(cs.map((c) => c.mdd)) }; });
+  $('#t-ma-real').innerHTML = `<thead><tr><th>이평선 규칙</th><th class="r">평균 수익률</th><th class="r">플러스 추천일</th><th class="r">SPY 이김</th><th class="r">평균 낙폭</th></tr></thead><tbody>` +
+    rows.map((r) => `<tr${r.mode === $('#ma').value ? ' style="font-weight:600"' : ''}><td>${r.label}</td><td class="r num ${sign(r.avg)}">${pct(r.avg)}</td><td class="r num">${pctU(r.pos, 0)}</td><td class="r num">${pctU(r.beat, 0)}</td><td class="r num">${pct(r.dd)}</td></tr>`).join('') + '</tbody>';
+  drawChart('c-ma-real', { type: 'bar', data: { labels: rows.map((r) => r.short), datasets: [
+    { label: '평균 수익률', data: rows.map((r) => r.avg * 100), backgroundColor: css('--accent'), borderRadius: 3 }, { label: '평균 최대낙폭', data: rows.map((r) => r.dd * 100), backgroundColor: css('--hold'), borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.raw.toFixed(2)}%` } } }, scales: { x: axis({ grid: { display: false }, ticks: { maxRotation: 0 } }), y: axis({ ticks: { callback: (v) => v + '%' } }) } } });
+}
+
+// ================= FUTURE VIEW =================
+function renderPortfolio(w, cash) {
+  const sel = selection();
+  const rows = sel.map((s) => ({ s, w: w.get(id(s)), ma: maFor(s, $('#ma').value), pat: patterns(s) })).sort((a, b) => b.w - a.w);
+  const cap = 1 - cash - rows.reduce((a, r) => a + r.w, 0);
+  $('#t-port').innerHTML = `<thead><tr><th>종목</th><th>구분</th><th>지금 패턴</th><th class="r">비중</th><th>이평선</th><th class="r">손절</th></tr></thead><tbody>` +
+    rows.map(({ s, w, ma, pat }) => { const q = params(s), k = s.bucket === 'mid' ? 2.5 : 2; return `<tr><td><b class="mono">${s.symbol}</b><div class="muted" style="font-size:11.5px">${(s.name || '').slice(0, 26)} · ${s.sector ?? ''}</div></td><td><span class="bucket">${s.bucket === 'mid' ? '중장기' : '단기'}</span></td><td><span class="tag ${pat.list.find((p) => p.label === pat.title)?.tone ?? ''}">${pat.title}</span></td><td class="r num">${pctU(w)}</td><td class="mono" style="font-size:12px">${maLabel(ma)}</td><td class="r num" style="font-size:12px">$${firstStop(s).toFixed(2)}<div class="muted">−${pctU(k * q.atr)}</div></td></tr>`; }).join('') +
+    `<tr><td><b>현금</b></td><td></td><td class="muted" style="font-size:12px">${$('#cash').value === 'auto' ? '시장 판정 ' + (STATE ?? '없음') : '직접 설정'}${cap > 0.001 ? ` · 상한 초과분 ${pctU(cap)} 포함` : ''}</td><td class="r num">${pctU(cash + Math.max(cap, 0))}</td><td></td><td></td></tr></tbody>`;
+  $('#why').innerHTML = [
+    `현금 ${pctU(cash, 0)}: 시장 판정이 '${DATA.market?.label ?? '없음'}'이라 ${cash >= 0.3 ? '신규 위험을 줄였습니다' : '대부분 투자합니다'}.`,
+    `중장기 몫 70%, 단기 몫 30%로 나눴습니다. 중장기가 이 랭킹의 1순위 모델입니다.`,
+    ...DEF.excluded.slice(0, 6).map(([s, r]) => `${s.symbol} 제외: ${r}`)].map((t) => `<li>${t}</li>`).join('');
+  $('#t-all').innerHTML = `<thead><tr><th>담기</th><th>종목</th><th>구분</th><th class="r">점수</th><th class="r">60일 변동성</th><th class="r">RSI</th><th>패턴</th></tr></thead><tbody>` +
+    STOCKS.map((s) => `<tr class="${ui.picked.has(id(s)) ? '' : 'off'}"><td><input type="checkbox" id="pick-${id(s).replace(':', '-')}" data-id="${id(s)}" ${ui.picked.has(id(s)) ? 'checked' : ''} aria-label="${s.symbol} 담기"></td><td class="mono">${s.symbol}</td><td>${s.bucket === 'mid' ? '중장기' : '단기'}</td><td class="r num">${s.score}</td><td class="r num">${s.f.vol_60 != null ? pctU(s.f.vol_60, 0) : '–'}</td><td class="r num">${s.f.rsi_14?.toFixed(0) ?? '–'}</td><td>${patterns(s).list.slice(0, 3).map((p) => `<span class="tag ${p.tone}">${p.label}</span>`).join('')}</td></tr>`).join('') + '</tbody>';
+  const labels = [...rows.map((r) => r.s.symbol), '현금'], vals = [...rows.map((r) => r.w * 100), (cash + Math.max(cap, 0)) * 100];
+  drawChart('c-weights', { type: 'bar', data: { labels, datasets: [{ data: vals, backgroundColor: [...rows.map((r) => r.s.bucket === 'mid' ? css('--accent') : css('--hold')), css('--mkt')], borderRadius: 4, barThickness: 16 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.raw.toFixed(1)}%` } }, title: { display: true, text: '파랑 중장기 · 주황 단기 · 회색 현금', color: css('--muted'), font: { size: 11 }, align: 'start' } },
+      scales: { x: axis({ ticks: { callback: (v) => v + '%' } }), y: axis({ grid: { display: false }, ticks: { font: { family: css('--mono'), size: 11 } } }) } } });
+}
+function scenarioPath() { const order = ui.sum.strat.fin.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]); return order[Math.round((order.length - 1) * ui.scenarioQ)][1]; }
+function futureDates(H) { return weekdays(ENGINE === BOOT ? REAL.cal.at(-1) : DATA.asOf, 0, H).fut; }
+function renderResults() {
+  const { sim, sum } = ui, H = sim.H;
+  const set = (k, v, cls) => { const el = $(k); el.textContent = v; el.className = 'v ' + (cls || ''); };
+  const mk = ENGINE === BOOT ? 'SPY' : '시장';
+  set('#k-med', pct(sum.strat.med), sign(sum.strat.med)); $('#k-med-s').textContent = `그냥 보유 ${pct(sum.hold.med)} · ${mk} ${pct(sum.mkt.med)}`;
+  set('#k-loss', pctU(sum.strat.loss, 0)); $('#k-loss-s').textContent = `그냥 보유 ${pctU(sum.hold.loss, 0)} · ${sim.paths}개 중`;
+  set('#k-mdd', pct(sum.strat.mdd), 'down'); $('#k-mdd-s').textContent = `그냥 보유 ${pct(sum.hold.mdd)} · 기간 중 고점 대비`;
+  set('#k-p5', pct(sum.strat.p5), sign(sum.strat.p5)); $('#k-p5-s').textContent = `그냥 보유 ${pct(sum.hold.p5)} · 20번 중 1번은 이보다 나쁨`;
+  const fd = futureDates(H), labels = [(ENGINE === BOOT ? REAL.cal.at(-1) : DATA.asOf).slice(5), ...fd.map((d) => d.slice(5))];
+  const band = (key, q) => Array.from({ length: H + 1 }, (_, k) => quant(sim[key].map((e) => e[k]), q) / 1e4);
+  const p = scenarioPath(), fill = (data, c) => ({ data, borderWidth: 0, pointRadius: 0, backgroundColor: c, fill: '-1', tension: 0.15 });
+  drawChart('c-fan', { type: 'line', data: { labels, datasets: [
+    { ...line(band('strat', 0.95), 'transparent'), label: '95%' }, { ...fill(band('strat', 0.05), css('--band1')), label: '5%' },
+    { ...line(band('strat', 0.75), 'transparent'), label: '75%' }, { ...fill(band('strat', 0.25), css('--band2')), label: '25%' },
+    { ...line(band('mkt', 0.5), css('--mkt'), { borderDash: [4, 4], borderWidth: 1.5 }), label: `${mk} 중간` },
+    { ...line(band('hold', 0.5), css('--hold')), label: '보유 중간' },
+    { ...line(band('strat', 0.5), css('--accent'), { borderWidth: 2.5 }), label: '내 규칙 중간' },
+    { ...line(Array.from(sim.strat[p], (v) => v / 1e4), css('--ink'), { borderWidth: 1.5 }), label: '대표 시나리오' }] },
+    options: { plugins: { legend: { display: false }, tooltip: { filter: (i) => !['95%', '75%'].includes(i.dataset.label), callbacks: { label: (c) => ` ${c.dataset.label}: ${Math.round(c.raw).toLocaleString()}만 원 (${pct(c.raw / 1000 - 1)})` } } },
+      scales: { x: axis({ ticks: { maxTicksLimit: 8 } }), y: axis({ ticks: { callback: (v) => v.toLocaleString() + '만' } }) } } });
+  const lo = Math.min(quant(sum.strat.fin, 0.005), quant(sum.hold.fin, 0.005)), hi = Math.max(quant(sum.strat.fin, 0.995), quant(sum.hold.fin, 0.995));
+  const nb = 24, step = (hi - lo) / nb || 0.01, bS = new Array(nb).fill(0), bH = new Array(nb).fill(0);
+  const put = (arr, b) => arr.forEach((x) => b[clamp(Math.floor((x - lo) / step), 0, nb - 1)]++); put(sum.strat.fin, bS); put(sum.hold.fin, bH);
+  drawChart('c-hist', { type: 'bar', data: { labels: bS.map((_, i) => pct(lo + (i + 0.5) * step, 0)), datasets: [
+    { label: '내 규칙', data: bS, backgroundColor: css('--accent'), borderRadius: 3, categoryPercentage: 0.9, barPercentage: 0.95 },
+    { label: '그냥 보유', data: bH, backgroundColor: css('--hold'), borderRadius: 3, categoryPercentage: 0.9, barPercentage: 0.95 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i) => `수익률 ${pct(lo + i[0].dataIndex * step, 1)} ~ ${pct(lo + (i[0].dataIndex + 1) * step, 1)}`, label: (c) => ` ${c.dataset.label}: ${c.raw}개` } } },
+      scales: { x: axis({ grid: { display: false }, ticks: { maxTicksLimit: 9, maxRotation: 0 } }), y: axis({ title: { display: true, text: '시나리오 수', color: css('--muted') } }) } } });
+  const con = ui.cfg.sel.map((s, j) => ({ s, v: mean(sim.per[j].ret) * 100 })).sort((a, b) => b.v - a.v);
+  drawChart('c-contrib', { type: 'bar', data: { labels: con.map((c) => c.s.symbol), datasets: [{ data: con.map((c) => c.v), backgroundColor: con.map((c) => c.v >= 0 ? css('--up') : css('--down')), borderRadius: 4, barThickness: 14 }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` 평균 기여 ${c.raw >= 0 ? '+' : ''}${c.raw.toFixed(2)}%p` } } },
+      scales: { x: axis({ ticks: { callback: (v) => v + '%p' } }), y: axis({ grid: { display: false }, ticks: { font: { family: css('--mono'), size: 11 } } }) } } });
+  const sel = ui.cfg.sel; if (!ui.detail || !sel.some((s) => id(s) === ui.detail)) ui.detail = id(sel[0]);
+  $('#tabs').innerHTML = sel.map((s) => `<button aria-pressed="${id(s) === ui.detail}" data-id="${id(s)}">${s.symbol}</button>`).join('');
+  renderDetail();
+}
+function renderDetail() {
+  const cfg = ui.cfg, j = cfg.sel.findIndex((s) => id(s) === ui.detail), s = cfg.sel[j]; if (!s) return;
+  const p = scenarioPath(), H = cfg.H, m = ENGINE.market(cfg.seed, p, H), fut = ENGINE.future(cfg.seed, p, s, m, H), hist = ENGINE.history(s);
+  const ma = maFor(s, cfg.maMode), alloc = START * cfg.w.get(id(s)), mUsed = ma.hold ? autoMA(s) : ma;
+  const r = runSleeve(s, hist, fut, mUsed, alloc, true), rr = ma.hold ? runSleeve(s, hist, fut, ma, alloc, true) : r;
+  const dates = [...ENGINE.histDates(hist.length), ...futureDates(H)];
+  renderCandle('p', { all: r.all, dates, h0: hist.length, fast: r.fast, slow: r.slow, ma: mUsed, trades: rr.trades, stopPx: ma.hold ? null : firstStop(s), fadeFuture: true, legendEl: $('#lw-legend') });
+  const pc = patternCards(s, ma); $('#p-title').textContent = pc.title; $('#p-cards').innerHTML = pc.html;
+  const qn = ['나쁜 경우', '보통', '좋은 경우'][[0.1, 0.5, 0.9].indexOf(ui.scenarioQ)], endEq = rr.eq[H];
+  $('#p-log').innerHTML = tradeLog(rr.trades, dates, hist.length, `<div><span class="d">끝</span><span class="${sign(endEq - alloc)}">${pct(endEq / alloc - 1)}</span><span class="ink2">${qn} 시나리오에서 이 종목 몫 (${Math.round(alloc / 1e4).toLocaleString()}만 → ${Math.round(endEq / 1e4).toLocaleString()}만 원)</span></div>`);
+  const per = ui.sim.per[j], sr = per.ret.map((x) => x * START / alloc);
+  $('#p-stats').innerHTML = `${ui.sim.paths}개 시나리오 중 이 종목 몫이 <b>이익으로 끝난 비율 ${pctU(sr.filter((x) => x > 0).length / sr.length, 0)}</b>, 손절이 한 번이라도 나온 비율 ${pctU(per.stops / ui.sim.paths, 0)}, 평균 매수 횟수 ${(per.trades / ui.sim.paths).toFixed(1)}회. 종목 몫 수익률 중간값 <b class="${sign(quant(sr, 0.5))}">${pct(quant(sr, 0.5))}</b> (하위 10% ${pct(quant(sr, 0.1))} · 상위 10% ${pct(quant(sr, 0.9))}).`;
+  $('#detail-sub').textContent = ENGINE === BOOT ? `'추천일' 표시 왼쪽은 실제 일봉, 오른쪽은 ${qn} 시나리오의 가상 미래(실제 거래일을 다시 뽑아 이어 붙임)입니다. GC/DC는 과거 골든·데드크로스, 화살표는 규칙이 사고판 지점입니다.` : `'추천일' 표시 왼쪽은 실제 지표로 재구성한 과거, 오른쪽은 ${qn} 시나리오의 가상 미래입니다. GC/DC는 과거 골든·데드크로스, 화살표는 규칙이 사고판 지점입니다.`;
+}
 function renderMA(rows) {
   $('#t-ma').innerHTML = `<thead><tr><th>이평선 규칙</th><th class="r">중간 수익률</th><th class="r">손실 확률</th><th class="r">중간 낙폭</th><th class="r">하위 5%</th></tr></thead><tbody>` +
     rows.map((r) => `<tr${r.mode === $('#ma').value ? ' style="font-weight:600"' : ''}><td>${r.label}${r.best ? ' <span class="tag good">위험 대비 최선</span>' : ''}</td><td class="r num ${sign(r.s.med)}">${pct(r.s.med)}</td><td class="r num">${pctU(r.s.loss, 0)}</td><td class="r num">${pct(r.s.mdd)}</td><td class="r num ${sign(r.s.p5)}">${pct(r.s.p5)}</td></tr>`).join('') + '</tbody>';
@@ -595,19 +823,18 @@ function renderMA(rows) {
     { label: '중간 최대낙폭', data: rows.map((r) => r.s.mdd * 100), backgroundColor: css('--hold'), borderRadius: 3 }] },
     options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.raw.toFixed(1)}%` } } }, scales: { x: axis({ grid: { display: false }, ticks: { maxRotation: 0 } }), y: axis({ ticks: { callback: (v) => v + '%' } }) } } });
 }
-
-function run() {
+function runFuture() {
   const sel = selection(); if (!sel.length) { $('#status').textContent = '종목을 하나 이상 담으세요'; return; }
   $('#status').textContent = '계산 중…';
   setTimeout(() => {
-    const t0 = performance.now(), cash = cashShare(), w = weights(sel, cash);
-    const cfg = { seed: Number($('#seed').value) || 1, paths: Number($('#paths').value), H: Number($('#horizon').value), maMode: $('#ma').value, sel, w, cash, state: STATE };
+    const t0 = performance.now(), cash = cashFor(STATE), w = weights(sel, cash);
+    const cfg = { seed: Number($('#seed').value) || 1, paths: Number($('#paths').value), H: Number($('#horizon').value), maMode: $('#ma').value, sel, w, cash };
     renderPortfolio(w, cash);
     const sim = simulate(cfg);
     ui.cfg = cfg; ui.sim = sim; ui.sum = { strat: summarize(sim, 'strat'), hold: summarize(sim, 'hold'), mkt: summarize(sim, 'mkt') };
     renderResults();
     $('#status').textContent = `${sim.paths}개 × ${sel.length}종목 × ${sim.H}일 · ${Math.round(performance.now() - t0)}ms`;
-    setTimeout(() => { // preset comparison on the same scenarios
+    setTimeout(() => {
       const modes = [['auto', '자동 (종목별)', '자동'], ['5/20', 'EMA5 / SMA20', '5/20'], ['10/40', 'EMA10 / SMA40', '10/40'], ['20/60', 'EMA20 / SMA60', '20/60'], ['50/200', 'SMA50 / SMA200', '50/200'], ['hold', '이평선 없이 보유', '보유']];
       const paths = Math.min(cfg.paths, 300);
       const rows = modes.map(([mode, label, short]) => ({ mode, label, short, s: mode === cfg.maMode && paths === cfg.paths ? ui.sum.strat : summarize(simulate({ ...cfg, maMode: mode, paths }), 'strat') }));
@@ -617,18 +844,58 @@ function run() {
   }, 20);
 }
 
-// ---------- events ----------
-$('#run').addEventListener('click', run);
-$('#reseed').addEventListener('click', () => { $('#seed').value = Math.floor(Math.random() * 1e8); run(); });
-['#paths', '#horizon', '#ma', '#cash'].forEach((s) => $(s).addEventListener('change', run));
-$('#scen').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !ui.sum) return; ui.scenarioQ = Number(b.dataset.q); $('#scen').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderResults(); });
-$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.detail = b.dataset.id; $('#tabs').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderDetail(); });
-$('#t-all').addEventListener('change', (e) => { const c = e.target.closest('input[type=checkbox]'); if (!c) return; c.checked ? ui.picked.add(c.dataset.id) : ui.picked.delete(c.dataset.id); run(); });
-const rerenderTheme = () => { if (ui.sim) { renderPortfolio(ui.cfg.w, ui.cfg.cash); renderResults(); } };
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerenderTheme);
-new MutationObserver(rerenderTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-
-renderHeader();
-if (window.Chart && window.LightweightCharts) { Chart.defaults.font.family = css('--body'); run(); }
-else $('#status').textContent = '차트 라이브러리를 불러오지 못했습니다. 네트워크를 확인하세요.';
+// ================= wiring =================
+function setView(v) {
+  if (v === 'real' && !REAL.ok) v = 'future';
+  ui.view = v; $('#view-real').hidden = v !== 'real'; $('#view-future').hidden = v !== 'future';
+  document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
+  document.querySelectorAll('.fut').forEach((e) => { e.hidden = v !== 'future'; });
+  $('#notice').innerHTML = v === 'real'
+    ? `<b>실제 시세</b>입니다. 지나간 추천일마다 그날 목록으로 계좌를 만들어, 다음 거래일 시가에 사고 이후 실제 일봉에 규칙을 적용했습니다. 마지막 시세 ${REAL.cal.at(-1)}. 추천일이 최근 몇 주뿐이라 표본이 작습니다. 투자 자문이 아닙니다.`
+    : (ENGINE === BOOT ? `미래는 아무도 모르므로 <b>가상 경로</b>입니다. 다만 차트의 과거는 <b>실제 일봉</b>이고, 미래도 최근 2년 실제 거래일의 움직임을 다시 뽑아 만듭니다. 투자 자문이 아닙니다.`
+      : `미래 주가는 아무도 모르므로 <b>실제 시세가 아니라 가상 경로</b>입니다. 실제 시세 파일이 아직 없어 과거 차트도 실제 지표에 맞춘 <b>재구성</b>입니다. 투자 자문이 아닙니다.`);
+  try { history.replaceState(null, '', '#' + v); } catch { /* sandbox */ }
+  if (v === 'real' && !COHORTS.length) runReal();
+  if (v === 'future' && !ui.sim) runFuture(); else if (v === 'future') $('#status').textContent = `${ui.sim.paths}개 × ${ui.cfg.sel.length}종목 × ${ui.sim.H}일`;
+  else if (COHORTS.length) $('#status').textContent = `실제 시세 ${REAL.cal.at(-1)}까지 · 추천일 ${COHORTS.length}개`;
+}
+function rerun() { if (ui.view === 'real') runReal(); else runFuture(); }
+function bind() {
+  document.querySelectorAll('.views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('#run').addEventListener('click', runFuture);
+  $('#reseed').addEventListener('click', () => { $('#seed').value = Math.floor(Math.random() * 1e8); runFuture(); });
+  ['#paths', '#horizon'].forEach((s) => $(s).addEventListener('change', runFuture));
+  ['#ma', '#cash'].forEach((s) => $(s).addEventListener('change', () => { ui.sim = null; COHORTS = []; rerun(); }));
+  $('#scen').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || !ui.sum) return; ui.scenarioQ = Number(b.dataset.q); $('#scen').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderResults(); });
+  $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.detail = b.dataset.id; $('#tabs').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderDetail(); });
+  $('#t-all').addEventListener('change', (e) => { const c = e.target.closest('input[type=checkbox]'); if (!c) return; c.checked ? ui.picked.add(c.dataset.id) : ui.picked.delete(c.dataset.id); runFuture(); });
+  $('#rc-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.cohort = b.dataset.d; $('#rc-tabs').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderCohort(); });
+  $('#rs-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.rdetail = b.dataset.s; $('#rs-tabs').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderRealStock(); });
+  const theme = () => { if (ui.view === 'real' && COHORTS.length) { runReal(); } else if (ui.sim) { renderPortfolio(ui.cfg.w, ui.cfg.cash); renderResults(); } };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
+  new MutationObserver(theme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+}
+async function boot() {
+  try { await loadData(); } catch (e) { $('#status').textContent = '추천 자료를 불러오지 못했습니다: ' + e.message; return; }
+  initReal(DATA.real); ENGINE = REAL.ok ? BOOT : SYNTH; STATE = DATA.market?.state ?? null;
+  STOCKS = DATA.stocks;
+  if (REAL.ok) { // forward scenarios start from the last real close, with point-in-time features from real bars
+    const li = REAL.cal.length - 1;
+    STOCKS = STOCKS.map((s) => { const b = barsUntil(s.symbol, li); return b && b.length > 30 ? { ...s, price: b.at(-1).c, f: featuresAt(b, b.length - 1) } : s; });
+  }
+  DEF = chooseDefault(STOCKS); ui.picked = new Set(DEF.picked);
+  $('#eyebrow').textContent = `ALPHA TERMINAL · ${DATA.asOf} 추천 원장 · 모델 ${DATA.model}`;
+  const g = DATA.market;
+  $('#gate').innerHTML = g ? `<b>${g.state}</b><span><b style="all:unset;font-weight:600;color:var(--ink)">${g.label}</b> · ${g.reasons.slice(0, 2).join(' · ')}</span>` : '<b>판정 없음</b><span>시장 판정 자료가 없어 현금 20%로 둡니다.</span>';
+  $('#src').textContent = REAL.ok ? `실제 시세: ${REAL.raw.source} · ${REAL.cal.at(-1)}까지` : '실제 시세 파일 없음 — 가상 시나리오만 가능';
+  $('#v-real').disabled = !REAL.ok;
+  $('#m-future').innerHTML = ENGINE.describe;
+  $('#foot').textContent = `데이터: alpha-terminal data 브랜치 latest.json (${DATA.generatedAt?.slice(0, 16).replace('T', ' ')} UTC) · market-brief/latest.json${REAL.ok ? ` · sim/bars.json (${REAL.raw.generatedAt?.slice(0, 16).replace('T', ' ')} UTC, ${REAL.series.size}종목)` : ''}`;
+  bind();
+  if (!(window.Chart && window.LightweightCharts)) { $('#status').textContent = '차트 라이브러리를 불러오지 못했습니다. 네트워크를 확인하세요.'; return; }
+  Chart.defaults.font.family = css('--body');
+  const h = (location.hash || '').slice(1);
+  setView(h === 'future' ? 'future' : 'real');
+}
+boot();
 </script>
