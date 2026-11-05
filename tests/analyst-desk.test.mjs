@@ -143,3 +143,21 @@ test('scripts/desk-backtest picks a liquid universe and runs the same engine end
   assert.ok(res.sessions > 200 && res.equity.length > 40);
   assert.ok(Array.isArray(res.years) && res.caveats.length >= 4);
 });
+
+test('the drawdown halt does not last forever: after its rest period the desk trades again at half risk', () => {
+  const n = 120, days = cal(n);
+  // crash 20% over the first 10 sessions after the fill, then flat
+  const px = Array.from({ length: n }, (_, i) => (i <= 1 ? 100 : i <= 11 ? 100 - 2 * (i - 1) : 80));
+  const bars = px.map((c, i) => ({ o: i ? px[i - 1] : c, h: Math.max(c, i ? px[i - 1] : c) + 0.2, l: Math.min(c, i ? px[i - 1] : c) - 0.2, c, v: 1 }));
+  const flat = days.map(() => ({ o: 50, h: 50.6, l: 49.6, c: 50, v: 1 }));
+  const data = { cal: days, get: (s) => ({ s: 0, bars: s === 'DROP' ? bars : flat }) };
+  // a position with no stop protection inside the crash (stop far below) drives the account down >15%
+  const big = { symbol: 'DROP', setup: 'breakout', cap: '대형주', plan: { entryType: 'market', trigger: 100, refClose: 100, stop: 1, target: 300, validDays: 1, riskPct: 1, trailMa: 'ema10', trailLabel: 'x' } };
+  const later = (sym) => ({ symbol: sym, setup: 'breakout', cap: '대형주', plan: { entryType: 'market', trigger: 50, refClose: 50, stop: 45, target: 60, validDays: 1, riskPct: 0.01, trailMa: 'ema10', trailLabel: 'x' } });
+  const rules = { ...DESK_RULES, maxPositionPct: 1, maxHeatPct: 1 }; // let the crash reach the account (the heat cap would otherwise prevent it)
+  const r = replayDesk([{ date: days[0], picks: [big] }, { date: days[20], picks: [later('L1')] }, { date: days[80], picks: [later('L2')] }], data, rules);
+  assert.ok(r.events.some((e) => e.kind === 'halt'));
+  assert.ok(r.events.some((e) => e.kind === 'restart'));
+  assert.match(r.outcomes[`${days[20]}:L1`].why ?? '', /중단/);
+  assert.notEqual(r.outcomes[`${days[80]}:L2`].status, 'cancelled', 'trades again after the halt');
+});

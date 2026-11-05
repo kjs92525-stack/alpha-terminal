@@ -20,6 +20,8 @@ export const DESK_RULES = {
   maxHeatPct: 0.06,              // all open positions together may lose at most 6% of equity to their stops
   maxSectorOpen: 3,
   ddHalfRisk: 0.08, ddHalt: 0.15, // account drawdown: halve new risk at -8%, stop new entries at -15%
+  ddHaltSessions: 20,            // a halt lasts this many sessions, then the desk restarts from the current equity
+  recoverGain: 0.05,             // after a restart, new risk stays halved until equity is 5% above the restart level
   reentryCooldown: 10,           // sessions before re-buying a name that was stopped out
   earningsBlackout: 5,           // no new entry with a report inside this many sessions
   minQuality: 55,
@@ -199,7 +201,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
   const costRate = (p, px) => (p.cap === '소형주' || px < 10 ? rules.costSmallPerSide : rules.costPerSide);
   const nextReport = (sym, d) => { const list = data.earnings?.(sym); if (!list) return null; const today = cal[d]; return list.find((e) => e.date >= today) ?? null; };
   const spyOpenAt = (d) => bar('SPY', d)?.o ?? null, spyCloseAt = (d) => bar('SPY', d)?.c ?? null;
-  let peak = rules.startEquity;
+  let peak = rules.startEquity, haltSince = null, recovering = false, restartEq = null;
 
   const close = (pos, d, px, reason) => {
     const cost = (v) => v * pos.costRate;
@@ -255,11 +257,11 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
       if (fill == null) continue;
       if (open.length >= rules.maxOpen) { drop('cancelled', `보유 종목 ${rules.maxOpen}개 한도`); continue; }
       const dd = prevEquity / peak - 1;
-      if (dd <= -rules.ddHalt) { drop('cancelled', `계좌 낙폭 ${pctS(dd)}, 신규 매수 중단 구간`); continue; }
+      if (haltSince != null) { drop('cancelled', `계좌 낙폭 ${pctS(dd)}로 신규 매수 중단 중 (${cal[Math.min(haltSince + rules.ddHaltSessions, cal.length - 1)]}까지)`); continue; }
       const sec = o.sector && o.sector !== 'Unknown' ? o.sector : null;
       if (sec && open.filter((p) => p.sector === sec).length >= rules.maxSectorOpen) { drop('cancelled', `${sec} 이미 ${rules.maxSectorOpen}종목 보유`); continue; }
       const R = fill - o.plan.stop; if (!(R > 0)) { drop('cancelled', '체결가가 손절가 아래'); continue; }
-      const riskPct = o.plan.riskPct * (dd <= -rules.ddHalfRisk ? 0.5 : 1);
+      const riskPct = o.plan.riskPct * (dd <= -rules.ddHalfRisk || recovering ? 0.5 : 1);
       const heat = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, d - 1) ?? p.entry) - p.stop), 0);
       const heatRoom = rules.maxHeatPct * prevEquity - heat;
       const rate = costRate(o, fill);
@@ -292,6 +294,10 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
     // 4) mark to market
     let mv = 0; for (const pos of open) mv += pos.shares * (lastClose(pos.symbol, d) ?? pos.entry);
     const eq = cash + mv; prevEquity = eq; peak = Math.max(peak, eq);
+    // drawdown breaker: stop at -ddHalt, rest ddHaltSessions, then restart from here at half risk
+    if (haltSince == null && eq / peak - 1 <= -rules.ddHalt) { haltSince = d; events.push({ date: cal[d], symbol: '계좌', kind: 'halt', text: `고점 대비 ${pctS(eq / peak - 1)}, ${rules.ddHaltSessions}거래일 신규 매수 중단` }); }
+    else if (haltSince != null && d - haltSince >= rules.ddHaltSessions) { haltSince = null; peak = eq; recovering = true; restartEq = eq; events.push({ date: cal[d], symbol: '계좌', kind: 'restart', text: '중단 기간 끝, 위험 절반으로 다시 시작' }); }
+    if (recovering && eq >= restartEq * (1 + rules.recoverGain)) recovering = false;
     const sb = spy ? bar('SPY', d) : null;
     equity.push({ date: cal[d], equity: r2(eq), cash: r2(cash), spy: sb && spyStart ? r2(rules.startEquity * sb.c / spyStart.c) : null, open: open.length });
   }
@@ -302,19 +308,20 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
   const lastEq = equity.at(-1)?.equity ?? rules.startEquity;
   const heatNow = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, last) ?? p.entry) - p.stop), 0);
   const ddNow = lastEq / peak - 1;
-  const risk = { heatPct: heatNow / lastEq, heatLimit: rules.maxHeatPct, drawdown: ddNow, mode: ddNow <= -rules.ddHalt ? 'halt' : ddNow <= -rules.ddHalfRisk ? 'half' : 'normal',
+  const risk = { heatPct: heatNow / lastEq, heatLimit: rules.maxHeatPct, drawdown: ddNow, mode: haltSince != null ? 'halt' : ddNow <= -rules.ddHalfRisk || recovering ? 'half' : 'normal', haltUntil: haltSince != null ? cal[Math.min(haltSince + rules.ddHaltSessions, cal.length - 1)] : null,
     cooldown: [...stopped].filter(([, d]) => last - d < rules.reentryCooldown).map(([sym, d]) => { let u = cal[d + rules.reentryCooldown]; if (!u) { u = cal[last]; for (let k = last - d; k < rules.reentryCooldown; k++) u = nextWeekday(u); } return { symbol: sym, until: u }; }) };
   return { trades, open: openRows, pending: pendingRows, equity, events, outcomes: Object.fromEntries(outcomes), risk, stoppedAt: Object.fromEntries([...stopped].map(([k, d]) => [k, cal[d]])), generated };
 }
 
 /**
- * Market state from SPY alone, for history before the market-brief verdicts existed: above a rising 200-day
- * average with the 50-day on top → SELECTIVE; below the 200-day → WAIT; otherwise LIMIT.
+ * Market state from SPY alone, for history before the market-brief verdicts existed: below the 200-day average →
+ * WAIT; below the 50-day → LIMIT; above a rising 200-day with the 50-day on top → SELECTIVE; otherwise LIMIT.
  */
 export function regimeFromSpy(spyBars, i) {
   const s = seriesFor(spyBars), c = s.cl[i], m50 = s.sma50[i], m200 = s.sma200[i], m200prev = s.sma200[i - 20];
   if (!Number.isFinite(m200)) return 'UNKNOWN';
   if (c < m200) return 'WAIT';
+  if (c < m50) return 'LIMIT'; // like the live verdict: an index below its 50-day average means fewer, smaller entries
   if (m50 > m200 && m200 > m200prev) return 'SELECTIVE';
   return 'LIMIT';
 }
