@@ -1,6 +1,6 @@
 # ALPHA TERMINAL 데일리 브리프 — 기준일 2026-11-04
 
-생성 2026-11-05T02:19:17.172Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
+생성 2026-11-05T12:22:19.413Z · 미국 주식 · 데이터: Alpaca 일봉, SEC/Finnhub 재무, Alpaca 뉴스. 규칙 기반 자동 스캔이며 투자 자문이 아닙니다.
 
 읽는 법: 손절폭 = 매수가에서 손절가까지 하락률, R = (1차 목표-매수가)/(매수가-손절가). "스토리"는 재무·뉴스 규칙 기반 자동 요약(AI 해석 아님)이라 직접 검증이 필요합니다. 백테스트상 차트 신호만으로는 시장(SPY) 대비 우위가 확인되지 않았습니다.
 
@@ -78,7 +78,7 @@
 | LXU LSB Industries, Inc. | $10.6 | 전환 시작 | 주봉 반등 고점 $11.80 돌파 시 매수 (전환 확인) · 손절 $9.09 | 23% | 0.6 | 64/12 | 실적에 뚜렷한 변화는 아직 보이지 않습니다. |
 | PENG Penguin Solutions Inc | $48.4 | 바닥권 | 주봉 바닥 $43.61~$47.10 구간 분할매수(1/3씩) · 확인 후 매수는 $80.47 돌파 시 · 손절 $42.30 | 10% | 1.5 | 49/32 | 실적에 뚜렷한 변화는 아직 보이지 않습니다. |
 
-## 월봉 바닥 — 상위 12개 (전체 78개 중)
+## 월봉 바닥 — 상위 12개 (전체 79개 중)
 
 | 종목 | 현재가 | 상태 | 매수 방법 | 손절폭 | R | 점수(차트/스토리) | 스토리 요약 |
 |---|---|---|---|---|---|---|---|
@@ -95,11 +95,12 @@
 | CLPT Clearpoint Neuro Inc | $10.2 | 바닥권 | 월봉 바닥 $8.27~$8.93 구간 분할매수(1/3씩) · 확인 후 매수는 $19.63 돌파 시 · 손절 $7.86 | 12% | 4.3 | 51/10 | 적자가 커지는 중이라, 스토리보다 위험이 큽니다. |
 | CLSK CleanSpark Inc | $6.80 | 바닥권 | 월봉 바닥 $6.45~$6.97 구간 분할매수(1/3씩) · 확인 후 매수는 $19.17 돌파 시 · 손절 $6.13 | 10% | 7.4 | 51/10 | 실적 데이터가 없어 차트와 뉴스만으로 판단해야 합니다. |
 
-## 거래량 급증 — 상위 12개 (감지 209개)
+## 거래량 급증 — 상위 12개 (감지 210개)
 
 | 종목 | 날짜 | 거래량 | 당일 | 위치 | 이유(분류) | 근거 기사 |
 |---|---|---|---|---|---|---|
 | MGRC McGrath RentCorp | 2026-11-03 | 27배 | +2.7% | 1년 신고가 부근 | 확인된 이유 없음 | 기사 없음 |
+| CHSN Chanson International Ho | 2026-11-04 | 15배 | -0.6% | 이미 3개월 +50% 넘게 오른 뒤 | 확인된 이유 없음 | Chanson International Shares Halted On Circuit Breaker To The Upside, Stock Now Up 187.78% |
 | PERI Perion Network Ltd | 2026-11-02 | 19.6배 | +31.1% | 1년 신고가 부근 | 인수·합병 | Perion Lands $420 Million Buyout Deal As Affle Eyes Global Advertising Expansion |
 | DKI DarkIris Inc | 2026-11-04 | 58.9배 | +38.7% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | Dow Jumps Over 1,100 Points; McDonald’s Shares Gain Following Upbeat Earnings |
 | VCIG VCI Global Ltd | 2026-11-02 | 21.4배 | +168.4% | 3개월 -25% 넘게 빠진 하락 추세 중 | 확인된 이유 없음 | Trading Halt: Halt status updated at 8:55:00 AM ET: Quotation Resumption: News and Resumpt |
@@ -110,7 +111,6 @@
 | CRCT Cricut, Inc. | 2026-11-04 | 11.5배 | +48.7% | 1년 신고가 부근 | 실적·전망 | Cricut Reports Third Quarter 2026 Financial Results and Announces Dividends |
 | CLRO Clearone Inc | 2026-11-02 | 10.5배 | +65.7% | 1년 범위 중간 | 확인된 이유 없음 | 12 Information Technology Stocks Moving In Tuesday's Pre-Market Session |
 | DUOL Duolingo, Inc. | 2026-11-04 | 9.3배 | +26.0% | 1년 범위 중간 | 실적·전망 | Analysts Adjust Price Targets for Duolingo Following Third-Quarter Results |
-| OKTA Okta Inc | 2026-11-03 | 8.5배 | +2.6% | 1년 범위 중간 | 실적·전망 | Okta Announces Third Quarter Fiscal Year 2027 Earnings Release Date |
 
 ---
 이 문서는 매일 밤 자동으로 다시 만들어집니다. 종목별 상세(분기 매출·이익, 뉴스 원문)는 같은 폴더의 setups.json에 있습니다.

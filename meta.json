@@ -1,16 +1,16 @@
 {
- "startedAt": "2026-11-05T01:43:19.754Z",
+ "startedAt": "2026-11-05T12:13:38.286Z",
  "secUserAgentIssues": [],
  "secError": "SEC HTTP 403 https://www.sec.gov/files/company_tickers_exchange.json",
  "universeSource": "alpaca-assets",
- "universe": 5251,
- "alpacaRequests": 229,
- "fullFetches": 9,
- "monthlyFetched": 0,
+ "universe": 5276,
+ "alpacaRequests": 231,
+ "fullFetches": 16,
+ "monthlyFetched": 2,
  "asOf": "2026-11-04",
  "marketBrief": {
   "state": "LIMIT",
-  "sample": 3475,
+  "sample": 3480,
   "missing": []
  },
  "secDataError": "SEC HTTP 403 https://data.sec.gov/submissions/CIK0000320193.json",
@@ -20,33 +20,33 @@
   "requests": 2
  },
  "finnhub": {
-  "needed": 5251,
-  "cached": 5236,
+  "needed": 5276,
+  "cached": 5237,
   "reportedCalendar": "ok",
-  "dueAfterEarnings": 731,
-  "attempted": 500,
-  "fetched": 500,
-  "withRevenue": 393,
+  "dueAfterEarnings": 232,
+  "attempted": 0,
+  "fetched": 0,
+  "withRevenue": 0,
   "errors": [],
-  "calls": 1501
+  "calls": 1
  },
  "secPublished": {
-  "companyFilesWritten": 5093,
-  "recentFilings": 6
+  "companyFilesWritten": 43,
+  "recentFilings": 12
  },
- "withFeatures": 5246,
+ "withFeatures": 5269,
  "ranked": {
-  "mid": 2615,
-  "short": 3473
+  "mid": 2613,
+  "short": 3475
  },
  "surges": {
-  "detected": 209,
+  "detected": 210,
   "shown": 60,
   "newsRequests": 55
  },
  "earnings": {
   "status": "ok",
-  "count": 1493
+  "count": 1492
  },
  "edge": {
   "status": "ok",
@@ -54,8 +54,8 @@
   "errors": 0
  },
  "setups": {
-  "scanned": 5246,
-  "candidates": 1117,
+  "scanned": 5269,
+  "candidates": 1118,
   "newsRequests": 200,
   "byStage": {
    "POST_BREAKOUT": 12,
@@ -82,7 +82,7 @@
    },
    "monthly_bottom": {
     "TURNING": 3,
-    "AT_BOTTOM": 75
+    "AT_BOTTOM": 76
    }
   }
  },
@@ -104,7 +104,7 @@
  },
  "filingEvents": {
   "recorded": 566,
-  "newToday": 57
+  "newToday": 0
  },
  "paper": {
   "signals": 5,
@@ -121,7 +121,7 @@
   "openR": 1.1569148936170233,
   "enough": false
  },
- "ledgerWritten": true,
+ "ledgerWritten": false,
  "earlyAlpha": {
   "scanned": 5246,
   "eligible": 1363,
@@ -137,5 +137,5 @@
   "newsTruncated": 0,
   "newsBudget": 80
  },
- "seconds": 2197
+ "seconds": 557
 }
