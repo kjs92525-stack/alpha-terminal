@@ -221,6 +221,13 @@ export async function fetchEarningsCalendar(client, from, to) {
   return out;
 }
 
+/** SEC filing list for one symbol from Finnhub (1 call): [{ form, filingDate, url }]. Throws on schema change. */
+export async function fetchFilings(client, symbol, from, to) {
+  const j = await client.json(`/stock/filings?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}`);
+  if (!Array.isArray(j)) throw new Error('filings schema');
+  return j.map((f) => ({ form: String(f.form ?? ''), filingDate: String(f.filedDate ?? '').slice(0, 10), url: /^https:\/\/(www\.)?sec\.gov\//.test(f.reportUrl ?? '') ? f.reportUrl : null })).filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f.filingDate));
+}
+
 /** Insider transactions, SEC filing list and analyst recommendation trend for one symbol (3 calls). */
 export async function fetchEdgeData(client, symbol, asOf) {
   const sym = encodeURIComponent(symbol), from = new Date(Date.parse(asOf) - 200 * 86400000).toISOString().slice(0, 10);

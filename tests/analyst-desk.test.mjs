@@ -161,3 +161,29 @@ test('the drawdown halt does not last forever: after its rest period the desk tr
   assert.match(r.outcomes[`${days[20]}:L1`].why ?? '', /중단/);
   assert.notEqual(r.outcomes[`${days[80]}:L2`].status, 'cancelled', 'trades again after the halt');
 });
+
+test('share offerings: a recent 424B in a non-large-cap excludes the stock, a shelf only warns, unchecked is "unknown" not "none"', async () => {
+  const { dilutionSignal } = await import('../packages/analysis/edge-signals.mjs');
+  const bars = trend(260, { last: (p) => ({ o: p.c, h: p.c * 1.04, l: p.c * 0.999, c: p.c * 1.035, v: 3e6 }) });
+  const i = bars.length - 1, asOf = '2026-11-04';
+  const offer = dilutionSignal([{ form: '424B5', filingDate: '2026-10-16' }], asOf, 180, 3e9);
+  assert.match(analyze(bars, i, { score: 80, spyRet126: 0, dilution: offer, asOf }).pass, /증자 공시\(424B5\)/);
+  const shelf = dilutionSignal([{ form: 'S-3', filingDate: '2026-09-01' }], asOf, 180, 3e9);
+  const a = analyze(bars, i, { score: 80, spyRet126: 0, dilution: shelf, asOf });
+  assert.ok(a.setup && a.warnings.some((w) => /증자 가능 서류/.test(w)));
+  const big = dilutionSignal([{ form: '424B5', filingDate: '2026-10-20' }], asOf, 180, 500e9);
+  assert.ok(analyze(bars, i, { score: 80, spyRet126: 0, dilution: big, asOf }).warnings.some((w) => /채권 발행/.test(w)));
+  assert.ok(analyze(bars, i, { score: 80, spyRet126: 0, dilution: null, dilutionChecked: false, asOf }).warnings.some((w) => /확인하지 못함/.test(w)));
+  assert.ok(analyze(bars, i, { score: 80, spyRet126: 0, dilution: dilutionSignal([], asOf, 180, 3e9), asOf }).reasons.some((r) => /증자 공시 없음/.test(r)));
+});
+
+test('refreshFilings refreshes tonight\'s candidates, fills the cache within budget and keeps only offering forms', async () => {
+  const { refreshFilings } = await import('../scripts/analyst-desk.mjs');
+  const now = Date.parse('2026-11-05T00:00:00Z'), calls = [];
+  const cache = { OLD: { fetchedAt: '2026-11-01T00:00:00Z', filings: [] }, KEEP: { fetchedAt: '2026-11-04T12:00:00Z', filings: [] } };
+  const fetch1 = async (s) => { calls.push(s); return [{ form: '424B5', filingDate: '2026-10-01' }, { form: '8-K', filingDate: '2026-10-02' }]; };
+  await refreshFilings({ cache, todaySymbols: ['OLD', 'KEEP', 'NEW'], otherSymbols: ['X1', 'X2', 'KEEP'], fetch1, now, budget: 3 });
+  assert.deepEqual(calls, ['OLD', 'NEW', 'X1']);
+  assert.deepEqual(cache.NEW.filings.map((f) => f.form), ['424B5']);
+  assert.ok(!cache.X2);
+});

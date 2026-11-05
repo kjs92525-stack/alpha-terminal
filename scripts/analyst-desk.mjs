@@ -5,6 +5,7 @@
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pickForDay, replayDesk, deskStats, deskVerdict, selectionEdge, DESK_RULES } from '../packages/analysis/analyst-desk.mjs';
+import { dilutionSignal } from '../packages/analysis/edge-signals.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const readJSON = (p) => JSON.parse(readFileSync(p, 'utf8'));
@@ -40,7 +41,9 @@ export function candidatesFor(doc, data, d, mcap) {
     for (const r of doc[list] ?? []) {
       const x = data.get(r.symbol); if (!x || d < x.s) continue;
       const i = d - x.s; if (i >= x.bars.length) continue;
-      out.push({ symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, mcap: mcap.get(r.symbol) ?? null, source, bars: x.bars, i, earningsIn: earningsIn(data, r.symbol, d) });
+      const filings = data.filings ? data.filings(r.symbol) : undefined;
+      out.push({ symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, mcap: mcap.get(r.symbol) ?? null, source, bars: x.bars, i, earningsIn: earningsIn(data, r.symbol, d),
+        dilution: filings ? dilutionSignal(filings, doc.asOf, 180, mcap.get(r.symbol) ?? null) : null, dilutionChecked: filings ? true : data.filings ? false : null });
     }
   }
   return out;
@@ -85,12 +88,31 @@ export function runDesk({ docs, latest, data, stored, today }) {
     created,
     account: {
       model: `analyst-desk-v${DESK_RULES.version}`, generatedAt: new Date().toISOString(), asOf: data.cal.at(-1), rules: DESK_RULES, firstLive,
-      data: { volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked },
+      data: { volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked, filingsChecked: Boolean(data.filings) },
       stats, statsLive: deskStats(liveTrades, liveEquity), selection, verdict: deskVerdict(stats, selection), risk: r.risk,
       equity: r.equity, trades: r.trades, open: r.open, pending: r.pending, events: r.events.slice(-80), ledgers: picks,
       note: firstLive ? `실시간 기록은 ${firstLive}부터입니다. 그 전 날짜는 같은 규칙을 그날까지의 시세로만 적용한 소급 기록입니다.` : '아직 실시간 기록이 없습니다. 모든 날짜가 같은 규칙을 그날까지의 시세로만 적용한 소급 기록입니다.',
     },
   };
+}
+
+/**
+ * Share-offering filings from Finnhub (SEC is blocked from GitHub's runners). Tonight's candidates are always
+ * refreshed; other symbols are filled from the cache, then fetched while the call budget lasts.
+ * Cache: { SYMBOL: { fetchedAt, filings: [{ form, filingDate, url }] } } with only registration/offering forms.
+ */
+export async function refreshFilings({ cache, todaySymbols, otherSymbols, fetch1, now = Date.now(), budget = 250, log = () => {} }) {
+  const fresh = (sym, hours) => cache[sym] && now - Date.parse(cache[sym].fetchedAt) < hours * 3600e3;
+  const queue = [...todaySymbols.filter((s) => !fresh(s, 20)), ...otherSymbols.filter((s) => !cache[s])];
+  let calls = 0, errors = 0;
+  for (const sym of [...new Set(queue)]) {
+    if (calls >= budget) break;
+    calls++;
+    try { cache[sym] = { fetchedAt: new Date(now).toISOString(), filings: (await fetch1(sym)).filter((f) => /^(S-|F-|424B)/i.test(f.form)) }; }
+    catch (e) { errors++; if (e.fatal) { log(`filings: stopped (${e.message})`); break; } }
+  }
+  log(`filings: ${calls} calls, ${errors} errors, cache ${Object.keys(cache).length} symbols`);
+  return cache;
 }
 
 async function main() {
@@ -104,6 +126,18 @@ async function main() {
   const ldir = join(out, 'desk/ledger'), srcDir = join(dataDir, 'desk/ledger');
   const stored = [...new Set([...dated(srcDir), ...dated(ldir)])].map((f) => readJSON(existsSync(join(ldir, f)) ? join(ldir, f) : join(srcDir, f)));
   const today = arg('today', latest.asOf);
+  // share-offering filings (Finnhub), point-in-time by filing date
+  const cachePath = existsSync(join(out, 'desk/filings.json')) ? join(out, 'desk/filings.json') : join(dataDir, 'desk/filings.json');
+  let filingsCache = existsSync(cachePath) ? readJSON(cachePath) : {};
+  if (process.env.FINNHUB_API_KEY) {
+    const { makeFinnhubClient, fetchFilings } = await import('../packages/pipeline/finnhub.mjs');
+    const client = makeFinnhubClient({ apiKey: process.env.FINNHUB_API_KEY });
+    const syms = (d) => [...new Set(['mid', 'short', 'setups', 'pullback'].flatMap((k) => (d[k] ?? []).map((r) => r.symbol)))];
+    const todayDoc = docs.find((d) => d.asOf === latest.asOf), from = new Date(Date.parse(docs[0]?.asOf ?? latest.asOf) - 200 * 864e5).toISOString().slice(0, 10);
+    filingsCache = await refreshFilings({ cache: filingsCache, todaySymbols: todayDoc ? syms(todayDoc) : [], otherSymbols: docs.flatMap(syms), budget: Number(process.env.FILINGS_BUDGET ?? 250),
+      fetch1: (sym) => fetchFilings(client, sym, from, new Date().toISOString().slice(0, 10)), log: (m) => console.log(m) });
+    data.filings = (sym) => filingsCache[sym]?.filings;
+  }
   const { created, account } = runDesk({ docs, latest, data, stored, today });
   mkdirSync(ldir, { recursive: true });
   for (const c of created) {
@@ -112,6 +146,7 @@ async function main() {
     const { backfill, late, ...rest } = c; writeFileSync(p, JSON.stringify(rest, null, 1));
   }
   writeFileSync(join(out, 'desk/account.json'), JSON.stringify(account));
+  if (Object.keys(filingsCache).length) writeFileSync(join(out, 'desk/filings.json'), JSON.stringify(filingsCache));
   const s = account.stats;
   console.log(`desk: ${account.ledgers.length} days (${created.length} new live), closed ${s.closed}, win ${s.winRate == null ? '-' : (s.winRate * 100).toFixed(0) + '%'}, return ${(s.totalReturn * 100).toFixed(2)}% vs SPY ${s.spyReturn == null ? '-' : (s.spyReturn * 100).toFixed(2) + '%'}, open ${account.open.length}, pending ${account.pending.length}`);
 }

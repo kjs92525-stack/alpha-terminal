@@ -58,9 +58,11 @@ export function computeFeatures(allBars, company, asOfIso) {
   const asOfMs = Date.parse(`${asOfIso}T00:00:00Z`);
   const visible = (company?.filings ?? []).filter((x) => x.filingDate && Date.parse(x.filingDate) <= asOfMs);
   const within = (x, days) => asOfMs - Date.parse(x.filingDate) <= days * DAY;
-  const dilution365 = visible.filter((x) => x.category === 'DILUTION' && x.importance !== 'low' && within(x, 365)).length;
-  const dilution30 = visible.filter((x) => x.category === 'DILUTION' && x.importance !== 'low' && within(x, 30)).length;
-  const distress180 = visible.filter((x) => (x.category === 'DISTRESS' || x.importance === 'critical') && within(x, 180)).length;
+  // A Finnhub fallback record carries no filing list: dilution is then unknown (null), not "none" (0).
+  const filingsKnown = Array.isArray(company?.filings) && (company.filings.length > 0 || company?.source !== 'Finnhub');
+  const dilution365 = !filingsKnown ? null : visible.filter((x) => x.category === 'DILUTION' && x.importance !== 'low' && within(x, 365)).length;
+  const dilution30 = !filingsKnown ? null : visible.filter((x) => x.category === 'DILUTION' && x.importance !== 'low' && within(x, 30)).length;
+  const distress180 = !filingsKnown ? null : visible.filter((x) => (x.category === 'DISTRESS' || x.importance === 'critical') && within(x, 180)).length;
   const recentEvents = [...new Set(visible.filter((x) => within(x, 3) && ['EARNINGS', 'CONTRACT', 'M&A', 'DILUTION', 'DISTRESS'].includes(x.category)).map((x) => x.category))];
 
   return {
