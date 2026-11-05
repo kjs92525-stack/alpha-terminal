@@ -24,7 +24,9 @@ export const DESK_RULES = {
   earningsBlackout: 5,           // no new entry with a report inside this many sessions
   minQuality: 55,
   minQualityWait: 80,            // when the market verdict is WAIT, only the strongest single setup
-  maxStopPct: 0.12,              // skip plans whose stop is further than 12% below the trigger
+  maxStopPct: 0.12,
+  minStopPct: 0.02,              // a stop closer than 2% is noise, not a plan
+  minAtrPct: 0.008,              // daily range under 0.8%: pinned price (pending takeover, etc.), not a trend trade              // skip plans whose stop is further than 12% below the trigger
   maxChase: 0.04,                // never buy an open more than 4% above the planned price
   partialAtR: 2, breakevenAtR: 1,
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
@@ -92,6 +94,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (meta.earningsIn != null && meta.earningsIn <= rules.earningsBlackout) return { pass: `실적 발표 ${meta.earningsIn}거래일 전, 발표 뒤에 다시 봄` };
   if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200) return { pass: '200일선 아래 하락 추세' };
   if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
+  if (x.atrPct < rules.minAtrPct) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님` };
   if (x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
   if (x.ext50 != null && x.ext50 > 0.25) return { pass: `50일선 대비 ${pctS(x.ext50, 0)} 과도한 이격` };
 
@@ -110,7 +113,8 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     setup = 'reversal'; entryType = 'buy-stop'; trigger = x.h * 1.001; validDays = 3; riskMult = 0.5;
     stop = clamp(x.l - 0.5 * x.atr, trigger - 3 * x.atr, trigger - 1.5 * x.atr);
   }
-  if (!setup) return { pass: '지금은 매수 자리 아님' };
+  if (!setup) return { pass: '정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음' };
+  stop = Math.min(stop, trigger * (1 - rules.minStopPct));
   const stopPct = 1 - stop / trigger;
   if (stopPct > rules.maxStopPct) return { pass: `손절폭 ${(stopPct * 100).toFixed(1)}% 과다` };
 
@@ -178,13 +182,16 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
  * Replay the paper account. ledgers: [{ date, live, market, picks }] sorted by date.
  * data: { cal: ['YYYY-MM-DD'], get(symbol) -> { s, bars } | null }.
  */
-export function replayDesk(ledgers, data, rules = DESK_RULES) {
+export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
   const cal = data.cal, idxOf = (date) => { let lo = 0, hi = cal.length - 1, a = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (cal[m] <= date) { a = m; lo = m + 1; } else hi = m - 1; } return a; };
   const bar = (sym, d) => { const x = data.get(sym); if (!x || d < x.s || d - x.s >= x.bars.length) return null; const b = x.bars[d - x.s]; return b; };
   const lastClose = (sym, d) => { const x = data.get(sym); if (!x) return null; const k = Math.min(d - x.s, x.bars.length - 1); return k >= 0 ? x.bars[k].c : null; };
   const maAt = (sym, d, ma) => { const x = data.get(sym); if (!x || d < x.s) return NaN; return seriesFor(x.bars)[ma][d - x.s]; };
   const byDay = new Map(); for (const l of ledgers) { const d = idxOf(l.date); if (d >= 0) (byDay.get(d) ?? byDay.set(d, []).get(d)).push(l); }
-  const first = Math.min(...byDay.keys());
+  // opts.picker(d, { busy, cooldown }) -> { date, market, picks } lets a backtest choose picks session by session
+  // from the account's own state, in one pass. opts.start / opts.end bound the sessions replayed.
+  const first = opts.start ?? Math.min(...byDay.keys()), endIdx = opts.end ?? cal.length - 1;
+  const generated = [];
   let cash = rules.startEquity, prevEquity = rules.startEquity;
   const open = [], pending = [], trades = [], equity = [], outcomes = new Map(), events = [];
   const spy = data.get('SPY'), spyStart = spy ? bar('SPY', first) : null;
@@ -209,7 +216,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
   };
 
   const stopped = new Map(); // symbol -> session of its last losing stop
-  for (let d = first; d < cal.length; d++) {
+  for (let d = first; d <= endIdx; d++) {
     // 1) manage open positions
     for (const pos of [...open]) {
       const b = bar(pos.symbol, d); if (!b || d <= pos.entryIdx) continue;
@@ -271,7 +278,14 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
       if (b.l <= pos.stop) { close(pos, d, pos.stop * (1 - rules.stopSlippage), '체결 당일 손절'); open.splice(open.indexOf(pos), 1); }
     }
     // 3) tonight's picks become orders for the next session
-    for (const l of byDay.get(d) ?? []) for (const p of l.picks) {
+    const todays = [...(byDay.get(d) ?? [])];
+    if (opts.picker) {
+      const busy = new Set([...open.map((p) => p.symbol), ...pending.map((p) => p.symbol)]);
+      const cooldown = new Map([...stopped].filter(([, k]) => d - k < rules.reentryCooldown).map(([sym, k]) => [sym, cal[k].slice(5)]));
+      const l = opts.picker(d, { busy, cooldown, equity: prevEquity });
+      if (l) { todays.push(l); generated.push(l); }
+    }
+    for (const l of todays) for (const p of l.picks) {
       pending.push({ ...p, pickDate: l.date, live: !!l.live, market: l.market ?? null, expiry: d + p.plan.validDays });
       outcomes.set(key(l.date, p.symbol), { status: 'pending' });
     }
@@ -281,7 +295,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
     const sb = spy ? bar('SPY', d) : null;
     equity.push({ date: cal[d], equity: r2(eq), cash: r2(cash), spy: sb && spyStart ? r2(rules.startEquity * sb.c / spyStart.c) : null, open: open.length });
   }
-  const last = cal.length - 1;
+  const last = endIdx;
   const openRows = open.map((p) => { const px = lastClose(p.symbol, last); return { symbol: p.symbol, name: p.name, setup: p.setup, label: p.label, cap: p.cap, live: p.live, pickDate: p.pickDate, entryDate: cal[p.entryIdx], entry: r2(p.entry), last: r2(px), shares: p.shares, stop: r2(p.stop), target: r2(p.target), partial: p.partial, trailLabel: p.trailLabel,
     unrealized: r2(p.shares * (px - p.entry) + p.realized), pnlPct: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.entry), R: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.R), weight: (p.shares * px) / equity.at(-1).equity, days: last - p.entryIdx }; });
   const pendingRows = pending.map((o) => ({ symbol: o.symbol, name: o.name, setup: o.setup, label: o.label, pickDate: o.pickDate, live: o.live, entryType: o.plan.entryType, trigger: o.plan.trigger, stop: o.plan.stop, expires: cal[Math.min(o.expiry, last)] ?? null, sessionsLeft: o.expiry - last }));
@@ -290,7 +304,19 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
   const ddNow = lastEq / peak - 1;
   const risk = { heatPct: heatNow / lastEq, heatLimit: rules.maxHeatPct, drawdown: ddNow, mode: ddNow <= -rules.ddHalt ? 'halt' : ddNow <= -rules.ddHalfRisk ? 'half' : 'normal',
     cooldown: [...stopped].filter(([, d]) => last - d < rules.reentryCooldown).map(([sym, d]) => { let u = cal[d + rules.reentryCooldown]; if (!u) { u = cal[last]; for (let k = last - d; k < rules.reentryCooldown; k++) u = nextWeekday(u); } return { symbol: sym, until: u }; }) };
-  return { trades, open: openRows, pending: pendingRows, equity, events, outcomes: Object.fromEntries(outcomes), risk, stoppedAt: Object.fromEntries([...stopped].map(([k, d]) => [k, cal[d]])) };
+  return { trades, open: openRows, pending: pendingRows, equity, events, outcomes: Object.fromEntries(outcomes), risk, stoppedAt: Object.fromEntries([...stopped].map(([k, d]) => [k, cal[d]])), generated };
+}
+
+/**
+ * Market state from SPY alone, for history before the market-brief verdicts existed: above a rising 200-day
+ * average with the 50-day on top → SELECTIVE; below the 200-day → WAIT; otherwise LIMIT.
+ */
+export function regimeFromSpy(spyBars, i) {
+  const s = seriesFor(spyBars), c = s.cl[i], m50 = s.sma50[i], m200 = s.sma200[i], m200prev = s.sma200[i - 20];
+  if (!Number.isFinite(m200)) return 'UNKNOWN';
+  if (c < m200) return 'WAIT';
+  if (m50 > m200 && m200 > m200prev) return 'SELECTIVE';
+  return 'LIMIT';
 }
 
 export function deskStats(trades, equity = []) {

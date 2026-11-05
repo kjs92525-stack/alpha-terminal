@@ -53,6 +53,12 @@ export async function fetchEarnings(client, symbols, from, aheadDays = 45) {
   return out;
 }
 
+/** config/watchlist.txt → ['TEM', ...] (one ticker per line, '#' starts a comment) */
+export function readWatchlist(path) {
+  if (!existsSync(path)) return [];
+  return [...new Set(readFileSync(path, 'utf8').split('\n').map((l) => l.replace(/#.*/, '').trim().toUpperCase()).filter((t) => /^[A-Z][A-Z.\-]{0,9}$/.test(t)))];
+}
+
 /** Market verdict per date (market-brief/history/YYYY-MM-DD.json), so past cohorts use that day's cash rule. */
 export function readGates(dir) {
   const out = {};
@@ -74,7 +80,7 @@ async function main() {
       docs.push({ asOf: l.asOf, mid: l.recommendations.mid.map((s) => by('mid').get(s)).filter(Boolean), short: l.recommendations.short.map((s) => by('short').get(s)).filter(Boolean) });
     }
   }
-  const symbols = [...new Set(['SPY', 'QQQ', ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? []), ...(d.setups ?? []), ...(d.pullback ?? [])].map((x) => x.symbol))])];
+  const symbols = [...new Set(['SPY', 'QQQ', ...readWatchlist(arg('watchlist', 'config/watchlist.txt')), ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? []), ...(d.setups ?? []), ...(d.pullback ?? [])].map((x) => x.symbol))])];
   const first = docs[0]?.asOf ?? new Date().toISOString().slice(0, 10);
   const start = new Date(Date.parse(first) - HISTORY_DAYS * 864e5).toISOString().slice(0, 10);
   // The free plan serves consolidated (SIP) bars only up to 15 minutes ago. Asking for "today" makes Alpaca
@@ -92,6 +98,17 @@ async function main() {
   payload.source += ` · feed=${feed}`;
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify(payload));
+  // long history for the watchlist (config/watchlist.txt) so a user can build a scenario for any name they follow
+  const watch = readWatchlist(arg('watchlist', 'config/watchlist.txt'));
+  if (watch.length) {
+    const wStart = new Date(Date.now() - 1300 * 864e5).toISOString().slice(0, 10);
+    const w = await fetchDailyBars({ symbols: ['SPY', ...watch], start: wStart, end, keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 50 });
+    const wp = buildPayload([], w.bars); wp.volumeReliable = w.feed === 'sip';
+    if (payload.earnings) { wp.earnings = Object.fromEntries(watch.filter((s) => payload.earnings[s]).map((s) => [s, payload.earnings[s]])); wp.earningsChecked = payload.earningsChecked; }
+    wp.symbols = watch;
+    writeFileSync(join(dirname(out), 'watch.json'), JSON.stringify(wp));
+    console.log(`sim-bars: watchlist ${watch.join(',')} → ${Object.keys(wp.bars).length - 1} series`);
+  }
   const missing = symbols.filter((s) => !payload.bars[s]);
   console.log(`sim-bars: ${Object.keys(payload.bars).length} series, ${payload.cal.length} days to ${payload.asOf}, ${requests} requests, ${(JSON.stringify(payload).length / 1e6).toFixed(1)} MB${missing.length ? `, missing: ${missing.join(',')}` : ''}`);
 }

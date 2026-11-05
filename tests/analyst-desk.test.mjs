@@ -123,3 +123,23 @@ test('wilson interval, selection edge and verdict stay honest about small sample
   assert.equal(deskVerdict({ closed: 12 }, e).stage, 'collect');
   assert.equal(deskVerdict({ closed: 40, expectancyR: -0.2, profitFactor: 0.7 }, e).stage, 'review');
 });
+
+test('a pinned price (pending takeover) is not a base: tiny daily range is passed over', () => {
+  const bars = trend(260, { start: 40 });
+  const last = bars.at(-1).c;
+  for (let k = 0; k < 40; k++) bars.push({ o: last, h: last * 1.0008, l: last * 0.9992, c: last * (1 + (k % 2 ? 0.0003 : -0.0003)), v: 1e6 });
+  assert.match(analyze(bars, bars.length - 1, { score: 80, spyRet126: 0 }).pass, /가격이 묶여/);
+});
+
+test('scripts/desk-backtest picks a liquid universe and runs the same engine end to end', async () => {
+  const { chooseUniverse, runBacktest } = await import('../scripts/desk-backtest.mjs');
+  const latest = { mid: [{ symbol: 'AAA', name: 'A', sector: 'Tech', adv20: 5e7, price: 30, mcap: 5e9 }, { symbol: 'LOW', adv20: 1e5, price: 3 }], short: [] };
+  const meta = chooseUniverse(latest, 10, ['WATCH']);
+  assert.deepEqual([...meta.keys()], ['AAA', 'WATCH']);
+  const n = 560, cal = []; for (let d = new Date('2023-01-02T00:00:00Z'); cal.length < n; d.setUTCDate(d.getUTCDate() + 1)) if (d.getUTCDay() % 6) cal.push(d.toISOString().slice(0, 10));
+  const series = (drift) => { let c = 20; return { s: 0, d: cal.map((_, i) => { const o = c; c *= 1 + drift + Math.sin(i / 2) * 0.012; return [o, Math.max(o, c) * 1.006, Math.min(o, c) * 0.994, c, 1e6]; }) }; };
+  const res = runBacktest({ cal, bars: { SPY: series(0.0006), AAA: series(0.0012), WATCH: series(0.001) }, volumeReliable: false }, meta, { years: 1 });
+  assert.equal(res.to, cal.at(-1));
+  assert.ok(res.sessions > 200 && res.equity.length > 40);
+  assert.ok(Array.isArray(res.years) && res.caveats.length >= 4);
+});
