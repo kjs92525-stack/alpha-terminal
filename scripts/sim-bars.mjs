@@ -4,6 +4,7 @@
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fetchDailyBars } from '../packages/pipeline/alpaca.mjs';
+import { makeFinnhubClient } from '../packages/pipeline/finnhub.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const dataDir = arg('data', 'data-branch'), out = arg('out', join(dataDir, 'sim/bars.json'));
@@ -32,6 +33,26 @@ export function buildPayload(ledgerDocs, bars, generatedAt = new Date().toISOStr
   return { generatedAt, asOf: cal[cal.length - 1], source: 'Alpaca Market Data v2 (adjustment=all, daily)', cal, bars: series, ledgers };
 }
 
+/**
+ * Every earnings date (past and next `aheadDays`) for the given symbols, month by month so the free
+ * calendar endpoint never truncates. Returns { SYMBOL: [{ date, hour }] } sorted by date.
+ */
+export async function fetchEarnings(client, symbols, from, aheadDays = 45) {
+  const out = {}, end = new Date(Date.now() + aheadDays * 864e5);
+  for (let d = new Date(Date.parse(from) - 10 * 864e5); d < end; d = new Date(d.getTime() + 30 * 864e5)) {
+    const a = d.toISOString().slice(0, 10), b = new Date(Math.min(d.getTime() + 29 * 864e5, end.getTime())).toISOString().slice(0, 10);
+    const json = await client.json(`/calendar/earnings?from=${a}&to=${b}`);
+    if (!Array.isArray(json?.earningsCalendar)) throw new Error('earnings calendar schema');
+    for (const r of json.earningsCalendar) {
+      if (!symbols.has(r?.symbol) || !/^\d{4}-\d{2}-\d{2}$/.test(r.date ?? '')) continue;
+      const list = (out[r.symbol] ??= []);
+      if (!list.some((x) => x.date === r.date)) list.push({ date: r.date, hour: r.hour ?? '' });
+    }
+  }
+  for (const k of Object.keys(out)) out[k].sort((x, y) => (x.date < y.date ? -1 : 1));
+  return out;
+}
+
 /** Market verdict per date (market-brief/history/YYYY-MM-DD.json), so past cohorts use that day's cash rule. */
 export function readGates(dir) {
   const out = {};
@@ -56,11 +77,18 @@ async function main() {
   const symbols = [...new Set(['SPY', 'QQQ', ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? []), ...(d.setups ?? []), ...(d.pullback ?? [])].map((x) => x.symbol))])];
   const first = docs[0]?.asOf ?? new Date().toISOString().slice(0, 10);
   const start = new Date(Date.parse(first) - HISTORY_DAYS * 864e5).toISOString().slice(0, 10);
-  const end = new Date().toISOString().slice(0, 10);
+  // The free plan serves consolidated (SIP) bars only up to 15 minutes ago. Asking for "today" makes Alpaca
+  // refuse SIP and the client falls back to IEX, whose highs/lows and volume are one venue's, not the market's.
+  const end = new Date(Date.now() - 20 * 60 * 1000).toISOString();
   console.log(`sim-bars: ${docs.length} ledgers, ${symbols.length} symbols, ${start} → ${end}`);
   const { bars, requests, feed } = await fetchDailyBars({ symbols, start, end, keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 50 });
   const payload = buildPayload(docs, bars);
   payload.gates = readGates(join(dataDir, 'market-brief/history'));
+  payload.volumeReliable = feed === 'sip';
+  if (process.env.FINNHUB_API_KEY) {
+    try { payload.earnings = await fetchEarnings(makeFinnhubClient({ apiKey: process.env.FINNHUB_API_KEY }), new Set(symbols), first, 45); payload.earningsChecked = true; }
+    catch (e) { console.warn(`sim-bars: earnings calendar unavailable (${e.message})`); payload.earningsChecked = false; }
+  } else payload.earningsChecked = false;
   payload.source += ` · feed=${feed}`;
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify(payload));

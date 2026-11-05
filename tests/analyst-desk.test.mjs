@@ -28,12 +28,14 @@ test('a downtrend below the 200-day average is passed over', () => {
 
 test('pickForDay skips funds, held names and duplicate sectors, and caps the count by market state', () => {
   const mk = (sym, sector, name = sym) => { const bars = trend(260, { start: 20 + sym.length, last: (p) => ({ o: p.c, h: p.c * 1.04, l: p.c * 0.999, c: p.c * 1.035, v: 3e6 }) }); return { symbol: sym, name, sector, score: 80, bars, i: bars.length - 1 }; };
-  const res = pickForDay({ date: 'x', market: 'WAIT', spyRet126: 0, busy: new Set(['HELD']), candidates: [mk('AAA', 'Tech'), mk('BBB', 'Tech'), mk('TQQQ', 'Unknown', 'ProShares UltraPro QQQ'), mk('HELD', 'Energy'), mk('CCC', 'Health'), mk('DDD', 'Retail')] });
-  assert.equal(res.picks.length, DESK_RULES.picksPerDay.WAIT);
-  assert.deepEqual(res.picks.map((p) => p.symbol).sort(), ['AAA', 'CCC'].sort());
+  const res = pickForDay({ date: 'x', market: 'LIMIT', spyRet126: 0, busy: new Set(['HELD']), cooldown: new Map([['COOL', '10-01']]), candidates: [mk('AAA', 'Tech'), mk('BBB', 'Tech'), mk('TQQQ', 'Unknown', 'ProShares UltraPro QQQ'), mk('HELD', 'Energy'), mk('COOL', 'Utilities'), mk('CCC', 'Health'), mk('DDD', 'Retail'), mk('EEE', 'Media')] });
+  assert.equal(res.picks.length, DESK_RULES.picksPerDay.LIMIT);
+  assert.ok(!res.picks.some((p) => ['BBB', 'TQQQ', 'HELD', 'COOL'].includes(p.symbol)), 'sector duplicate, fund, held and cooling names are skipped');
   assert.ok(res.passed.some((p) => p.symbol === 'TQQQ' && /ETF/.test(p.why)));
-  assert.ok(res.passed.some((p) => p.symbol === 'HELD'));
-  assert.ok(res.picks.every((p) => p.plan.riskPct === DESK_RULES.riskPct.WAIT));
+  assert.ok(res.passed.some((p) => p.symbol === 'COOL' && /손절 뒤/.test(p.why)));
+  assert.ok(res.picks.every((p) => p.plan.riskPct === DESK_RULES.riskPct.LIMIT));
+  const wait = pickForDay({ date: 'x', market: 'WAIT', spyRet126: 0, candidates: [mk('AAA', 'Tech'), mk('CCC', 'Health')] });
+  assert.ok(wait.picks.length <= DESK_RULES.picksPerDay.WAIT && wait.picks.every((p) => p.quality >= DESK_RULES.minQualityWait));
 });
 
 test('replay: market order fills next open, partial at +2R, the rest exits on the trailing average; equity reconciles', () => {
@@ -79,4 +81,45 @@ test('runDesk keeps stored live picks as they are and only creates today', () =>
   assert.deepEqual(created.map((c) => c.date), [today]);
   assert.equal(account.ledgers.find((l) => l.date === yesterday).picks.length, 0, 'stored day not regenerated');
   assert.equal(account.firstLive, yesterday);
+});
+
+test('no new entry inside the earnings blackout; a pullback in a stock weaker than SPY is not a setup', () => {
+  const bars = trend(260, { last: (p) => ({ o: p.c, h: p.c * 1.04, l: p.c * 0.999, c: p.c * 1.035, v: 3e6 }) });
+  assert.match(analyze(bars, bars.length - 1, { score: 80, spyRet126: 0, earningsIn: 3 }).pass, /실적 발표 3거래일 전/);
+  const ok = analyze(bars, bars.length - 1, { score: 80, spyRet126: 0, earningsIn: 12, earningsChecked: true });
+  assert.ok(ok.warnings.some((w) => /12거래일 뒤 실적/.test(w)));
+});
+
+test('replay: an unprotected position is sold at the close before an earnings report', () => {
+  const px = [...Array(12).fill(100), 100.5, 100.8, 101, 101.2, 101];
+  const days = cal(px.length), p0 = 11;
+  const bars = px.map((c, i) => ({ o: i ? px[i - 1] : c, h: c + 0.3, l: c - 0.3, c, v: 1 }));
+  const data = { cal: days, earnings: (s) => (s === 'AAA' ? [{ date: days[15], hour: 'bmo' }] : []), get: (s) => (s === 'AAA' || s === 'SPY' ? { s: 0, bars } : null) };
+  const pick = { symbol: 'AAA', setup: 'breakout', cap: '대형주', plan: { entryType: 'market', trigger: 100, refClose: 100, stop: 96, target: 108, validDays: 1, riskPct: 0.01, trailMa: 'ema10', trailLabel: 'x' } };
+  const r = replayDesk([{ date: days[p0], picks: [pick] }], data);
+  assert.equal(r.trades[0].reason, '실적 발표 전 정리');
+  assert.equal(r.trades[0].exitDate, days[14]);
+});
+
+test('replay: total open risk is capped, so a later order is cut down to fit', () => {
+  const n = 30, days = cal(n);
+  const flat = Array.from({ length: n }, () => ({ o: 50, h: 50.4, l: 49.8, c: 50, v: 1 }));
+  const get = (s) => ({ s: 0, bars: flat });
+  const plan = { entryType: 'market', trigger: 50, refClose: 50, stop: 40, target: 70, validDays: 1, riskPct: 0.03, trailMa: 'ema10', trailLabel: 'x' };
+  const picks = ['A1', 'A2', 'A3'].map((s, i) => ({ symbol: s, setup: 'breakout', sector: 'S' + i, cap: '대형주', plan }));
+  const r = replayDesk([{ date: days[0], picks }], { cal: days, get });
+  const heat = r.open.reduce((a, p) => a + p.shares * (50 - p.stop), 0);
+  assert.ok(heat <= DESK_RULES.maxHeatPct * DESK_RULES.startEquity + 1, `heat ${heat}`);
+  assert.ok(r.events.some((e) => /전체 위험/.test(e.text)) || Object.values(r.outcomes).some((o) => /전체 위험/.test(o.why ?? '')));
+});
+
+test('wilson interval, selection edge and verdict stay honest about small samples', async () => {
+  const { wilson, selectionEdge, deskVerdict } = await import('../packages/analysis/analyst-desk.mjs');
+  const [lo, hi] = wilson(1, 10); assert.ok(lo < 0.05 && hi > 0.35);
+  const days = cal(20), up = days.map((_, i) => ({ o: 10 + i, h: 11 + i, l: 9 + i, c: 10 + i, v: 1 })), flat = days.map(() => ({ o: 10, h: 10, l: 10, c: 10, v: 1 }));
+  const data = { cal: days, get: (s) => ({ s: 0, bars: s === 'W' ? up : flat }) };
+  const e = selectionEdge([{ date: days[0], picks: ['W'], candidates: ['W', 'F1', 'F2', 'F3', 'F4'] }], data, 5);
+  assert.equal(e.days, 1); assert.ok(e.edge > 0);
+  assert.equal(deskVerdict({ closed: 12 }, e).stage, 'collect');
+  assert.equal(deskVerdict({ closed: 40, expectancyR: -0.2, profitFactor: 0.7 }, e).stage, 'review');
 });

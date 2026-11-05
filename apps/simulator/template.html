@@ -124,6 +124,20 @@ details summary{cursor:pointer;color:var(--ink-2);font-size:14px;min-height:28px
 .method b{color:var(--ink)}
 footer{font-size:12.5px;color:var(--muted)}
 
+/* ---------- verdict + risk ---------- */
+.verdict{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px;padding:18px 20px;border:1px solid var(--rule);border-left:4px solid var(--accent);background:var(--sheet);border-radius:4px}
+.verdict.review{border-left-color:var(--up)} .verdict.collect{border-left-color:var(--amber)} .verdict.live-small{border-left-color:var(--ok)}
+.verdict h2{font-size:20px}
+.verdict .stage{font-family:var(--display);font-size:24px;font-weight:700;margin-top:4px}
+.meter{height:8px;border-radius:999px;background:var(--rule-2);overflow:hidden;margin-top:10px}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.meter-l{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:4px}
+.riskrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-block:1px solid var(--rule)}
+.riskrow div{padding:12px 14px;min-width:0}
+.riskrow div+div{border-left:1px solid var(--rule)}
+.riskrow b{display:block;font-family:var(--display);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.riskrow span{font-size:13px;color:var(--ink-2)}
+@media (max-width:860px){.verdict{grid-template-columns:minmax(0,1fr)}.riskrow{grid-template-columns:repeat(2,minmax(0,1fr))}.riskrow div:nth-child(3){border-left:0}.riskrow div:nth-child(n+3){border-top:1px solid var(--rule)}}
 /* ---------- loading placeholder ---------- */
 .skel{display:block;height:14px;border-radius:4px;background:var(--rule-2);margin:8px 0}
 @media (prefers-reduced-motion:no-preference){.skel{animation:pulse 1.2s ease-in-out infinite alternate}@keyframes pulse{to{opacity:.45}}}
@@ -224,6 +238,17 @@ footer{font-size:12.5px;color:var(--muted)}
         <p class="tape-note" id="d-tape-note"></p>
       </div>
       <dl class="ratios" id="d-ratios"></dl>
+    </section>
+
+    <section class="verdict" id="d-verdict" aria-label="이 기록을 믿어도 되는지">
+      <div><h2>이 기록을 믿어도 될까</h2><p class="stage" id="d-v-stage">–</p>
+        <div class="meter" role="progressbar" aria-label="검증에 필요한 청산 건수 진행" aria-valuemin="0" aria-valuemax="60" id="d-v-meter"><i id="d-v-bar" style="width:0"></i></div>
+        <div class="meter-l"><span>0건</span><span>30건 판단 시작</span><span>60건 실전 검토</span></div></div>
+      <div><p id="d-v-text" class="ink2"></p><ul class="why" id="d-v-checks" style="margin-top:10px"></ul></div>
+    </section>
+
+    <section aria-label="지금 계좌 위험">
+      <div class="riskrow" id="d-risk"></div>
     </section>
 
     <section id="sec-today">
@@ -980,7 +1005,7 @@ const STATE_KO = { SELECTIVE: '선별 진입', LIMIT: '신규 진입 축소', WA
 const STATUS_KO = { pending: '대기 주문', open: '보유 중', closed: '청산', cancelled: '취소', expired: '기한 만료', unknown: '확인 중' };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const money = (x) => (x < 0 ? '−$' : '$') + Math.abs(x).toLocaleString('en-US', { maximumFractionDigits: 0 });
-const dKo = (d) => { const [, m, dd] = d.split('-'); return `${Number(m)}월 ${Number(dd)}일`; };
+const dKo = (d) => { if (!d) return '–'; const [, m, dd] = d.split('-'); return `${Number(m)}월 ${Number(dd)}일`; };
 const sgn = (x, d = 1) => (x == null || !Number.isFinite(x) ? '–' : pct(x, d));
 function tapeSvg(trades, open) {
   const items = [...trades.map((t) => ({ sym: t.symbol, v: t.pnlPct, closed: true, live: t.live, tip: `${t.symbol} ${t.label} ${dKo(t.entryDate)}→${dKo(t.exitDate)} ${pct(t.pnlPct)} (${t.R.toFixed(2)}R) ${t.reason}` })),
@@ -1030,8 +1055,32 @@ function renderDesk() {
   $('#d-tape').innerHTML = tapeSvg(D.trades, D.open);
   $('#d-tape-note').textContent = D.trades.length || D.open.length ? '막대 하나가 거래 하나입니다. 왼쪽부터 청산 순서, 속이 빈 막대는 아직 보유 중인 종목의 평가 수익률입니다.' : '';
   const row = (k, v, cls = '') => `<dt>${k}</dt><dd class="${cls}">${v}</dd>`;
+  const V = D.verdict, SEL = D.selection, RK = D.risk;
+  if (V) {
+    $('#d-verdict').className = 'verdict ' + V.stage;
+    $('#d-v-stage').textContent = V.label; $('#d-v-text').textContent = V.text;
+    $('#d-v-bar').style.width = `${Math.min(100, S.closed / 60 * 100)}%`; $('#d-v-meter').setAttribute('aria-valuenow', String(S.closed));
+    const chk = (ok, text) => `<li><b style="color:var(${ok ? '--ok' : '--amber'})">${ok ? '충족' : '미달'}</b> ${text}</li>`;
+    $('#d-v-checks').innerHTML = [
+      chk(S.closed >= 30, `청산 30건 이상 (지금 ${S.closed}건)`),
+      chk((S.expectancyR ?? -1) > 0.1, `거래당 기대값 +0.1R 초과 (지금 ${S.expectancyR != null ? (S.expectancyR >= 0 ? '+' : '') + S.expectancyR.toFixed(2) + 'R' : '–'})`),
+      chk((S.profitFactor ?? 0) > 1.3, `이익 계수 1.3 초과 (지금 ${S.profitFactor != null ? S.profitFactor.toFixed(2) : '–'})`),
+      chk((SEL?.edge ?? -1) > 0, `고른 종목이 후보 전체보다 나음 (${SEL?.days ? `${SEL.horizon}거래일 기준 ${pct(SEL.edge)}p, ${SEL.days}일 표본` : '아직 자료 없음'})`),
+    ].join('');
+  }
+  if (RK) {
+    const mode = { normal: '정상', half: '위험 절반으로 축소', halt: '신규 매수 중단' }[RK.mode];
+    $('#d-risk').innerHTML = `<div><span>열린 포지션 전체 위험</span><b>${pctU(RK.heatPct, 1)}</b><span>한도 ${pctU(RK.heatLimit, 0)}, 모두 손절되면 잃는 몫</span></div>` +
+      `<div><span>계좌 고점 대비</span><b class="${RK.drawdown < 0 ? 'down' : ''}">${pct(RK.drawdown)}</b><span>${mode} (−8% 절반, −15% 중단)</span></div>` +
+      `<div><span>재매수 대기</span><b>${RK.cooldown.length}종목</b><span>${RK.cooldown.length ? RK.cooldown.map((c) => `${esc(c.symbol)} ${dKo(c.until)}까지`).join(', ') : '손절 뒤 10거래일 쉬는 종목 없음'}</span></div>` +
+      `<div><span>자료 상태</span><b>${D.data?.volumeReliable ? '전체 시장' : 'IEX 단일'}</b><span>${D.data?.volumeReliable ? '통합 시세 거래량' : '거래량 일부만 반영'}, 실적일 ${D.data?.earningsChecked ? '확인됨' : '미확인'}</span></div>`;
+  }
   $('#d-ratios').innerHTML = row('평균 이익', sgn(S.avgWinPct), 'up') + row('평균 손실', sgn(S.avgLossPct), 'down') + row('손익비', S.payoff ? S.payoff.toFixed(2) : '–') +
     row('이익 계수', S.profitFactor != null ? S.profitFactor.toFixed(2) : '–') + row('거래당 기대값', S.expectancyR != null ? `${S.expectancyR >= 0 ? '+' : ''}${S.expectancyR.toFixed(2)}R` : '–', sign(S.expectancyR ?? 0)) +
+    row('승률 95% 범위', S.winRateCI ? `${pctU(S.winRateCI[0], 0)}~${pctU(S.winRateCI[1], 0)}` : '–') +
+    row('손익분기 승률', S.breakevenWinRate != null ? pctU(S.breakevenWinRate, 0) : '–') +
+    row('거래당 SPY 대비', sgn(S.avgAlpha), sign(S.avgAlpha ?? 0)) +
+    row('후보 전체 대비', SEL?.days ? `${pct(SEL.edge)}p` : '–', sign(SEL?.edge ?? 0)) +
     row('평균 보유', S.avgDays != null ? `${S.avgDays.toFixed(1)}일` : '–') + row('최대 낙폭', pct(S.maxDrawdown), 'down') +
     row('실시간 기록', D.firstLive ? (L.closed ? `청산 ${L.closed}건, 승률 ${pctU(L.winRate, 0)}` : `${dKo(D.firstLive)} 시작`) : '다음 야간 작업부터') +
     `<dd class="foot">${S.closed < 30 ? `청산 ${S.closed}건은 판단하기에 적습니다. 30건이 넘어야 승률이 의미를 갖기 시작합니다.` : '청산 30건 이상, 숫자를 읽을 만한 표본입니다.'}</dd>`;
@@ -1060,6 +1109,7 @@ function renderDesk() {
   // breakdown
   const grp = (title, g, order) => Object.entries(g).sort((a, b) => (order ? order.indexOf(a[0]) - order.indexOf(b[0]) : b[1].n - a[1].n)).map(([k, v]) => `<tr><td>${title === 'setup' ? esc(SETUP_KO[k] ?? k) : esc(k)}</td><td class="r">${v.n}</td><td class="r">${pctU(v.winRate, 0)}</td><td class="r ${sign(v.avgPct)}">${pct(v.avgPct)}</td><td class="r ${sign(v.avgR)}">${v.avgR >= 0 ? '+' : ''}${v.avgR.toFixed(2)}R</td></tr>`).join('');
   $('#d-by').innerHTML = S.closed ? `<thead><tr><th>패턴</th><th class="r">건수</th><th class="r">승률</th><th class="r">평균 수익</th><th class="r">평균 R</th></tr></thead><tbody>${grp('setup', S.bySetup)}</tbody>
+    <thead><tr><th>매수 당시 시장</th><th class="r">건수</th><th class="r">승률</th><th class="r">평균 수익</th><th class="r">평균 R</th></tr></thead><tbody>${grp('market', Object.fromEntries(Object.entries(S.byMarket ?? {}).map(([k, v]) => [STATE_KO[k] ?? k, v])))}</tbody>
     <thead><tr><th>시가총액</th><th class="r">건수</th><th class="r">승률</th><th class="r">평균 수익</th><th class="r">평균 R</th></tr></thead><tbody>${grp('cap', S.byCap, ['대형주', '중형주', '소형주', '미분류'])}</tbody>` : '<tbody><tr><td class="muted">청산된 거래가 생기면 패턴별·시가총액별 승률이 여기에 쌓입니다.</td></tr></tbody>';
   // open
   $('#d-open-sub').textContent = D.open.length ? `평가 손익 ${money(D.open.reduce((a, p) => a + p.unrealized, 0))}` : '';
@@ -1080,10 +1130,12 @@ function renderDesk() {
   $('#d-rules').innerHTML = [
     `<p><b>후보</b> 그날 중장기·단기 랭킹과 돌파·눌림목 셋업 목록 전체. 시가총액 제한은 없고 ETF·레버리지 상품만 뺍니다.</p>`,
     `<p><b>자리 판단</b> 신고가 돌파(거래량 1.4배 이상), 수축 후 돌파 대기, 상승 추세 속 눌림목, 200일선 위 과매도 반등 네 가지만 삽니다. 하락 추세, RSI 78 초과, 50일선 대비 25% 넘게 뜬 종목은 거릅니다.</p>`,
-    `<p><b>고르기</b> 분석 점수 ${R.minQuality}점 이상 중 높은 순, 하루 한 섹터 한 종목. 시장 판정이 선별 진입이면 ${R.picksPerDay.SELECTIVE}개, 축소면 ${R.picksPerDay.LIMIT}개, 대기면 ${R.picksPerDay.WAIT}개까지.</p>`,
+    `<p><b>고르기</b> 분석 점수 ${R.minQuality}점 이상 중 높은 순, 하루 한 섹터 한 종목. 시장 판정이 선별 진입이면 ${R.picksPerDay.SELECTIVE}개, 축소면 ${R.picksPerDay.LIMIT}개, 대기면 ${R.minQualityWait}점 이상 ${R.picksPerDay.WAIT}개만. 눌림목·수축은 6개월 수익률이 SPY보다 강한 주도주에서만 삽니다.</p>`,
     `<p><b>비중</b> 손절까지 잃는 돈이 계좌의 ${(R.riskPct.SELECTIVE * 100).toFixed(1)}%(선별)~${(R.riskPct.WAIT * 100).toFixed(1)}%(대기)가 되도록 수량을 정합니다. 반등 매매는 절반. 한 종목 최대 ${(R.maxPositionPct * 100).toFixed(0)}%, 동시 보유 ${R.maxOpen}종목.</p>`,
     `<p><b>매도</b> +1R에 손절을 매수가로 올리고, +${R.partialAtR}R에 절반 익절, 나머지는 종목 변동성에 맞춘 이평선(50일선, 20일 또는 10일 지수이평) 종가 이탈에 정리. ${R.timeStopSessions}거래일 동안 +0.5R을 못 넘으면 정리.</p>`,
-    `<p><b>체결 가정</b> 다음 거래일 일봉으로 판정. 같은 날 손절과 목표가 함께 닿으면 손절로 보고, 시가가 계획보다 ${(R.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않습니다. 매수·매도마다 비용 ${(R.costPerSide * 100).toFixed(1)}%.</p>`,
+    `<p><b>계좌 보호</b> 열린 포지션이 모두 손절돼도 계좌의 ${(R.maxHeatPct * 100).toFixed(0)}% 넘게 잃지 않게 수량을 줄입니다. 고점 대비 −${(R.ddHalfRisk * 100).toFixed(0)}%면 새 위험을 절반으로, −${(R.ddHalt * 100).toFixed(0)}%면 신규 매수를 멈춥니다. 한 섹터는 ${R.maxSectorOpen}종목까지, 손절된 종목은 ${R.reentryCooldown}거래일 다시 사지 않습니다.</p>`,
+    `<p><b>실적 발표</b> 발표 ${R.earningsBlackout}거래일 안이면 새로 사지 않고, +1R 보호가 안 된 포지션은 발표 전 마지막 종가에 정리합니다.</p>`,
+    `<p><b>체결 가정</b> 다음 거래일 일봉으로 판정. 같은 날 손절과 목표가 함께 닿으면 손절로 보고, 시가가 계획보다 ${(R.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않습니다. 비용은 매수·매도마다 ${(R.costPerSide * 100).toFixed(1)}%(소형주·$10 미만 ${(R.costSmallPerSide * 100).toFixed(2)}%), 손절은 ${(R.stopSlippage * 100).toFixed(1)}% 밀려 체결된다고 봅니다.</p>`,
   ].join('');
 }
 const DESK_PICKS = { SELECTIVE: 5, LIMIT: 3, UNKNOWN: 3, WAIT: 2 };

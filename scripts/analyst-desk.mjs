@@ -4,7 +4,7 @@
 // Usage: node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json [--out data-branch]
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { pickForDay, replayDesk, deskStats, DESK_RULES } from '../packages/analysis/analyst-desk.mjs';
+import { pickForDay, replayDesk, deskStats, deskVerdict, selectionEdge, DESK_RULES } from '../packages/analysis/analyst-desk.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const readJSON = (p) => JSON.parse(readFileSync(p, 'utf8'));
@@ -13,7 +13,12 @@ const dated = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => /^\d{4}
 /** sim/bars.json → { cal, get(sym) } with bar objects */
 export function barsAccess(payload) {
   const cache = new Map();
-  return { cal: payload.cal, gates: payload.gates ?? {}, get(sym) {
+  const earnings = payload.earnings ?? null;
+  return { cal: payload.cal, gates: payload.gates ?? {},
+    volumeReliable: payload.volumeReliable ?? /feed=sip/.test(payload.source ?? ''),
+    earningsChecked: payload.earningsChecked ?? (earnings ? true : null),
+    earnings: earnings ? (sym) => earnings[sym] ?? [] : null,
+    get(sym) {
     if (cache.has(sym)) return cache.get(sym);
     const x = payload.bars[sym]; const v = x ? { s: x.s, bars: x.d.map(([o, h, l, c, v2]) => ({ o, h, l, c, v: v2 })) } : null;
     cache.set(sym, v); return v;
@@ -21,37 +26,50 @@ export function barsAccess(payload) {
 }
 const calIdx = (cal, date) => { let lo = 0, hi = cal.length - 1, a = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (cal[m] <= date) { a = m; lo = m + 1; } else hi = m - 1; } return a; };
 
+/** trading sessions from session d to the next earnings date (null: none within the data, undefined: unknown) */
+function earningsIn(data, sym, d) {
+  if (!data.earnings) return undefined;
+  const e = data.earnings(sym).find((x) => x.date > data.cal[d]); if (!e) return null;
+  let n = 0; for (let t = Date.parse(data.cal[d]) + 864e5; t <= Date.parse(e.date); t += 864e5) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; }
+  return n <= 30 ? n : null;
+}
+
 export function candidatesFor(doc, data, d, mcap) {
   const out = [];
   for (const [list, source] of [['mid', '중장기 랭킹'], ['short', '단기 랭킹'], ['setups', '돌파 셋업'], ['pullback', '눌림목 셋업']]) {
     for (const r of doc[list] ?? []) {
       const x = data.get(r.symbol); if (!x || d < x.s) continue;
       const i = d - x.s; if (i >= x.bars.length) continue;
-      out.push({ symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, mcap: mcap.get(r.symbol) ?? null, source, bars: x.bars, i });
+      out.push({ symbol: r.symbol, name: r.name, sector: r.sector, score: r.score, mcap: mcap.get(r.symbol) ?? null, source, bars: x.bars, i, earningsIn: earningsIn(data, r.symbol, d) });
     }
   }
   return out;
 }
 function spyRet126(data, d) { const x = data.get('SPY'); const i = d - (x?.s ?? 0); return x && i >= 126 ? x.bars[i].c / x.bars[i - 126].c - 1 : null; }
-/** state of the account as of session d: symbols held or with a working order */
-function busyAt(ledgers, data, d) {
-  if (!ledgers.length) return new Set();
-  const r = replayDesk(ledgers, { cal: data.cal.slice(0, d + 1), get: data.get.bind(data) });
-  return new Set([...r.open.map((p) => p.symbol), ...r.pending.map((p) => p.symbol)]);
+/** state of the account as of session d: symbols held or with a working order, and names cooling off after a stop */
+function stateAt(ledgers, data, d) {
+  if (!ledgers.length) return { busy: new Set(), cooldown: new Map() };
+  const r = replayDesk(ledgers, { ...data, cal: data.cal.slice(0, d + 1), get: data.get.bind(data) });
+  const cooldown = new Map();
+  for (const [sym, date] of Object.entries(r.stoppedAt)) { const k = data.cal.indexOf(date); if (k >= 0 && d - k < DESK_RULES.reentryCooldown) cooldown.set(sym, date.slice(5)); }
+  return { busy: new Set([...r.open.map((p) => p.symbol), ...r.pending.map((p) => p.symbol)]), cooldown };
 }
 
 export function runDesk({ docs, latest, data, stored, today }) {
   const mcap = new Map(); for (const k of ['mid', 'short']) for (const r of latest?.[k] ?? []) if (r.mcap) mcap.set(r.symbol, r.mcap);
   const liveStart = stored.length ? stored[0].date : null;
-  const ledgers = [], created = [];
+  const ledgers = [], created = [], universe = new Map();
   for (const doc of docs) {
     const d = calIdx(data.cal, doc.asOf); if (d < 0 || data.cal[d] !== doc.asOf) continue; // need that day's close
+    const cands = candidatesFor(doc, data, d, mcap);
+    universe.set(doc.asOf, [...new Set(cands.map((c) => c.symbol))]);
     const have = stored.find((s) => s.date === doc.asOf);
     if (have) { ledgers.push(have); continue; }
     const market = data.gates[doc.asOf] ?? (doc.asOf === latest?.asOf ? latest?.marketState : null) ?? 'UNKNOWN';
-    const res = pickForDay({ date: doc.asOf, candidates: candidatesFor(doc, data, d, mcap), market, spyRet126: spyRet126(data, d), busy: busyAt(ledgers, data, d) });
+    const { busy, cooldown } = stateAt(ledgers, data, d);
+    const res = pickForDay({ date: doc.asOf, candidates: cands, market, spyRet126: spyRet126(data, d), busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked });
     const live = doc.asOf === today;
-    const entry = { date: doc.asOf, live, backfill: !live, late: !live && liveStart != null && doc.asOf > liveStart, createdAt: new Date().toISOString(), market: res.market, picks: res.picks, passed: res.passed.slice(0, 40) };
+    const entry = { date: doc.asOf, rulesVersion: DESK_RULES.version, live, backfill: !live, late: !live && liveStart != null && doc.asOf > liveStart, createdAt: new Date().toISOString(), market: res.market, picks: res.picks, passed: res.passed.slice(0, 40) };
     ledgers.push(entry); if (live) created.push(entry);
   }
   ledgers.sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -61,11 +79,14 @@ export function runDesk({ docs, latest, data, stored, today }) {
   const liveEquity = firstLive ? r.equity.filter((e) => e.date >= firstLive) : [];
   const picks = ledgers.map((l) => ({ date: l.date, live: l.live, backfill: !!l.backfill, late: !!l.late, market: l.market,
     picks: l.picks.map((p) => ({ ...p, outcome: r.outcomes[`${l.date}:${p.symbol}`] ?? { status: 'unknown' } })), passed: l === ledgers.at(-1) ? l.passed : undefined }));
+  const stats = deskStats(r.trades, r.equity);
+  const selection = selectionEdge(ledgers.map((l) => ({ date: l.date, picks: l.picks.map((p) => p.symbol), candidates: universe.get(l.date) ?? [] })), data);
   return {
     created,
     account: {
-      model: 'analyst-desk-v1', generatedAt: new Date().toISOString(), asOf: data.cal.at(-1), rules: DESK_RULES, firstLive,
-      stats: deskStats(r.trades, r.equity), statsLive: deskStats(liveTrades, liveEquity),
+      model: `analyst-desk-v${DESK_RULES.version}`, generatedAt: new Date().toISOString(), asOf: data.cal.at(-1), rules: DESK_RULES, firstLive,
+      data: { volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked },
+      stats, statsLive: deskStats(liveTrades, liveEquity), selection, verdict: deskVerdict(stats, selection), risk: r.risk,
       equity: r.equity, trades: r.trades, open: r.open, pending: r.pending, events: r.events.slice(-80), ledgers: picks,
       note: firstLive ? `실시간 기록은 ${firstLive}부터입니다. 그 전 날짜는 같은 규칙을 그날까지의 시세로만 적용한 소급 기록입니다.` : '아직 실시간 기록이 없습니다. 모든 날짜가 같은 규칙을 그날까지의 시세로만 적용한 소급 기록입니다.',
     },

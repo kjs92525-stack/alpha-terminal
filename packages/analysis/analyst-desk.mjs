@@ -8,19 +8,29 @@
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 export const DESK_RULES = {
+  version: 2,
   startEquity: 100_000,
-  costPerSide: 0.001,            // commission + spread, each side
-  picksPerDay: { SELECTIVE: 5, LIMIT: 3, UNKNOWN: 3, WAIT: 2 },
-  riskPct: { SELECTIVE: 0.01, LIMIT: 0.007, UNKNOWN: 0.006, WAIT: 0.004 }, // equity risked per trade
+  costPerSide: 0.001,            // commission + spread, each side (liquid names)
+  costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
+  stopSlippage: 0.002,           // a resting stop fills a little below its price
+  picksPerDay: { SELECTIVE: 5, LIMIT: 3, UNKNOWN: 3, WAIT: 1 },
+  riskPct: { SELECTIVE: 0.01, LIMIT: 0.007, UNKNOWN: 0.007, WAIT: 0.0035 }, // equity risked per trade
   maxPositionPct: 0.15,
   maxOpen: 12,
+  maxHeatPct: 0.06,              // all open positions together may lose at most 6% of equity to their stops
+  maxSectorOpen: 3,
+  ddHalfRisk: 0.08, ddHalt: 0.15, // account drawdown: halve new risk at -8%, stop new entries at -15%
+  reentryCooldown: 10,           // sessions before re-buying a name that was stopped out
+  earningsBlackout: 5,           // no new entry with a report inside this many sessions
   minQuality: 55,
+  minQualityWait: 80,            // when the market verdict is WAIT, only the strongest single setup
   maxStopPct: 0.12,              // skip plans whose stop is further than 12% below the trigger
   maxChase: 0.04,                // never buy an open more than 4% above the planned price
   partialAtR: 2, breakevenAtR: 1,
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
   minPrice: 5,
-  minAdv: 0, // the ranking lists already filter liquidity on full-market volume; IEX-only bars under-count it
+  minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
+  maxAdvPct: 0.01,               // never more than 1% of a day's dollar volume
 };
 const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
 
@@ -63,6 +73,9 @@ export function indicatorsAt(bars, i) {
 }
 
 const r2 = (x) => Math.round(x * 100) / 100;
+const nextWeekday = (date) => { const t = new Date(date + 'T00:00:00Z'); do t.setUTCDate(t.getUTCDate() + 1); while (t.getUTCDay() % 6 === 0); return t.toISOString().slice(0, 10); };
+/** Wilson 95% interval for a proportion: how wide the truth can be around an observed win rate. */
+export function wilson(k, n, z = 1.96) { if (!n) return null; const p = k / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return [Math.max(0, c - h), Math.min(1, c + h)]; }
 const pctS = (x, d = 1) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 function trailFor(atrPct) { return atrPct < 0.025 ? { ma: 'sma50', label: '50일선' } : atrPct < 0.045 ? { ma: 'ema20', label: '20일 지수이평' } : { ma: 'ema10', label: '10일 지수이평' }; }
@@ -75,7 +88,8 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (i < 60) return { pass: '시세 이력 부족' };
   const x = indicatorsAt(bars, i), up = Number.isFinite(x.sma200) && x.sma50 > x.sma200 && x.c > x.sma200;
   if (x.c < rules.minPrice) return { pass: `주가 $${rules.minPrice} 미만` };
-  if (rules.minAdv && x.adv20 < rules.minAdv) return { pass: '거래대금 부족' };
+  if (meta.volumeReliable && rules.minAdv && x.adv20 < rules.minAdv) return { pass: `하루 거래대금 $${(x.adv20 / 1e6).toFixed(1)}M, 기준 미달` };
+  if (meta.earningsIn != null && meta.earningsIn <= rules.earningsBlackout) return { pass: `실적 발표 ${meta.earningsIn}거래일 전, 발표 뒤에 다시 봄` };
   if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200) return { pass: '200일선 아래 하락 추세' };
   if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
   if (x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
@@ -102,6 +116,11 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
 
   const reasons = [], warnings = [];
   const rs = x.ret126 != null && meta.spyRet126 != null ? x.ret126 - meta.spyRet126 : null;
+  // buy weakness only in leaders: a pullback or base in a stock lagging the market is not a setup
+  if ((setup === 'pullback' || setup === 'base') && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
+  if (meta.earningsIn == null && meta.earningsChecked) reasons.push('30거래일 안에 실적 발표 없음');
+  if (meta.earningsChecked === false) warnings.push('실적 발표일을 확인하지 못함');
+  else if (meta.earningsIn != null && meta.earningsIn <= 20) warnings.push(`${meta.earningsIn}거래일 뒤 실적 발표, 그 전에 +1R 보호가 안 되면 정리`);
   let q = 0.35 * (meta.score ?? 60) + { breakout: 30, base: 26, pullback: 24, reversal: 14 }[setup];
   if (rs != null) { q += clamp(rs * 40, -10, 15); if (rs > 0.15) reasons.push(`6개월 수익률이 SPY보다 ${pctS(rs, 0)}p 강함`); else if (rs < 0) warnings.push(`6개월 수익률이 SPY보다 약함 (${pctS(rs, 0)}p)`); }
   if (up) { q += 8; reasons.push('50일선이 200일선 위 정배열'); }
@@ -129,15 +148,17 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
  * Choose the day's picks. candidates: [{ symbol, name, sector, mcap, score, source, bars, i }].
  * busy: symbols already held or with a working order. Returns { picks, passed }.
  */
-export function pickForDay({ date, candidates, market, spyRet126, busy = new Set() }, rules = DESK_RULES) {
+export function pickForDay({ date, candidates, market, spyRet126, busy = new Set(), cooldown = new Map(), volumeReliable = false, earningsChecked = null }, rules = DESK_RULES) {
   const state = market ?? 'UNKNOWN', seen = new Set(), rows = [], passed = [];
   for (const c of candidates) {
     if (seen.has(c.symbol)) continue; seen.add(c.symbol);
     if (FUND_NAME.test(c.name ?? '') || ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'UPRO', 'SPXL', 'IWM'].includes(c.symbol)) { passed.push({ symbol: c.symbol, why: 'ETF·레버리지 상품 제외' }); continue; }
     if (busy.has(c.symbol)) { passed.push({ symbol: c.symbol, why: '이미 보유·주문 중' }); continue; }
-    const a = analyze(c.bars, c.i, { score: c.score, spyRet126 }, rules);
+    if (cooldown.has(c.symbol)) { passed.push({ symbol: c.symbol, why: `${cooldown.get(c.symbol)} 손절 뒤 ${rules.reentryCooldown}거래일 쉬는 중` }); continue; }
+    const a = analyze(c.bars, c.i, { score: c.score, spyRet126, volumeReliable, earningsIn: c.earningsIn ?? null, earningsChecked }, rules);
     if (a.pass) { passed.push({ symbol: c.symbol, why: a.pass }); continue; }
-    if (a.quality < rules.minQuality) { passed.push({ symbol: c.symbol, why: `${a.label} 품질 ${a.quality}점 (기준 ${rules.minQuality})` }); continue; }
+    const bar = state === 'WAIT' ? rules.minQualityWait : rules.minQuality;
+    if (a.quality < bar) { passed.push({ symbol: c.symbol, why: `${a.label} ${a.quality}점 (기준 ${bar}${state === 'WAIT' ? ', 진입 대기 시장' : ''})` }); continue; }
     rows.push({ c, a });
   }
   rows.sort((x, y) => y.a.quality - x.a.quality);
@@ -148,7 +169,7 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
     if (sec && sectors.has(sec)) { passed.push({ symbol: c.symbol, why: `${sec} 이미 담음` }); continue; }
     if (sec) sectors.add(sec);
     picks.push({ symbol: c.symbol, name: c.name ?? c.symbol, sector: c.sector ?? null, cap: capBucket(c.mcap), mcap: c.mcap ?? null, source: c.source, listScore: c.score ?? null,
-      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot });
+      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null });
   }
   return { date, market: state, picks, passed };
 }
@@ -168,29 +189,37 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
   const open = [], pending = [], trades = [], equity = [], outcomes = new Map(), events = [];
   const spy = data.get('SPY'), spyStart = spy ? bar('SPY', first) : null;
   const key = (date, sym) => `${date}:${sym}`;
-  const cost = (v) => v * rules.costPerSide;
+  const costRate = (p, px) => (p.cap === '소형주' || px < 10 ? rules.costSmallPerSide : rules.costPerSide);
+  const nextReport = (sym, d) => { const list = data.earnings?.(sym); if (!list) return null; const today = cal[d]; return list.find((e) => e.date >= today) ?? null; };
+  const spyOpenAt = (d) => bar('SPY', d)?.o ?? null, spyCloseAt = (d) => bar('SPY', d)?.c ?? null;
+  let peak = rules.startEquity;
 
   const close = (pos, d, px, reason) => {
+    const cost = (v) => v * pos.costRate;
     const proceeds = pos.shares * px; cash += proceeds - cost(proceeds);
     pos.realized += pos.shares * (px - pos.entry) - cost(proceeds); pos.exitValue += proceeds; pos.exitShares += pos.shares; pos.shares = 0;
     const exitPx = pos.exitValue / pos.exitShares, pnl = pos.realized - pos.entryCost;
     const t = { symbol: pos.symbol, name: pos.name, setup: pos.setup, label: pos.label, cap: pos.cap, sector: pos.sector, live: pos.live, pickDate: pos.pickDate,
       entryDate: cal[pos.entryIdx], exitDate: cal[d], days: d - pos.entryIdx, entry: r2(pos.entry), exit: r2(exitPx), shares: pos.initShares,
-      pnl: r2(pnl), pnlPct: pnl / (pos.initShares * pos.entry), R: pnl / (pos.initShares * pos.R), reason, partial: pos.partial };
+      pnl: r2(pnl), pnlPct: pnl / (pos.initShares * pos.entry), R: pnl / (pos.initShares * pos.R), reason, partial: pos.partial, market: pos.market ?? null };
+    const so = spyOpenAt(pos.entryIdx), sc = spyCloseAt(d);
+    t.spyPct = so && sc ? sc / so - 1 : null; t.alpha = t.spyPct != null ? t.pnlPct - t.spyPct : null;
+    if (/^손절/.test(reason) || reason === '체결 당일 손절') stopped.set(pos.symbol, d);
     trades.push(t); outcomes.set(key(pos.pickDate, pos.symbol), { status: 'closed', ...t }); events.push({ date: cal[d], symbol: pos.symbol, kind: 'exit', text: `${reason} $${r2(px)} (${pctS(t.pnlPct)})` });
   };
 
+  const stopped = new Map(); // symbol -> session of its last losing stop
   for (let d = first; d < cal.length; d++) {
     // 1) manage open positions
     for (const pos of [...open]) {
       const b = bar(pos.symbol, d); if (!b || d <= pos.entryIdx) continue;
       const held = d - pos.entryIdx;
       if (b.o <= pos.stop) { close(pos, d, b.o, pos.stop >= pos.entry ? '본전 손절(갭)' : '손절(갭)'); }
-      else if (b.l <= pos.stop) { close(pos, d, pos.stop, pos.stop >= pos.entry ? '본전 손절' : '손절'); }
+      else if (b.l <= pos.stop) { close(pos, d, Math.min(b.o, pos.stop * (1 - rules.stopSlippage)), pos.stop >= pos.entry ? '본전 손절' : '손절'); }
       else {
         if (!pos.partial && b.h >= pos.target) {
           const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares / 2);
-          if (half > 0) { const v = half * px; cash += v - cost(v); pos.realized += half * (px - pos.entry) - cost(v); pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
+          if (half > 0) { const v = half * px, c = v * pos.costRate; cash += v - c; pos.realized += half * (px - pos.entry) - c; pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
           pos.partial = true; pos.stop = Math.max(pos.stop, pos.entry);
           events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: `+${rules.partialAtR}R 절반 익절 $${r2(px)}` });
         }
@@ -199,6 +228,11 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
         if (pos.partial && Number.isFinite(ma) && b.c < ma) close(pos, d, b.c, `${pos.trailLabel} 이탈`);
         else if (!pos.partial && held >= rules.timeStopSessions && b.c < pos.entry + rules.timeStopMinR * pos.R) close(pos, d, b.c, `${rules.timeStopSessions}거래일 진전 없음`);
         else if (held >= rules.maxSessions) close(pos, d, b.c, '최대 보유 기간');
+        else if (pos.stop < pos.entry) {
+          // an unprotected position does not sit through an earnings report: sell at the close before it
+          const e = nextReport(pos.symbol, d), tomorrow = cal[d + 1] ?? nextWeekday(cal[d]);
+          if (e && ((e.date === cal[d] && e.hour !== 'bmo') || (e.date > cal[d] && e.date < tomorrow) || (e.date === tomorrow && e.hour !== 'amc'))) close(pos, d, b.c, '실적 발표 전 정리');
+        }
       }
       if (pos.shares === 0) open.splice(open.indexOf(pos), 1);
     }
@@ -213,27 +247,37 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
       else if (b.h >= o.plan.trigger) { if (b.o > o.plan.trigger * (1 + rules.maxChase)) { drop('cancelled', '매수 가격 위로 크게 갭 상승해 추격 안 함'); continue; } fill = Math.max(b.o, o.plan.trigger); }
       if (fill == null) continue;
       if (open.length >= rules.maxOpen) { drop('cancelled', `보유 종목 ${rules.maxOpen}개 한도`); continue; }
+      const dd = prevEquity / peak - 1;
+      if (dd <= -rules.ddHalt) { drop('cancelled', `계좌 낙폭 ${pctS(dd)}, 신규 매수 중단 구간`); continue; }
+      const sec = o.sector && o.sector !== 'Unknown' ? o.sector : null;
+      if (sec && open.filter((p) => p.sector === sec).length >= rules.maxSectorOpen) { drop('cancelled', `${sec} 이미 ${rules.maxSectorOpen}종목 보유`); continue; }
       const R = fill - o.plan.stop; if (!(R > 0)) { drop('cancelled', '체결가가 손절가 아래'); continue; }
-      let shares = Math.floor(prevEquity * o.plan.riskPct / R);
-      shares = Math.min(shares, Math.floor(prevEquity * rules.maxPositionPct / fill), Math.floor(cash / (fill * (1 + rules.costPerSide))));
-      if (shares < 1) { drop('cancelled', '현금 부족'); continue; }
-      const v = shares * fill; cash -= v + cost(v);
+      const riskPct = o.plan.riskPct * (dd <= -rules.ddHalfRisk ? 0.5 : 1);
+      const heat = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, d - 1) ?? p.entry) - p.stop), 0);
+      const heatRoom = rules.maxHeatPct * prevEquity - heat;
+      const rate = costRate(o, fill);
+      let shares = Math.floor(prevEquity * riskPct / R), limit = '';
+      const caps = [[Math.floor(prevEquity * rules.maxPositionPct / fill), '종목당 비중 한도'], [Math.floor(cash / (fill * (1 + rate))), '현금 부족'], [Math.floor(Math.max(0, heatRoom) / R), `전체 위험 ${(rules.maxHeatPct * 100).toFixed(0)}% 한도`]];
+      if (data.volumeReliable) { const x = data.get(o.symbol); const i = d - 1 - x.s; if (i >= 20) caps.push([Math.floor(rules.maxAdvPct * indicatorsAt(x.bars, i).adv20 / fill), '거래대금 1% 한도']); }
+      for (const [n, why] of caps) if (n < shares) { shares = n; limit = why; }
+      if (shares < 1) { drop('cancelled', limit || '수량 0'); continue; }
+      const v = shares * fill; cash -= v + v * rate;
       const pos = { ...o, shares, initShares: shares, entry: fill, entryIdx: d, R, stop: o.plan.stop, target: fill + rules.partialAtR * R, trailMa: o.plan.trailMa, trailLabel: o.plan.trailLabel,
-        partial: false, realized: 0, entryCost: cost(v), exitValue: 0, exitShares: 0 };
+        partial: false, realized: 0, entryCost: v * rate, costRate: rate, exitValue: 0, exitShares: 0, sizedBy: limit || null, riskUsed: riskPct };
       pos.realized = 0; open.push(pos); pending.splice(pending.indexOf(o), 1);
       outcomes.set(key(o.pickDate, o.symbol), { status: 'open', entryDate: cal[d], entry: r2(fill), shares });
-      events.push({ date: cal[d], symbol: o.symbol, kind: 'buy', text: `${shares}주 $${r2(fill)} 매수 (위험 ${(o.plan.riskPct * 100).toFixed(2)}%)` });
+      events.push({ date: cal[d], symbol: o.symbol, kind: 'buy', text: `${shares}주 $${r2(fill)} 매수 (위험 ${(riskPct * 100).toFixed(2)}%${limit ? `, ${limit}로 줄임` : ''})` });
       // same-session stop after the fill (conservative)
-      if (b.l <= pos.stop) { close(pos, d, pos.stop, '체결 당일 손절'); open.splice(open.indexOf(pos), 1); }
+      if (b.l <= pos.stop) { close(pos, d, pos.stop * (1 - rules.stopSlippage), '체결 당일 손절'); open.splice(open.indexOf(pos), 1); }
     }
     // 3) tonight's picks become orders for the next session
     for (const l of byDay.get(d) ?? []) for (const p of l.picks) {
-      pending.push({ ...p, pickDate: l.date, live: !!l.live, expiry: d + p.plan.validDays });
+      pending.push({ ...p, pickDate: l.date, live: !!l.live, market: l.market ?? null, expiry: d + p.plan.validDays });
       outcomes.set(key(l.date, p.symbol), { status: 'pending' });
     }
     // 4) mark to market
     let mv = 0; for (const pos of open) mv += pos.shares * (lastClose(pos.symbol, d) ?? pos.entry);
-    const eq = cash + mv; prevEquity = eq;
+    const eq = cash + mv; prevEquity = eq; peak = Math.max(peak, eq);
     const sb = spy ? bar('SPY', d) : null;
     equity.push({ date: cal[d], equity: r2(eq), cash: r2(cash), spy: sb && spyStart ? r2(rules.startEquity * sb.c / spyStart.c) : null, open: open.length });
   }
@@ -241,7 +285,12 @@ export function replayDesk(ledgers, data, rules = DESK_RULES) {
   const openRows = open.map((p) => { const px = lastClose(p.symbol, last); return { symbol: p.symbol, name: p.name, setup: p.setup, label: p.label, cap: p.cap, live: p.live, pickDate: p.pickDate, entryDate: cal[p.entryIdx], entry: r2(p.entry), last: r2(px), shares: p.shares, stop: r2(p.stop), target: r2(p.target), partial: p.partial, trailLabel: p.trailLabel,
     unrealized: r2(p.shares * (px - p.entry) + p.realized), pnlPct: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.entry), R: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.R), weight: (p.shares * px) / equity.at(-1).equity, days: last - p.entryIdx }; });
   const pendingRows = pending.map((o) => ({ symbol: o.symbol, name: o.name, setup: o.setup, label: o.label, pickDate: o.pickDate, live: o.live, entryType: o.plan.entryType, trigger: o.plan.trigger, stop: o.plan.stop, expires: cal[Math.min(o.expiry, last)] ?? null, sessionsLeft: o.expiry - last }));
-  return { trades, open: openRows, pending: pendingRows, equity, events, outcomes: Object.fromEntries(outcomes) };
+  const lastEq = equity.at(-1)?.equity ?? rules.startEquity;
+  const heatNow = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, last) ?? p.entry) - p.stop), 0);
+  const ddNow = lastEq / peak - 1;
+  const risk = { heatPct: heatNow / lastEq, heatLimit: rules.maxHeatPct, drawdown: ddNow, mode: ddNow <= -rules.ddHalt ? 'halt' : ddNow <= -rules.ddHalfRisk ? 'half' : 'normal',
+    cooldown: [...stopped].filter(([, d]) => last - d < rules.reentryCooldown).map(([sym, d]) => { let u = cal[d + rules.reentryCooldown]; if (!u) { u = cal[last]; for (let k = last - d; k < rules.reentryCooldown; k++) u = nextWeekday(u); } return { symbol: sym, until: u }; }) };
+  return { trades, open: openRows, pending: pendingRows, equity, events, outcomes: Object.fromEntries(outcomes), risk, stoppedAt: Object.fromEntries([...stopped].map(([k, d]) => [k, cal[d]])) };
 }
 
 export function deskStats(trades, equity = []) {
@@ -257,6 +306,43 @@ export function deskStats(trades, equity = []) {
     payoff: wins.length && losses.length ? mean(wins.map((t) => t.pnlPct)) / -mean(losses.map((t) => t.pnlPct)) : null,
     profitFactor: gl > 0 ? gw / gl : null, expectancyR: mean(trades.map((t) => t.R)), avgDays: mean(trades.map((t) => t.days)), realized: r2(gw - gl),
     totalReturn: first && lastE ? lastE.equity / DESK_RULES.startEquity - 1 : 0, spyReturn: lastE?.spy ? lastE.spy / DESK_RULES.startEquity - 1 : null, maxDrawdown: dd,
-    bySetup: group('setup'), byCap: group('cap'), enough: n >= 30,
+    bySetup: group('setup'), byCap: group('cap'), byMarket: group('market'), enough: n >= 30,
+    winRateCI: wilson(wins.length, n),
+    // the win rate that breaks even at the observed payoff: below it the system loses money
+    breakevenWinRate: wins.length && losses.length ? 1 / (1 + mean(wins.map((t) => t.pnlPct)) / -mean(losses.map((t) => t.pnlPct))) : null,
+    avgAlpha: mean(trades.filter((t) => t.alpha != null).map((t) => t.alpha)), beatSpy: n ? trades.filter((t) => t.alpha > 0).length / n : null,
   };
+}
+
+/**
+ * Did the analyst's choices beat simply buying every candidate on the same day? For each pick day, the picks'
+ * and all candidates' returns from the next open to the close `h` sessions later. Uses only days with h
+ * sessions of future data.
+ */
+export function selectionEdge(days, data, h = 10) {
+  const fwd = (sym, d) => { const x = data.get(sym); if (!x) return null; const i0 = d + 1 - x.s, i1 = d + h - x.s; if (i0 < 0 || i1 >= x.bars.length) return null; return x.bars[i1].c / x.bars[i0].o - 1; };
+  const idx = (date) => data.cal.indexOf(date), rows = [];
+  for (const day of days) {
+    const d = idx(day.date); if (d < 0 || !day.picks.length) continue;
+    const p = day.picks.map((s) => fwd(s, d)).filter((v) => v != null), c = day.candidates.map((s) => fwd(s, d)).filter((v) => v != null);
+    if (!p.length || c.length < 5) continue;
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+    rows.push({ date: day.date, picks: avg(p), all: avg(c), edge: avg(p) - avg(c), n: c.length });
+  }
+  const m = (k) => (rows.length ? rows.reduce((a, r) => a + r[k], 0) / rows.length : null);
+  return { horizon: h, days: rows.length, picks: m('picks'), all: m('all'), edge: m('edge'), beatDays: rows.length ? rows.filter((r) => r.edge > 0).length / rows.length : null, rows };
+}
+
+/**
+ * Plain verdict on whether the record is good enough to act on. Thresholds are set before seeing results:
+ * at least 30 closed trades, positive expectancy, profit factor above 1.3 and picks beating the candidate list.
+ */
+export function deskVerdict(stats, sel) {
+  const n = stats.closed;
+  if (n < 30) return { stage: 'collect', label: '표본 모으는 중', text: `청산 ${n}건. 30건이 넘기 전에는 승률·손익 모두 운일 수 있어 판단하지 않습니다.`, progress: n / 30 };
+  const ok = stats.expectancyR > 0.1 && (stats.profitFactor ?? 0) > 1.3 && (sel?.edge ?? 0) > 0;
+  if (ok && n >= 60) return { stage: 'live-small', label: '소액 실전 검토 가능', text: '60건 넘게 기대값·이익 계수·선택 효과가 모두 기준을 넘었습니다. 계좌의 일부, 거래당 위험 0.5% 이하로 실전을 시작해 같은 기록과 비교하세요.', progress: 1 };
+  if (ok) return { stage: 'promising', label: '유망, 계속 검증', text: '기준은 넘었지만 60건 전까지는 모의로 계속 확인합니다.', progress: n / 60 };
+  if (stats.expectancyR < 0) return { stage: 'review', label: '규칙 재검토', text: '30건 넘게 거래당 기대값이 음수입니다. 실전에 쓰지 말고, 어느 패턴·시장에서 잃는지 표를 보고 규칙을 고칩니다. 고친 규칙은 새 버전으로 처음부터 다시 기록합니다.', progress: 1 };
+  return { stage: 'neutral', label: '아직 우위 불분명', text: '손실은 아니지만 기준(기대값 +0.1R, 이익 계수 1.3, 후보 대비 우위)에 못 미칩니다. 모의로 계속 기록합니다.', progress: n / 60 };
 }
