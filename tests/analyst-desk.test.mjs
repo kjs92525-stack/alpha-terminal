@@ -91,14 +91,19 @@ test('no new entry inside the earnings blackout; a pullback in a stock weaker th
 });
 
 test('replay: an unprotected position is sold at the close before an earnings report', () => {
-  const px = [...Array(12).fill(100), 100.5, 100.8, 101, 101.2, 101];
+  const px = [...Array(12).fill(100), 100.5, 100.8, 101, 101.2, 101, 101.1, 101, 100.9, 101, 101];
   const days = cal(px.length), p0 = 11;
   const bars = px.map((c, i) => ({ o: i ? px[i - 1] : c, h: c + 0.3, l: c - 0.3, c, v: 1 }));
-  const data = { cal: days, earnings: (s) => (s === 'AAA' ? [{ date: days[15], hour: 'bmo' }] : []), get: (s) => (s === 'AAA' || s === 'SPY' ? { s: 0, bars } : null) };
+  const data = { cal: days, earnings: (s) => (s === 'AAA' ? [{ date: days[20], hour: 'bmo' }] : []), get: (s) => (s === 'AAA' || s === 'SPY' ? { s: 0, bars } : null) };
   const pick = { symbol: 'AAA', setup: 'breakout', cap: '대형주', plan: { entryType: 'market', trigger: 100, refClose: 100, stop: 96, target: 108, validDays: 1, riskPct: 0.01, trailMa: 'ema10', trailLabel: 'x' } };
   const r = replayDesk([{ date: days[p0], picks: [pick] }], data);
   assert.equal(r.trades[0].reason, '실적 발표 전 정리');
-  assert.equal(r.trades[0].exitDate, days[14]);
+  assert.equal(r.trades[0].exitDate, days[19]);
+  // the same order with the report 3 sessions after the fill day is cancelled instead of bought
+  const soon = { ...data, earnings: (s) => (s === 'AAA' ? [{ date: days[15], hour: 'bmo' }] : []) };
+  const r2 = replayDesk([{ date: days[p0], picks: [pick] }], soon);
+  assert.equal(r2.trades.length, 0);
+  assert.match(r2.outcomes[`${days[p0]}:AAA`].why, /실적 발표.*주문 취소/);
 });
 
 test('replay: total open risk is capped, so a later order is cut down to fit', () => {
@@ -186,4 +191,28 @@ test('refreshFilings refreshes tonight\'s candidates, fills the cache within bud
   assert.deepEqual(calls, ['OLD', 'NEW', 'X1']);
   assert.deepEqual(cache.NEW.filings.map((f) => f.form), ['424B5']);
   assert.ok(!cache.X2);
+});
+
+test('a decline on heavy volume is not a pullback (NTRA 2026-11-02: -8.5% on 1.7x volume)', async () => {
+  const { distributionDays } = await import('../packages/analysis/analyst-desk.mjs');
+  const bars = trend(260, { start: 300, drift: 0.0015 });
+  const last = bars.at(-1).c;
+  bars.push({ o: last, h: last * 1.005, l: last * 0.95, c: last * 0.95, v: 1.6e6 });          // -5% on 1.6x
+  bars.push({ o: last * 0.95, h: last * 0.955, l: last * 0.86, c: last * 0.87, v: 1.7e6 });    // -8.4% on 1.7x
+  bars.push({ o: last * 0.88, h: last * 0.9, l: last * 0.875, c: last * 0.893, v: 2.4e6 });     // bounce
+  const i = bars.length - 1;
+  assert.ok(distributionDays(bars, i, 0.03).length >= 1);
+  const a = analyze(bars, i, { score: 80, spyRet126: 0 });
+  assert.ok(!a.setup || a.setup === 'breakout', 'never a pullback/base after distribution');
+  if (a.pass) assert.match(a.pass, /대량 하락일|자리|하락 추세/);
+});
+
+test('a symbol missing from the earnings calendar is "unknown", not "no report"', () => {
+  const bars = trend(260, { last: (p) => ({ o: p.c, h: p.c * 1.04, l: p.c * 0.999, c: p.c * 1.035, v: 3e6 }) });
+  const i = bars.length - 1;
+  const unknown = analyze(bars, i, { score: 80, spyRet126: 0, earningsIn: undefined, earningsChecked: true });
+  assert.ok(unknown.warnings.some((w) => /실적 발표일을 확인하지 못함/.test(w)));
+  assert.ok(!unknown.reasons.some((r) => /실적 발표 없음/.test(r)));
+  const none = analyze(bars, i, { score: 80, spyRet126: 0, earningsIn: null, earningsChecked: true });
+  assert.ok(none.reasons.some((r) => /실적 발표 없음/.test(r)));
 });

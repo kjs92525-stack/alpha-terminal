@@ -30,7 +30,8 @@ export function runBacktest(payload, meta, { years = 3 } = {}) {
   const symbols = [...meta.keys()].filter((s) => data.get(s));
   const earningsIn = (sym, d) => {
     if (!data.earnings) return undefined;
-    const e = data.earnings(sym).find((x) => x.date > cal[d]); if (!e) return null;
+    const list = data.earnings(sym); if (!list) return undefined;
+    const e = list.find((x) => x.date > cal[d]); if (!e) return null;
     let n = 0; for (let t = Date.parse(cal[d]) + 864e5; t <= Date.parse(e.date); t += 864e5) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; }
     return n <= 30 ? n : null;
   };
