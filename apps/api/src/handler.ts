@@ -115,6 +115,8 @@ function normCik(raw: string): string {
 const DEFAULT_SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
 const snapshotBase = (env: Env) => (env.SNAPSHOT_BASE_URL || DEFAULT_SNAPSHOT).replace(/\/+$/, '');
 
+const SNAPSHOT_FILES = new Set(['latest.json', 'market-brief/latest.json', 'sim/bars.json', 'sim/watch.json', 'desk/account.json', 'desk/backtest.json']);
+
 async function snapshotJson<T>(env: Env, path: string, ttl = 600): Promise<T | null> {
   const res = await cachedFetch(`${snapshotBase(env)}/${path}`, { headers: { Accept: 'application/json' } }, ttl);
   if (res.status === 404) return null;
@@ -404,6 +406,15 @@ export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Res
         alpaca: hasAlpaca(env),
         tradingview: { webhook: Boolean(env.TV_WEBHOOK_SECRET?.trim()), storage: Boolean(env.ALERTS), telegram: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) },
       }, 200, cors);
+    }
+    // Same-origin copy of the files /simulator.html reads from the data branch, so the page does not depend on
+    // the browser reaching raw.githubusercontent.com (blocked or slow on some networks and in-app browsers).
+    if ((r = m(/^\/api\/v1\/snapshot\/(.+)$/))) {
+      const file = r[1];
+      if (!SNAPSHOT_FILES.has(file)) return json({ error: 'Unknown snapshot file' }, 404, cors);
+      const res = await cachedFetch(`${snapshotBase(env)}/${file}`, { headers: { Accept: 'application/json' } }, 300);
+      if (!res.ok) return json({ error: `Snapshot HTTP ${res.status}`, file }, res.status === 404 ? 404 : 502, cors);
+      return new Response(res.body, { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=120', ...cors } });
     }
     if (path === '/api/v1/tv/alerts') {
       try {

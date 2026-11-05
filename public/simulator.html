@@ -643,7 +643,7 @@ details summary{font-family:var(--sans)}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>const DeskEngine = (() => {
 // Analyst desk: every evening the desk reads the day's candidate lists, classifies each chart the way a
 // swing-trading analyst would (breakout, tight base, trend pullback, oversold reversal), writes a trade
@@ -1043,6 +1043,10 @@ return { DESK_RULES, SETUP_LABEL, capBucket, seriesFor, indicatorsAt, wilson, an
 "use strict";
 let DATA = /*__DATA__*/null;
 const SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
+// On the deployed site the Worker serves the same files from our own domain (/api/v1/snapshot/...), so the page
+// does not depend on the browser reaching raw.githubusercontent.com; GitHub is only the fallback.
+const SNAPSHOT_BASES = /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.hostname) ? ['/api/v1/snapshot', SNAPSHOT] : [SNAPSHOT];
+const LOAD_ERRORS = [];
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const pct = (x, d = 1) => { const v = (x * 100).toFixed(d); return (Number(v) === 0 ? (0).toFixed(d) : (x >= 0 ? '+' : '') + v) + '%'; };
@@ -1227,16 +1231,28 @@ function cohortStocks(ledger) {
   return { ci, stocks: out };
 }
 async function fetchJSON(u) { const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }
+/** a data-branch file, trying our own domain first, then GitHub */
+async function snap(file, required = false) {
+  let last = null;
+  for (const base of SNAPSHOT_BASES) { try { return await fetchJSON(`${base}/${file}`); } catch (e) { last = e; } }
+  LOAD_ERRORS.push(`${file}: ${last?.message ?? '실패'}`);
+  if (required) throw new Error(`${file}을(를) 받지 못했습니다`);
+  return null;
+}
+/** price history (about 4 MB) for the replay, scenario and my-stock tabs — loaded after the desk is on screen */
+async function loadHeavy() {
+  const [real, watch] = await Promise.all([DATA.real ? null : snap('sim/bars.json'), DATA.watch ? null : snap('sim/watch.json')]);
+  DATA.real ??= real ?? undefined; DATA.watch ??= watch ?? undefined;
+}
 async function loadData() {
-  if (DATA && DATA.real && DATA.desk && DATA.backtest) return DATA;
+  if (DATA && DATA.desk && DATA.backtest) return DATA;
   if (!DATA) {
-    const [latest, brief] = await Promise.all([fetchJSON(SNAPSHOT + '/latest.json'), fetchJSON(SNAPSHOT + '/market-brief/latest.json').catch(() => null)]);
+    const [latest, brief] = await Promise.all([snap('latest.json', true), snap('market-brief/latest.json')]);
     DATA = { asOf: latest.asOf, model: latest.model, generatedAt: latest.generatedAt, market: brief ? { state: brief.decision?.state, label: brief.decision?.label, reasons: brief.decision?.reasons ?? [] } : null, stocks: stocksFromLatest(latest) };
   }
-  if (!DATA.real) try { DATA.real = await fetchJSON(SNAPSHOT + '/sim/bars.json'); } catch { /* artifact sandbox or not published yet: synthetic mode */ }
-  if (!DATA.desk) try { DATA.desk = await fetchJSON(SNAPSHOT + '/desk/account.json'); } catch { /* not published yet */ }
-  if (!DATA.backtest) try { DATA.backtest = await fetchJSON(SNAPSHOT + '/desk/backtest.json'); } catch { /* not published yet */ }
-  if (!DATA.watch) try { DATA.watch = await fetchJSON(SNAPSHOT + '/sim/watch.json'); } catch { /* not published yet */ }
+  // the desk needs only these two small files; a missing one leaves its section on its own empty state
+  const [desk, backtest] = await Promise.all([DATA.desk ? null : snap('desk/account.json'), DATA.backtest ? null : snap('desk/backtest.json')]);
+  DATA.desk ??= desk ?? undefined; DATA.backtest ??= backtest ?? undefined;
   return DATA;
 }
 
@@ -1374,6 +1390,7 @@ function axis(extra = {}) {
   return { grid: { color: css('--line-2'), ...(extra.grid || {}) }, border: { color: css('--line') }, ticks: { color: css('--muted'), font: { size: 12 }, ...(extra.ticks || {}) }, ...Object.fromEntries(Object.entries(extra).filter(([k]) => !['grid', 'ticks'].includes(k))) };
 }
 function drawChart(idc, cfg) {
+  if (!window.Chart) return; // CDN blocked: the page still works without charts
   if (charts[idc]) charts[idc].destroy();
   cfg.options = { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false }, ...cfg.options };
   charts[idc] = new Chart(document.getElementById(idc), cfg);
@@ -1383,6 +1400,7 @@ const line = (data, color, extra = {}) => ({ data, borderColor: color, backgroun
 /** Candle + MAs + volume + RSI + markers. all: bars, dates: same length, h0: index of first bar after the signal. */
 function renderCandle(key, { all, dates, h0, fast, slow, ma, trades, stopPx, fadeFuture, legendEl, marker }) {
   const el = $('#' + key + '-candle'), er = $('#' + key + '-rsi');
+  if (!window.LightweightCharts) { el.innerHTML = '<p class="empty">차트 도구를 불러오지 못해 가격 차트를 생략했습니다.</p>'; er.innerHTML = ''; return null; }
   (lws[key] || []).forEach((c) => c.remove()); el.innerHTML = ''; er.innerHTML = '';
   const up = css('--up'), dn = css('--down'), from = Math.max(0, h0 - SHOW);
   const base = { layout: { background: { color: css('--panel') }, textColor: css('--muted'), fontFamily: css('--mono'), fontSize: 12 }, grid: { vertLines: { color: css('--line-2') }, horzLines: { color: css('--line-2') } }, rightPriceScale: { borderColor: css('--line') }, timeScale: { borderColor: css('--line') }, crosshair: { mode: 0 }, autoSize: true };
@@ -1919,7 +1937,7 @@ function renderMine({ sym, acc }) {
   $('#m-notes').innerHTML = notes.map((n) => `<li>${esc(n)}</li>`).join('');
   const s = E.seriesFor(bars); fast = s.ema20; slow = s.sma50;
   const cs = renderCandle('m', { all: bars, dates, h0: bars.length, fast, slow, ma: maLabel, trades: [], stopPx: null, fadeFuture: false, legendEl: $('#m-legend'), marker: '오늘' });
-  for (const [px, tone, title] of lines) cs.createPriceLine({ price: px, color: css('--' + tone), lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title });
+  if (cs) for (const [px, tone, title] of lines) cs.createPriceLine({ price: px, color: css('--' + tone), lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title });
   // single-stock backtest of the desk rules
   const start = x.s + 260, end = acc.cal.length - 1;
   if (end - start < 40) { $('#m-bt-sub').textContent = '시세 이력이 짧아 과거 성적을 계산하지 않았습니다(1년 이상 필요).'; $('#m-bt-kpis').innerHTML = ''; $('#m-bt-trades').innerHTML = ''; return; }
@@ -1988,26 +2006,44 @@ function bind() {
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', theme);
   new MutationObserver(theme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 }
-async function boot() {
-  try { await loadData(); } catch (e) { $('#status').textContent = '추천 자료를 불러오지 못했습니다: ' + e.message; return; }
-  initReal(DATA.real); ENGINE = REAL.ok ? BOOT : SYNTH; STATE = DATA.market?.state ?? null;
+function applyReal() {
+  initReal(DATA.real); ENGINE = REAL.ok ? BOOT : SYNTH;
   STOCKS = DATA.stocks;
   if (REAL.ok) { // forward scenarios start from the last real close, with point-in-time features from real bars
     const li = REAL.cal.length - 1;
     STOCKS = STOCKS.map((s) => { const b = barsUntil(s.symbol, li); return b && b.length > 30 ? { ...s, price: b.at(-1).c, f: featuresAt(b, b.length - 1) } : s; });
   }
   DEF = chooseDefault(STOCKS); ui.picked = new Set(DEF.picked);
-  const g = DATA.market;
-  $('#dek').innerHTML = `${dKo(DATA.asOf)} 장 마감 기준. 시장 판정은 <b class="up">${g ? esc(g.label) : '자료 없음'}</b>${g?.reasons?.length ? `, ${esc(g.reasons[0])}` : ''}. 추천 종목을 애널리스트처럼 골라 모의로 사고팔고, 그 성적을 매일 이어서 기록합니다.`;
   $('#src').textContent = REAL.ok ? `실제 시세 ${dKo(REAL.cal.at(-1))}까지 (Alpaca)` : '실제 시세 파일이 없어 가상 시나리오만 볼 수 있습니다';
   $('#v-real').disabled = !REAL.ok;
   $('#m-future').innerHTML = ENGINE.describe;
   $('#foot').textContent = `자료: alpha-terminal data 브랜치의 latest.json(${DATA.generatedAt?.slice(0, 16).replace('T', ' ')} UTC), market-brief/latest.json${REAL.ok ? `, sim/bars.json(${REAL.series.size}종목)` : ''}${DATA.desk ? `, desk/account.json(${DATA.desk.generatedAt?.slice(0, 16).replace('T', ' ')} UTC)` : ''}.`;
+}
+async function boot() {
+  try { await loadData(); } catch (e) {
+    // the controls strip (where #status lives) is hidden on the desk tab, so say it where the reader is looking
+    $('#d-head').textContent = '자료를 불러오지 못했습니다'; $('#d-head').setAttribute('aria-busy', 'false');
+    $('#notice').innerHTML = `추천 자료를 받지 못했습니다. 네트워크를 확인하고 새로고침해 주세요. (${esc(e.message)})`;
+    $('#d-tickets').innerHTML = `<p class="empty">${esc(LOAD_ERRORS.join(' / ') || e.message)}</p>`;
+    return;
+  }
+  STATE = DATA.market?.state ?? null;
+  const g = DATA.market;
+  $('#dek').innerHTML = `${dKo(DATA.asOf)} 장 마감 기준. 시장 판정은 <b class="up">${g ? esc(g.label) : '자료 없음'}</b>${g?.reasons?.length ? `, ${esc(g.reasons[0])}` : ''}. 추천 종목을 애널리스트처럼 골라 모의로 사고팔고, 그 성적을 매일 이어서 기록합니다.`;
+  const heavyReady = Boolean(DATA.real); // the shared single-file build already carries everything
+  applyReal();
+  if (!heavyReady) { $('#src').textContent = '실제 시세 불러오는 중'; $('#v-real').disabled = true; $('#v-future').disabled = true; $('#v-mine').disabled = true; }
   bind();
-  if (!(window.Chart && window.LightweightCharts)) { $('#status').textContent = '차트 라이브러리를 불러오지 못했습니다. 네트워크를 확인하세요.'; return; }
-  Chart.defaults.font.family = css('--body');
-  const h = (location.hash || '').slice(1);
-  setView(['real', 'future', 'mine'].includes(h) ? h : 'desk');
+  if (window.Chart) Chart.defaults.font.family = css('--body');
+  const h = (location.hash || '').slice(1), wanted = ['real', 'future', 'mine'].includes(h) ? h : 'desk';
+  setView(heavyReady ? wanted : 'desk');
+  if (!(window.Chart && window.LightweightCharts)) $('#notice').insertAdjacentHTML('beforeend', ' 차트 도구를 불러오지 못해 그래프는 생략했습니다. 새로고침하면 다시 시도합니다.');
+  if (!heavyReady) {
+    await loadHeavy();
+    applyReal();
+    for (const id of ['#v-future', '#v-mine']) $(id).disabled = false;
+    if (wanted !== 'desk' && ui.view === 'desk') setView(wanted);
+  }
 }
 boot();
 </script>
