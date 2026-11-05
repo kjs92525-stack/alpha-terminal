@@ -283,7 +283,7 @@ let DATA = {"asOf":"2026-11-04","model":"xs-v1-prior","generatedAt":"2026-11-05T
 const SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-const pct = (x, d = 1) => (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
+const pct = (x, d = 1) => { const v = (x * 100).toFixed(d); return (Number(v) === 0 ? (0).toFixed(d) : (x >= 0 ? '+' : '') + v) + '%'; };
 const pctU = (x, d = 1) => (x * 100).toFixed(d) + '%';
 const sign = (x) => (x >= 0 ? 'up' : 'down');
 const FEE = 0.001, CASH_RATE = 0.04, START = 10_000_000, HIST = 260, SHOW = 160;
@@ -700,7 +700,8 @@ function runReal() {
     { label: '그냥 보유', data: Hh.map((x) => x * 100), backgroundColor: css('--hold'), borderRadius: 3 },
     { label: 'SPY', data: S.map((x) => x * 100), backgroundColor: css('--mkt'), borderRadius: 3 }] },
     options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.raw >= 0 ? '+' : ''}${c.raw.toFixed(2)}%` } } }, scales: { x: axis({ grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } }), y: axis({ ticks: { callback: (v) => v + '%' } }) } } });
-  if (!ui.cohort || !COHORTS.some((c) => c.ledger.asOf === ui.cohort)) ui.cohort = COHORTS[0].ledger.asOf;
+  // default: the oldest date whose list had both mid and short picks (the first ledger day was a partial run)
+  if (!ui.cohort || !COHORTS.some((c) => c.ledger.asOf === ui.cohort)) ui.cohort = (COHORTS.find((c) => c.sel.length >= 8) ?? COHORTS[0]).ledger.asOf;
   $('#rc-tabs').innerHTML = COHORTS.map((c) => `<button aria-pressed="${c.ledger.asOf === ui.cohort}" data-d="${c.ledger.asOf}">${c.ledger.asOf.slice(5)} <span class="${sign(c.ret)}">${pct(c.ret)}</span></button>`).join('');
   renderCohort();
   $('#status').textContent = `실제 시세 ${REAL.cal.at(-1)}까지 · 추천일 ${COHORTS.length}개`;
@@ -720,7 +721,7 @@ function renderCohort() {
   $('#t-real').innerHTML = `<thead><tr><th>종목</th><th>추천일 패턴</th><th class="r">비중</th><th>이평선</th><th class="r">첫 매수</th><th class="r">현재가</th><th class="r">내 규칙</th><th class="r">보유만</th><th>상태</th></tr></thead><tbody>` +
     rows.map(({ s, r, alloc, ma, ret, hret }) => { const st = stLabel[r.state], buy = r.trades.find((t) => t.side === 'buy'); const pat = patterns(s);
       return `<tr><td><b class="mono">${s.symbol}</b> <span class="bucket">${s.bucket === 'mid' ? '중장기' : '단기'}</span><div class="muted" style="font-size:11.5px">${(s.name || '').slice(0, 26)}</div></td><td><span class="tag ${pat.list.find((p) => p.label === pat.title)?.tone ?? ''}">${pat.title}</span></td><td class="r num">${pctU(alloc / START)}</td><td class="mono" style="font-size:12px">${maLabel(ma)}</td><td class="r num">${buy ? '$' + buy.px.toFixed(2) : '–'}</td><td class="r num">$${r.all.at(-1).c.toFixed(2)}</td><td class="r num ${sign(ret)}">${pct(ret)}</td><td class="r num ${sign(hret)}">${pct(hret)}</td><td><span class="state ${st[0]}">${st[1]}</span>${r.pending?.side === 'sell' ? ' <span class="state stop">내일 매도</span>' : r.pending?.side === 'buy' ? ' <span class="state hold">내일 매수</span>' : ''}</td></tr>`; }).join('') +
-    `<tr><td><b>현금</b></td><td class="muted" style="font-size:12px">그날 시장 판정 ${c.gate ?? '자료 없음'}</td><td class="r num">${pctU(1 - c.sel.reduce((a, s) => a + c.w.get(id(s)), 0))}</td><td colspan="6"></td></tr></tbody>`;
+    `<tr><td><b>현금</b></td><td class="muted" style="font-size:12px">그날 시장 판정 ${c.gate ?? '자료 없음 — 축소(LIMIT)로 가정'}</td><td class="r num">${pctU(1 - c.sel.reduce((a, s) => a + c.w.get(id(s)), 0))}</td><td colspan="6"></td></tr></tbody>`;
   $('#rc-why').innerHTML = (c.excluded || []).slice(0, 6).map(([s, r]) => `<li>${s.symbol} 제외: ${r}</li>`).join('');
   if (!ui.rdetail || !c.sel.some((s) => s.symbol === ui.rdetail)) ui.rdetail = rows[0].s.symbol;
   $('#rs-tabs').innerHTML = rows.map(({ s }) => `<button aria-pressed="${s.symbol === ui.rdetail}" data-s="${s.symbol}">${s.symbol}</button>`).join('');
