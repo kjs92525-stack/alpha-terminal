@@ -24,6 +24,7 @@ export const DESK_RULES = {
   recoverGain: 0.05,             // after a restart, new risk stays halved until equity is 5% above the restart level
   reentryCooldown: 10,           // sessions before re-buying a name that was stopped out
   earningsBlackout: 5,           // no new entry with a report inside this many sessions
+  offeringBlackoutDays: 90,      // a share offering (424B, non-large-cap) this recent excludes the stock
   minQuality: 55,
   minQualityWait: 80,            // when the market verdict is WAIT, only the strongest single setup
   maxStopPct: 0.12,
@@ -94,6 +95,9 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (x.c < rules.minPrice) return { pass: `주가 $${rules.minPrice} 미만` };
   if (meta.volumeReliable && rules.minAdv && x.adv20 < rules.minAdv) return { pass: `하루 거래대금 $${(x.adv20 / 1e6).toFixed(1)}M, 기준 미달` };
   if (meta.earningsIn != null && meta.earningsIn <= rules.earningsBlackout) return { pass: `실적 발표 ${meta.earningsIn}거래일 전, 발표 뒤에 다시 봄` };
+  const dil = meta.dilution ?? null; // edge-signals dilutionSignal() over 180 days, or null when not checked
+  const recentOffer = dil?.offering ? dil.recent.find((d) => /^424B/i.test(d.form) && Date.parse(meta.asOf ?? d.date) - Date.parse(d.date) <= rules.offeringBlackoutDays * 864e5) : null;
+  if (recentOffer) return { pass: `${recentOffer.date} 증자 공시(${recentOffer.form}), 매물 부담으로 제외` };
   if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200) return { pass: '200일선 아래 하락 추세' };
   if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
   if (x.atrPct < rules.minAtrPct) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님` };
@@ -136,6 +140,12 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (x.ext50 > 0.15) { q -= 6; warnings.push(`50일선 위 ${pctS(x.ext50, 0)} 떠 있음`); }
   if (x.vol60 > 0.8) { q -= 5; warnings.push(`연 변동성 ${(x.vol60 * 100).toFixed(0)}%`); }
   if (setup === 'base' && x.contraction < 0.65) { q += 3; reasons.push(`최근 변동폭이 50일 평균의 ${(x.contraction * 100).toFixed(0)}%로 수축`); }
+  if (dil) {
+    const reg = dil.recent.filter((d) => /^(S-|F-)/i.test(d.form));
+    if (dil.shelf || reg.some((d) => /^(S-1|F-1)/i.test(d.form))) { q -= 5; warnings.push(`증자 가능 서류 제출(${reg.map((d) => `${d.form} ${d.date}`).slice(0, 2).join(', ')})`); }
+    else if (dil.likelyDebt) warnings.push('최근 424B 공시가 있으나 대형주라 채권 발행일 가능성이 큼');
+    else if (!dil.count) reasons.push('최근 180일 증자 공시 없음');
+  } else if (meta.dilutionChecked === false) warnings.push('증자 공시를 확인하지 못함');
 
   const trail = trailFor(x.atrPct), R = trigger - stop, target = trigger + rules.partialAtR * R;
   const lead = {
@@ -161,7 +171,7 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
     if (FUND_NAME.test(c.name ?? '') || ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'UPRO', 'SPXL', 'IWM'].includes(c.symbol)) { passed.push({ symbol: c.symbol, why: 'ETF·레버리지 상품 제외' }); continue; }
     if (busy.has(c.symbol)) { passed.push({ symbol: c.symbol, why: '이미 보유·주문 중' }); continue; }
     if (cooldown.has(c.symbol)) { passed.push({ symbol: c.symbol, why: `${cooldown.get(c.symbol)} 손절 뒤 ${rules.reentryCooldown}거래일 쉬는 중` }); continue; }
-    const a = analyze(c.bars, c.i, { score: c.score, spyRet126, volumeReliable, earningsIn: c.earningsIn ?? null, earningsChecked }, rules);
+    const a = analyze(c.bars, c.i, { score: c.score, spyRet126, volumeReliable, earningsIn: c.earningsIn ?? null, earningsChecked, dilution: c.dilution ?? null, dilutionChecked: c.dilutionChecked ?? null, asOf: date }, rules);
     if (a.pass) { passed.push({ symbol: c.symbol, why: a.pass }); continue; }
     const bar = state === 'WAIT' ? rules.minQualityWait : rules.minQuality;
     if (a.quality < bar) { passed.push({ symbol: c.symbol, why: `${a.label} ${a.quality}점 (기준 ${bar}${state === 'WAIT' ? ', 진입 대기 시장' : ''})` }); continue; }
@@ -175,7 +185,7 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
     if (sec && sectors.has(sec)) { passed.push({ symbol: c.symbol, why: `${sec} 이미 담음` }); continue; }
     if (sec) sectors.add(sec);
     picks.push({ symbol: c.symbol, name: c.name ?? c.symbol, sector: c.sector ?? null, cap: capBucket(c.mcap), mcap: c.mcap ?? null, source: c.source, listScore: c.score ?? null,
-      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null });
+      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null, dilution: c.dilution ?? null });
   }
   return { date, market: state, picks, passed };
 }

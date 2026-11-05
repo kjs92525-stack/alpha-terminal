@@ -1156,7 +1156,7 @@ function renderDesk() {
     $('#d-risk').innerHTML = `<div><span>열린 포지션 전체 위험</span><b>${pctU(RK.heatPct, 1)}</b><span>한도 ${pctU(RK.heatLimit, 0)}, 모두 손절되면 잃는 몫</span></div>` +
       `<div><span>계좌 고점 대비</span><b class="${RK.drawdown < 0 ? 'down' : ''}">${pct(RK.drawdown)}</b><span>${mode} (−8% 절반, −15% 중단)</span></div>` +
       `<div><span>재매수 대기</span><b>${RK.cooldown.length}종목</b><span>${RK.cooldown.length ? RK.cooldown.map((c) => `${esc(c.symbol)} ${dKo(c.until)}까지`).join(', ') : '손절 뒤 10거래일 쉬는 종목 없음'}</span></div>` +
-      `<div><span>자료 상태</span><b>${D.data?.volumeReliable ? '전체 시장' : 'IEX 단일'}</b><span>${D.data?.volumeReliable ? '통합 시세 거래량' : '거래량 일부만 반영'}, 실적일 ${D.data?.earningsChecked ? '확인됨' : '미확인'}</span></div>`;
+      `<div><span>자료 상태</span><b>${D.data?.volumeReliable ? '전체 시장' : 'IEX 단일'}</b><span>${D.data?.volumeReliable ? '통합 시세 거래량' : '거래량 일부만 반영'}, 실적일 ${D.data?.earningsChecked ? '확인됨' : '미확인'}, 증자 공시 ${D.data?.filingsChecked ? '확인됨' : '미확인'}</span></div>`;
   }
   $('#d-ratios').innerHTML = row('평균 이익', sgn(S.avgWinPct), 'up') + row('평균 손실', sgn(S.avgLossPct), 'down') + row('손익비', S.payoff ? S.payoff.toFixed(2) : '–') +
     row('이익 계수', S.profitFactor != null ? S.profitFactor.toFixed(2) : '–') + row('거래당 기대값', S.expectancyR != null ? `${S.expectancyR >= 0 ? '+' : ''}${S.expectancyR.toFixed(2)}R` : '–', sign(S.expectancyR ?? 0)) +
