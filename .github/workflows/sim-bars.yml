@@ -4,8 +4,9 @@
 # account (win rate, P&L) is replayed from all stored picks into desk/account.json.
 #  - main (after the nightly pipeline, or manual): publishes sim/bars.json and desk/ to the `data` branch,
 #    which /simulator.html reads at runtime.
-#  - any other branch (push that touches the simulator): rebuilds apps/simulator/simulator.html with
-#    the real bars embedded and commits it to that same branch, for previewing before merge.
+#  - any other branch (run by hand: Actions → this workflow → Run workflow → pick the branch): rebuilds
+#    apps/simulator/simulator.html with the real bars embedded and commits it to that branch, for previewing.
+#    It is not started by pushes: a bot commit on a PR branch would leave the PR head untested by CI.
 # Required repository secrets: ALPACA_KEY_ID, ALPACA_SECRET_KEY.
 name: Simulator real bars and analyst desk
 on:
@@ -14,17 +15,6 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
-  push:
-    branches-ignore: [main, data]
-    paths:
-      - 'scripts/sim-bars.mjs'
-      - 'scripts/build-simulator.mjs'
-      - 'scripts/analyst-desk.mjs'
-      - 'packages/analysis/analyst-desk.mjs'
-      - 'scripts/desk-backtest.mjs'
-      - 'config/watchlist.txt'
-      - 'apps/simulator/template.html'
-      - '.github/workflows/sim-bars.yml'
 permissions:
   contents: write
 concurrency:
