@@ -1,0 +1,324 @@
+{
+ "date": "2026-11-04",
+ "rulesVersion": 2,
+ "live": true,
+ "createdAt": "2026-11-05T12:27:58.724Z",
+ "market": "LIMIT",
+ "picks": [
+  {
+   "symbol": "THC",
+   "name": "Tenet Healthcare Corp",
+   "sector": "Health Care",
+   "cap": "대형주",
+   "mcap": 23260177500,
+   "source": "중장기 랭킹",
+   "listScore": 75.3,
+   "setup": "breakout",
+   "label": "신고가 돌파",
+   "quality": 84,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +45%p 강함",
+    "50일선이 200일선 위 정배열",
+    "상승일 거래량 평소의 2.4배",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "20일 고점 $278.39을 거래량 2.4배로 넘었고 52주 고점의 99% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 4% 넘게 뛰면 추격하지 않음). 손절은 $262.55(-10.2%), 1차 목표 $351.66(+2R)에서 절반 익절 후 나머지는 20일 지수이평 종가 이탈 때 정리합니다.",
+   "plan": {
+    "entryType": "market",
+    "trigger": 292.25,
+    "stop": 262.55,
+    "target": 351.66,
+    "refClose": 292.25,
+    "validDays": 1,
+    "riskMult": 1,
+    "trailMa": "ema20",
+    "trailLabel": "20일 지수이평",
+    "stopPct": 0.1016,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 292.25,
+    "rsi": 69,
+    "atrPct": 0.041,
+    "relVol": 2.4,
+    "ext50": 0.104,
+    "rs126": 0.452
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "ASH",
+   "name": "Ashland Inc.",
+   "sector": "Materials",
+   "cap": "중형주",
+   "mcap": 3500187600,
+   "source": "중장기 랭킹",
+   "listScore": 75.1,
+   "setup": "breakout",
+   "label": "신고가 돌파",
+   "quality": 84,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +37%p 강함",
+    "50일선이 200일선 위 정배열",
+    "상승일 거래량 평소의 2.1배",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "20일 고점 $76.32을 거래량 2.1배로 넘었고 52주 고점의 98% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 4% 넘게 뛰면 추격하지 않음). 손절은 $72.35(-5.4%), 1차 목표 $84.62(+2R)에서 절반 익절 후 나머지는 50일선 종가 이탈 때 정리합니다.",
+   "plan": {
+    "entryType": "market",
+    "trigger": 76.44,
+    "stop": 72.35,
+    "target": 84.62,
+    "refClose": 76.44,
+    "validDays": 1,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.0535,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 76.44,
+    "rsi": 68,
+    "atrPct": 0.024,
+    "relVol": 2.1,
+    "ext50": 0.069,
+    "rs126": 0.368
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "LIND",
+   "name": "Lindblad Expeditions Holdings, Inc.",
+   "sector": "Consumer Discretionary",
+   "cap": "중형주",
+   "mcap": 2199582400,
+   "source": "단기 랭킹",
+   "listScore": 75.8,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 79,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +49%p 강함",
+    "50일선이 200일선 위 정배열",
+    "상승일 거래량 평소의 1.8배",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 47입니다. 오늘 고점 $33.61를 다시 넘어 반등이 확인되면 삽니다. 손절은 $29.98(-10.8%), 1차 목표 $40.88(+2R)에서 절반 익절 후 나머지는 10일 지수이평 종가 이탈 때 정리합니다.",
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 33.61,
+    "stop": 29.98,
+    "target": 40.88,
+    "refClose": 33.52,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "ema10",
+    "trailLabel": "10일 지수이평",
+    "stopPct": 0.1081,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 33.52,
+    "rsi": 47,
+    "atrPct": 0.059,
+    "relVol": 1.8,
+    "ext50": 0.066,
+    "rs126": 0.494
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  }
+ ],
+ "passed": [
+  {
+   "symbol": "UVE",
+   "why": "2026-09-21 증자 공시(424B3), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "HG",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AMAL",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "VOYA",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "AMTB",
+   "why": "2026-09-14 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "THFF",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "INSW",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SAIC",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "APLE",
+   "why": "2026-08-06 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "DINO",
+   "why": "11-04 손절 뒤 10거래일 쉬는 중"
+  },
+  {
+   "symbol": "AMN",
+   "why": "50일선 대비 +26% 과도한 이격"
+  },
+  {
+   "symbol": "REPX",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EXEL",
+   "why": "RSI 86 과열"
+  },
+  {
+   "symbol": "HALO",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LTC",
+   "why": "2026-08-06 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "CNK",
+   "why": "11-03 손절 뒤 10거래일 쉬는 중"
+  },
+  {
+   "symbol": "NUTX",
+   "why": "손절폭 15.3% 과다"
+  },
+  {
+   "symbol": "LTH",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AES",
+   "why": "하루 변동폭 0.3%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "RPRX",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "R",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "OKTA",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "IOVA",
+   "why": "변동성 과다"
+  },
+  {
+   "symbol": "CVI",
+   "why": "2026-11-03 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "NTRA",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "LIFE",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "ECO",
+   "why": "실적 발표 5거래일 전, 발표 뒤에 다시 봄"
+  },
+  {
+   "symbol": "FTRE",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AMD",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "TNET",
+   "why": "손절폭 13.6% 과다"
+  },
+  {
+   "symbol": "SHOP",
+   "why": "손절폭 13.5% 과다"
+  },
+  {
+   "symbol": "DT",
+   "why": "과매도 반등 52점 (기준 55)"
+  },
+  {
+   "symbol": "AVPT",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "VLO",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "NSIT",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HELE",
+   "why": "50일선 대비 +31% 과도한 이격"
+  },
+  {
+   "symbol": "PCOR",
+   "why": "RSI 85 과열"
+  },
+  {
+   "symbol": "REGN",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "WEST",
+   "why": "하루 거래대금 $4.0M, 기준 미달"
+  },
+  {
+   "symbol": "COLM",
+   "why": "정해 둔 네 가지 자리(돌파·수축·눌림·과매도 반등) 중 어디에도 해당하지 않음"
+  }
+ ]
+}
