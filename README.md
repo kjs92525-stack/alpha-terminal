@@ -12,6 +12,26 @@
 
 > **투자 자문이 아닙니다.** 점수는 결정적 규칙 기반 상대평가이며 확률이 아닙니다. 시나리오 범위는 과거 변동성 ±1σ이며 예측이 아닙니다. LLM 서술형 분석은 아직 연결되지 않았습니다.
 
+## 알파 데스크: 애널리스트 모의매매 (`/simulator.html`)
+
+> 따라 하기: 데스크 화면의 **내일 주문표**(내 투자금 기준 진입가·수량·손절·익절), **과거 3년 백테스트**, **내 종목 시나리오**(`config/watchlist.txt`에 티커 추가, 배포된 웹앱에선 아무 티커나).
+>
+> 설계 원칙·검증 기준·매일 루틴·남은 약점은 [`docs/INVESTOR_SYSTEM.md`](docs/INVESTOR_SYSTEM.md). 규칙 버전 2: 계좌 전체 위험 6%·낙폭 차단·섹터 한도·실적 발표 회피·손절 뒤 재매수 금지·주도주만 눌림 매수, 통합(SIP) 시세 강제.
+
+매일 장 마감 뒤 그날의 랭킹·셋업 목록 전체(시가총액 무관, ETF 제외)에서 애널리스트 규칙으로 종목을 고르고, 계획대로 모의매매해 승률과 손익을 계속 쌓습니다.
+
+- **자리 판단** (`packages/analysis/analyst-desk.mjs`): 신고가 돌파 · 수축 후 돌파 대기 · 추세 눌림목 · 200일선 위 과매도 반등. 하락 추세·과열·과도한 이격은 제외. 종목마다 매수 방식(시가/돌파 주문), 손절, +2R 목표, 변동성에 맞춘 추적 이평선과 근거 문장을 남깁니다.
+- **비중**: 손절까지의 손실이 계좌의 0.4–1.0%(시장 판정에 따라)가 되도록 수량 결정, 종목당 최대 15%, 동시 12종목, 하루 2–5종목·섹터 중복 없음.
+- **기록**: 그날 추천은 `data` 브랜치 `desk/ledger/YYYY-MM-DD.json`에 한 번 쓰고 고치지 않습니다(워크플로가 수정 시 게시 거부). 계좌는 매일 밤 저장된 추천과 실제 일봉으로 처음부터 다시 계산해 `desk/account.json`에 승률·손익비·이익계수·기대값(R)·최대낙폭·패턴별/시총별 성적을 냅니다. 첫 실시간 기록 이전 날짜는 같은 규칙을 그날까지의 시세로만 적용한 **소급 기록**으로 구분합니다.
+- 같은 페이지의 **추천 복기**(지난 추천일을 실제 시세로)와 **가상 시나리오**(실제 거래일 블록 부트스트랩) 보기는 그대로 남아 있습니다.
+
+`.github/workflows/sim-bars.yml`이 nightly 뒤 Alpaca 일봉(`sim/bars.json`)을 받고 데스크를 돌립니다(`ALPACA_KEY_ID`, `ALPACA_SECRET_KEY`). 웹앱의 `/simulator.html`(`public/`)은 data 브랜치를 실행 시점에 읽습니다.
+
+```bash
+git fetch origin data && node scripts/build-simulator.mjs   # public/simulator.html + 데이터 내장 단일 파일 apps/simulator/simulator.html
+node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out data-branch
+```
+
 ## 대시보드 피드 (V0.6)
 
 - **뉴스 피드**: Alpaca News API(Benzinga) → 키워드 규칙으로 태그(실적·FDA·오퍼링·M&A…), 감정(긍정/부정/중립, 근거 단어 표시), 영향도(1–5). 문맥을 이해하는 모델이 아님.

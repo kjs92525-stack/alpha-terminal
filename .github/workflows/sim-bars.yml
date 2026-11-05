@@ -1,0 +1,95 @@
+# Real daily bars for the portfolio simulator (apps/simulator, /simulator.html) and the analyst desk.
+# Fetches every symbol the recommendation ledgers have named, plus SPY and QQQ, from Alpaca, then runs
+# scripts/analyst-desk.mjs: tonight's picks are written once to desk/ledger/YYYY-MM-DD.json and the paper
+# account (win rate, P&L) is replayed from all stored picks into desk/account.json.
+#  - main (after the nightly pipeline, or manual): publishes sim/bars.json and desk/ to the `data` branch,
+#    which /simulator.html reads at runtime.
+#  - any other branch (run by hand: Actions → this workflow → Run workflow → pick the branch): rebuilds
+#    apps/simulator/simulator.html with the real bars embedded and commits it to that branch, for previewing.
+#    It is not started by pushes: a bot commit on a PR branch would leave the PR head untested by CI.
+# Required repository secrets: ALPACA_KEY_ID, ALPACA_SECRET_KEY.
+name: Simulator real bars and analyst desk
+on:
+  workflow_run:
+    workflows: ['Nightly pipeline']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && 'data-branch-writer' || format('sim-bars-{0}', github.ref) }}
+  cancel-in-progress: false
+jobs:
+  bars:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      PUBLISH_DATA: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+    steps:
+      - name: Check secrets
+        run: |
+          if [ -z "$ALPACA_KEY_ID" ] || [ -z "$ALPACA_SECRET_KEY" ]; then
+            echo "::error::ALPACA_KEY_ID / ALPACA_SECRET_KEY 비밀 값이 없습니다 — Settings → Secrets and variables → Actions에 등록하세요."; exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check out data branch
+        run: |
+          git fetch origin data --depth=1
+          git worktree add -B data data-branch origin/data
+      - name: Fetch real bars
+        run: node scripts/sim-bars.mjs --data data-branch --out data-branch/sim/bars.json
+      - name: SEC access check
+        # SEC EDGAR has answered 403 to the nightly job since the first run; record why, without failing the job.
+        continue-on-error: true
+        run: |
+          if [ -z "$SEC_USER_AGENT" ]; then echo "::warning::SEC_USER_AGENT 비밀 값 없음"; exit 0; fi
+          case "$SEC_USER_AGENT" in *example.com*|*@*) ;; *) echo "::warning::SEC_USER_AGENT에 이메일 주소가 없습니다 (SEC는 '회사명 이메일' 형식을 요구)";; esac
+          case "$SEC_USER_AGENT" in *example.com*) echo "::warning::SEC_USER_AGENT가 예시 주소(example.com)를 쓰고 있습니다. 실제 이메일로 바꾸세요";; esac
+          for u in https://www.sec.gov/files/company_tickers.json https://data.sec.gov/submissions/CIK0000320193.json; do
+            code=$(curl -s -o /tmp/sec.txt -w '%{http_code}' -A "$SEC_USER_AGENT" -H 'Accept-Encoding: gzip, deflate' --compressed "$u")
+            echo "SEC $u -> HTTP $code"
+            if [ "$code" != "200" ]; then sed -e 's/<[^>]*>//g' /tmp/sec.txt | tr -s ' \n' | head -c 600; echo; fi
+          done
+          echo "runner IP: $(curl -s https://api.ipify.org || echo unknown)"
+      - name: Analyst desk (main)
+        if: env.PUBLISH_DATA == 'true'
+        run: node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out data-branch
+      - name: Multi-year backtest (main)
+        if: env.PUBLISH_DATA == 'true'
+        run: node scripts/desk-backtest.mjs --universe data-branch/latest.json --out data-branch/desk/backtest.json --years 3 --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
+      - name: Publish to data branch (main)
+        if: env.PUBLISH_DATA == 'true'
+        run: |
+          cd data-branch
+          # Guard: a stored desk pick must never change.
+          if git diff --name-only --diff-filter=MD HEAD -- desk/ledger/ | grep -q .; then
+            echo "::error::Existing desk/ledger files were modified — refusing to publish."; exit 1
+          fi
+          git add sim/ desk/
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: simulator bars + desk $(node -e "console.log(require('./sim/bars.json').asOf)")"
+          for i in 1 2 3 4; do git pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; sleep $((i*5)); done
+          echo "::error::push to data failed after retries"; exit 1
+      - name: Commit preview build (feature branch)
+        if: env.PUBLISH_DATA != 'true'
+        run: |
+          git fetch origin data --depth=1
+          mkdir -p desk-preview
+          node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out desk-preview
+          node scripts/desk-backtest.mjs --universe data-branch/latest.json --out desk-preview/desk/backtest.json --years 3 --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
+          node scripts/build-simulator.mjs --bars data-branch/sim/bars.json --desk desk-preview/desk/account.json --backtest desk-preview/desk/backtest.json --watch data-branch/sim/watch.json
+          git add apps/simulator/simulator.html
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "simulator: embed real bars to $(node -e "console.log(require('./data-branch/sim/bars.json').asOf)")"
+          git push -q origin HEAD:${GITHUB_REF_NAME}
