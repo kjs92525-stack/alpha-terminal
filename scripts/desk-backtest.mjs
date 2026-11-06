@@ -23,7 +23,32 @@ export function chooseUniverse(latest, size = 600, extra = []) {
   return meta;
 }
 
-export function runBacktest(payload, meta, { years = 3 } = {}) {
+/** win rate, expectancy and total R per setup */
+export function bySetup(trades) {
+  const g = {};
+  for (const t of trades) { const a = (g[t.setup] ??= { n: 0, wins: 0, sumR: 0 }); a.n++; if (t.R > 0) a.wins++; a.sumR += t.R; }
+  for (const a of Object.values(g)) { a.winRate = a.wins / a.n; a.expectancyR = a.sumR / a.n; a.sumR = Math.round(a.sumR * 10) / 10; }
+  return g;
+}
+
+// Rule variants compared on the same bars: the current desk against the volume and market-structure additions.
+const BASE_SETUPS = ['breakout', 'base', 'pullback', 'reversal'];
+export const VARIANTS = {
+  'v3 (기존)': { setups: BASE_SETUPS, volumeRules: false },
+  '+거래량': { setups: BASE_SETUPS, volumeRules: true },
+  '+거래량+MSS(지정가)': { setups: ['breakout', 'structure', ...BASE_SETUPS.slice(1)], volumeRules: true, mssEntry: 'limit' },
+  '+거래량+MSS(시가)': { setups: ['breakout', 'structure', ...BASE_SETUPS.slice(1)], volumeRules: true, mssEntry: 'market' },
+  'MSS만(지정가)': { setups: ['structure'], volumeRules: true, mssEntry: 'limit' },
+  '돌파+MSS(지정가)': { setups: ['breakout', 'structure'], volumeRules: true, mssEntry: 'limit' },
+};
+export function compareVariants(payload, meta, { years = 3 } = {}) {
+  return Object.entries(VARIANTS).map(([name, v]) => {
+    const r = runBacktest(payload, meta, { years, rules: { ...DESK_RULES, ...v } }), s = r.stats;
+    return { name, trades: s.closed, winRate: s.winRate, expectancyR: s.expectancyR, profitFactor: s.profitFactor, totalReturn: s.totalReturn, cagr: r.cagr, spyCagr: r.spyCagr, maxDrawdown: s.maxDrawdown, exposure: r.exposure, bySetup: r.bySetup };
+  });
+}
+
+export function runBacktest(payload, meta, { years = 3, rules = DESK_RULES } = {}) {
   const data = barsAccess(payload), cal = data.cal, spy = data.get('SPY');
   if (!spy) throw new Error('SPY bars missing');
   const startIdx = Math.max(260, cal.length - Math.round(years * 252)); // first ~260 sessions only warm up indicators
@@ -45,24 +70,25 @@ export function runBacktest(payload, meta, { years = 3 } = {}) {
       const m = meta.get(sym);
       candidates.push({ symbol: sym, name: m.name, sector: m.sector, mcap: m.mcap, score: NEUTRAL_SCORE, source: '유동성 상위 유니버스', bars: x.bars, i, earningsIn: earningsIn(sym, d) });
     }
-    const res = pickForDay({ date: cal[d], candidates, market, spyRet126, busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked });
+    const res = pickForDay({ date: cal[d], candidates, market, spyRet126, busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked }, rules);
     return { date: cal[d], market, picks: res.picks };
   };
-  const r = replayDesk([], data, DESK_RULES, { picker, start: startIdx, end: cal.length - 1 });
+  const r = replayDesk([], data, rules, { picker, start: startIdx, end: cal.length - 1 });
   const stats = deskStats(r.trades, r.equity);
   // calendar-year and monthly returns, desk vs SPY
   const periods = (keyLen) => {
     const out = new Map();
     for (const e of r.equity) { const k = e.date.slice(0, keyLen); const p = out.get(k) ?? { first: e, last: e }; p.last = e; out.set(k, p); }
-    let prev = { equity: DESK_RULES.startEquity, spy: DESK_RULES.startEquity };
+    let prev = { equity: rules.startEquity, spy: rules.startEquity };
     return [...out].map(([k, p]) => { const row = { period: k, desk: p.last.equity / prev.equity - 1, spy: p.last.spy / prev.spy - 1 }; prev = p.last; return row; });
   };
   const weekly = r.equity.filter((_, i) => i % 5 === 0 || i === r.equity.length - 1).map((e) => ({ date: e.date, equity: e.equity, spy: e.spy }));
   const days = r.equity.length, cagr = (x) => (1 + x) ** (252 / Math.max(1, days)) - 1;
   const exposure = r.equity.reduce((a, e) => a + (e.open > 0 ? 1 : 0), 0) / Math.max(1, days);
   return {
-    model: `desk-backtest-v${DESK_RULES.version}`, generatedAt: new Date().toISOString(), from: cal[startIdx], to: cal.at(-1), sessions: days,
-    universe: { size: symbols.length, rule: '현재 상장 종목 중 20일 거래대금 상위 + 관심 종목' }, rules: DESK_RULES,
+    model: `desk-backtest-v${rules.version}`, generatedAt: new Date().toISOString(), from: cal[startIdx], to: cal.at(-1), sessions: days,
+    universe: { size: symbols.length, rule: '현재 상장 종목 중 20일 거래대금 상위 + 관심 종목' }, rules,
+    bySetup: bySetup(r.trades),
     stats, cagr: cagr(stats.totalReturn), spyCagr: stats.spyReturn != null ? cagr(stats.spyReturn) : null, exposure,
     years: periods(4), months: periods(7), equity: weekly,
     trades: r.trades.map((t) => ({ symbol: t.symbol, setup: t.setup, cap: t.cap, market: t.market, entryDate: t.entryDate, exitDate: t.exitDate, days: t.days, pnlPct: Math.round(t.pnlPct * 10000) / 10000, R: Math.round(t.R * 100) / 100, alpha: t.alpha != null ? Math.round(t.alpha * 10000) / 10000 : null, reason: t.reason })),
@@ -103,6 +129,15 @@ async function main() {
     console.log(`backtest: ${Object.keys(payload.bars).length} series, ${payload.cal.length} sessions, feed=${feed}`);
   }
   const t0 = Date.now();
+  if (process.argv.includes('--variants')) {
+    const rows = compareVariants(payload, meta, { years });
+    const p = (x) => (x == null ? '   -  ' : `${(x * 100).toFixed(1).padStart(5)}%`);
+    for (const r of rows) {
+      console.log(`VARIANT ${r.name.padEnd(18)} trades ${String(r.trades).padStart(4)}  win ${p(r.winRate)}  exp ${r.expectancyR?.toFixed(2)}R  PF ${r.profitFactor?.toFixed(2)}  CAGR ${p(r.cagr)} (SPY ${p(r.spyCagr)})  maxDD ${p(r.maxDrawdown)}  exposure ${p(r.exposure)}`);
+      for (const [k, a] of Object.entries(r.bySetup)) console.log(`    ${k.padEnd(10)} ${String(a.n).padStart(4)}  win ${p(a.winRate)}  exp ${a.expectancyR.toFixed(2)}R  sum ${a.sumR}R`);
+    }
+    if (arg('variants-out')) { mkdirSync(dirname(arg('variants-out')), { recursive: true }); writeFileSync(arg('variants-out'), JSON.stringify({ generatedAt: new Date().toISOString(), years, variants: rows })); }
+  }
   const res = runBacktest(payload, meta, { years });
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify(res));

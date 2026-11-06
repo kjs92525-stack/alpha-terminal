@@ -45,5 +45,5 @@ jobs:
           git add telegram
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "telegram: channel check $(date -u +%FT%H:%M)"
-          for i in 1 2 3; do git pull --rebase -q origin data && git push -q origin data && exit 0; sleep $((i*5)); done
+          for i in 1 2 3; do git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" pull --rebase -q origin data && git push -q origin data && exit 0; git rebase --abort 2>/dev/null; sleep $((i*5)); done
           exit 1

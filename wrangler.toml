@@ -24,7 +24,8 @@ enabled = true
 ALLOWED_ORIGIN = "*"
 PRICE_PROVIDERS = "stooq,yahoo"
 SCREEN_MAX = "5"
-# 1-minute check for a new Claude channel digest to send to the bot (apps/api/src/telegram-watch.ts)
+# 1-minute cron: new Claude channel digest for the bot (telegram-watch.ts) and the post-close
+# start of the nightly pipeline (nightly-kick.ts)
 [triggers]
 crons = ["* * * * *"]
 
@@ -37,6 +38,9 @@ id = "dd91a3ab139a4dce876613799ef484da"
 #   SEC_USER_AGENT     e.g. "AlphaTerminal/0.6 you@example.com"
 #   ALPACA_KEY_ID, ALPACA_SECRET_KEY
 #   TV_WEBHOOK_SECRET (+ optional TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+#   GITHUB_DISPATCH_TOKEN  fine-grained GitHub token, this repo only, "Actions: Read and write".
+#                          The 1-minute cron then starts the Nightly pipeline at 16:25 New York time
+#                          on weekdays (apps/api/src/nightly-kick.ts) instead of waiting for GitHub's late cron.
 #
 # Optional TradingView alert history: create a KV namespace and bind it as ALERTS
 #   npx wrangler kv namespace create ALERTS

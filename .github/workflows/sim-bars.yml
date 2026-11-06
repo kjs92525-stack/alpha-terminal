@@ -15,6 +15,11 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      research:
+        description: 'Only compare desk rule variants over 3 years (prints and uploads results, commits nothing)'
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -30,7 +35,7 @@ jobs:
       ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
-      PUBLISH_DATA: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+      PUBLISH_DATA: ${{ github.ref == 'refs/heads/main' && inputs.research != true && 'true' || 'false' }}
     steps:
       - name: Check secrets
         run: |
@@ -79,10 +84,20 @@ jobs:
           git add sim/ desk/
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "data: simulator bars + desk $(node -e "console.log(require('./sim/bars.json').asOf)")"
-          for i in 1 2 3 4; do git pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; sleep $((i*5)); done
+          for i in 1 2 3 4; do git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" pull --rebase -q origin data && git push -q origin HEAD:data && exit 0; git rebase --abort 2>/dev/null; sleep $((i*5)); done
           echo "::error::push to data failed after retries"; exit 1
+      - name: Rule variant research (no commit)
+        if: inputs.research == true
+        run: |
+          git fetch origin data --depth=1
+          node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years 3 --variants --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
+      - if: inputs.research == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: desk-variants
+          path: research/
       - name: Commit preview build (feature branch)
-        if: env.PUBLISH_DATA != 'true'
+        if: env.PUBLISH_DATA != 'true' && inputs.research != true
         run: |
           git fetch origin data --depth=1
           mkdir -p desk-preview
