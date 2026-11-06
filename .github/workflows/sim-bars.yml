@@ -76,6 +76,10 @@ jobs:
       - name: Analyst desk (main)
         if: env.PUBLISH_DATA == 'true'
         run: node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out data-branch
+      - name: ICT 4-hour signals (main)
+        if: env.PUBLISH_DATA == 'true'
+        continue-on-error: true
+        run: node scripts/ict4h-live.mjs --universe data-branch/latest.json --prev data-branch/desk/ict4h.json --out data-branch/desk/ict4h.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
       - name: Multi-year backtest (main)
         if: env.PUBLISH_DATA == 'true'
         run: node scripts/desk-backtest.mjs --universe data-branch/latest.json --out data-branch/desk/backtest.json --years 3 --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"

@@ -16,6 +16,7 @@ const real = arg('bars') ? JSON.parse(readFileSync(arg('bars'), 'utf8')) : trySh
 const desk = arg('desk') ? JSON.parse(readFileSync(arg('desk'), 'utf8')) : tryShow('desk/account.json');
 const backtest = arg('backtest') ? JSON.parse(readFileSync(arg('backtest'), 'utf8')) : tryShow('desk/backtest.json');
 const watch = arg('watch') ? JSON.parse(readFileSync(arg('watch'), 'utf8')) : tryShow('sim/watch.json');
+const ict4h = arg('ict4h') ? JSON.parse(readFileSync(arg('ict4h'), 'utf8')) : tryShow('desk/ict4h.json');
 
 // The page runs the very same engine as the nightly job: inline packages/analysis/analyst-desk.mjs as a plain script.
 const engineSrc = readFileSync(new URL('../packages/analysis/analyst-desk.mjs', import.meta.url), 'utf8');
@@ -38,6 +39,7 @@ const data = {
   desk: desk ?? undefined,
   backtest: backtest ?? undefined,
   watch: watch ?? undefined,
+  ict4h: ict4h ?? undefined,
 };
 const tpl = readFileSync(new URL('../apps/simulator/template.html', import.meta.url), 'utf8');
 if (!tpl.includes('/*__DATA__*/null') || !tpl.includes('/*__ENGINE__*/')) throw new Error('template is missing the /*__DATA__*/null or /*__ENGINE__*/ placeholder');

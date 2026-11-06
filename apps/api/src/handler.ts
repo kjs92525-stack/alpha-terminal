@@ -115,7 +115,7 @@ function normCik(raw: string): string {
 const DEFAULT_SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
 const snapshotBase = (env: Env) => (env.SNAPSHOT_BASE_URL || DEFAULT_SNAPSHOT).replace(/\/+$/, '');
 
-const SNAPSHOT_FILES = new Set(['latest.json', 'market-brief/latest.json', 'sim/bars.json', 'sim/watch.json', 'desk/account.json', 'desk/backtest.json']);
+const SNAPSHOT_FILES = new Set(['latest.json', 'market-brief/latest.json', 'sim/bars.json', 'sim/watch.json', 'desk/account.json', 'desk/backtest.json', 'desk/ict4h.json']);
 
 async function snapshotJson<T>(env: Env, path: string, ttl = 600): Promise<T | null> {
   const res = await cachedFetch(`${snapshotBase(env)}/${path}`, { headers: { Accept: 'application/json' } }, ttl);

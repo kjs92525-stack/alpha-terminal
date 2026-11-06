@@ -27,3 +27,20 @@ test('a structure shift on 4-hour bars becomes one trade with an R result', () =
   const s = summarize(tr, 'd9001');
   assert.equal(s.all.n, tr.length);
 });
+
+test('live 4-hour signals carry a plan and a status, and finished results are kept when merged', async () => {
+  const { signalsFor } = await import('../scripts/ict-intraday.mjs');
+  const { mergeSignals, liveStats } = await import('../scripts/ict4h-live.mjs');
+  const bars = []; let c = 50;
+  for (let i = 0; i < 300; i++) { const o = c; c = c * (1 + 0.0015 + Math.sin(i / 2) * 0.012); bars.push({ t: `2026-01-01T${String(i).padStart(5, '0')}`, day: `d${String(Math.floor(i / 2)).padStart(4, '0')}`, o, h: Math.max(o, c) * 1.006, l: Math.min(o, c) * 0.994, c, v: 1e6 }); }
+  const sig = signalsFor(bars);
+  for (const s of sig) {
+    assert.ok(s.limit > s.stop && s.target > s.limit, 'plan levels in order');
+    assert.ok(['waiting', 'expired', 'cancelled', 'open', 'won', 'lost', 'timeout'].includes(s.status));
+    if (['won', 'lost', 'timeout'].includes(s.status)) assert.equal(typeof s.R, 'number');
+  }
+  const a = { symbol: 'X', t: '2026-11-01T14', status: 'won', R: 2, firstSeen: '2026-11-01' };
+  const merged = mergeSignals([a], [{ ...a, status: 'open', R: undefined, firstSeen: '2026-11-05' }], 9999, Date.parse('2026-11-06'));
+  assert.equal(merged[0].status, 'won', 'a finished signal is not reopened');
+  assert.equal(liveStats(merged).n, 1);
+});
