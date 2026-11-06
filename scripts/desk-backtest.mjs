@@ -36,14 +36,16 @@ export function bySetup(trades) {
 const BASE_SETUPS = ['breakout', 'base', 'pullback', 'reversal'];
 const ICT = { mssEntry: 'limit', mssExit: 'liquidity', mssMinRR: 2, mssDiscount: 0.5 };
 const RAW = { setups: ['structure'], mssRaw: true, mssExit: 'liquidity', mssMinRR: 1.5, mssDiscount: null, minQuality: 0, minQualityWait: 0, picksPerDay: { SELECTIVE: 5, LIMIT: 5, UNKNOWN: 5, WAIT: 5 } };
+const WK = { ...RAW, mssTf: 'W', maxStopPct: 0.25 };
 export const VARIANTS = {
   'v5 (현재 데스크)': {},
-  '일봉 ICT 원형 (필터 없음, 지정가)': { ...RAW, mssEntry: 'limit' },
-  '일봉 ICT 원형 (필터 없음, 시가)': { ...RAW, mssEntry: 'market' },
-  '일봉 ICT 원형 + 할인 구간': { ...RAW, mssEntry: 'limit', mssDiscount: 0.5 },
-  '주봉 ICT 원형 (지정가)': { ...RAW, mssTf: 'W', mssEntry: 'limit', maxStopPct: 0.25 },
-  '주봉 ICT 원형 (시가)': { ...RAW, mssTf: 'W', mssEntry: 'market', maxStopPct: 0.25 },
-  '주봉 ICT + 200일선 위': { ...RAW, mssTf: 'W', mssEntry: 'market', maxStopPct: 0.25, mssRaw: false, mssVol: 0 },
+  '일봉 원형 시가 (현재 ICT 장부)': { ...RAW, mssEntry: 'market' },
+  '일봉 원형 시가 + 거래량 1.5배': { ...RAW, mssEntry: 'market', mssVolReq: 1.5 },
+  '일봉 원형 시가 + 거래량 2배': { ...RAW, mssEntry: 'market', mssVolReq: 2 },
+  '주봉 원형 시가': { ...WK, mssEntry: 'market' },
+  '주봉 원형 시가 + 거래량 1.5배': { ...WK, mssEntry: 'market', mssVolReq: 1.5 },
+  '주봉 원형 지정가': { ...WK, mssEntry: 'limit' },
+  '주봉 원형 지정가 + 거래량 1.5배': { ...WK, mssEntry: 'limit', mssVolReq: 1.5 },
 };
 const half = (trades) => { const n = trades.length, w = trades.filter((t) => t.R > 0).length, R = trades.reduce((a, t) => a + t.R, 0); return { n, winRate: n ? w / n : null, expectancyR: n ? R / n : null }; };
 export function compareVariants(payload, meta, { years = 3 } = {}) {

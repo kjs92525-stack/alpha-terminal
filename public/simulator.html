@@ -734,6 +734,7 @@ const DESK_RULES = {
   mssDiscount: null,             // e.g. 0.5: the entry must sit in the lower half of the 60-day range (ICT discount)
   mssTf: 'D',                    // 'D': daily structure; 'W': weekly structure (rolling 5-session bars ending today)
   mssRaw: false,                 // research: no trend / relative-strength / volume filters on the structure setup
+  mssVolReq: null,               // e.g. 1.5: the shift bar's volume must be this multiple of the prior 20 bars' average (on its own timeframe)
 };
 /** The ICT book: a sweep of a swing low, then a displacement close through the lower swing high (MSS), bought at the next
  * open, stop under the swept low, everything sold at buy-side liquidity (60-day high). No trend / strength / volume filters:
@@ -837,10 +838,13 @@ function structureShift(bars, i, atr, rules = DESK_RULES) {
   // displacement
   const range = b.h - b.l, body = b.c - b.o;
   if (range < rules.mssDisplacementAtr * atr || body < rules.mssBody * range) return null;
+  let volMult = null;
+  { let v = 0, n = 0; for (let j = Math.max(0, i - 20); j < i; j++) { v += bars[j].v; n++; } if (n && v > 0) volMult = b.v / (v / n); }
+  if (rules.mssVolReq != null && !(volMult >= rules.mssVolReq)) return null;          // a shift nobody traded is not a shift
   // the latest bullish fair-value gap in the leg up from the sweep, and the last down candle before it (order block)
   let fvg = null; for (let t = i - 1; t >= s + 1; t--) if (bars[t + 1].l > bars[t - 1].h) { fvg = [bars[t - 1].h, bars[t + 1].l]; break; }
   let ob = null; for (let t = i - 1; t >= s; t--) if (bars[t].c < bars[t].o) { ob = { lo: bars[t].l, hi: bars[t].h }; break; }
-  return { swingHigh: H, swingHighIdx: jH, swingLow: L, swingLowIdx: jL, sweepLow, sweepIdx: s, fvg, ob };
+  return { swingHigh: H, swingHighIdx: jH, swingLow: L, swingLowIdx: jL, sweepLow, sweepIdx: s, fvg, ob, volMult: volMult != null ? Math.round(volMult * 10) / 10 : null };
 }
 
 /**
