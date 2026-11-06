@@ -18,14 +18,17 @@ export const BACKTEST_4H = {
 /** merge tonight's view of each signal into the stored list: finished signals keep their result */
 export function mergeSignals(prev, fresh, keepDays = 120, now = Date.now()) {
   const key = (s) => `${s.symbol}|${s.t}`, done = new Set(['won', 'lost', 'timeout', 'expired', 'cancelled']);
-  const map = new Map((prev ?? []).map((s) => [key(s), s]));
+  const seen = new Set(fresh.map(key));
+  // an unfinished signal that tonight's scan no longer reports (rule change, out of the window) is dropped, finished ones stay
+  const map = new Map((prev ?? []).filter((s) => done.has(s.status) || seen.has(key(s))).map((s) => [key(s), s]));
   for (const s of fresh) { const old = map.get(key(s)); if (!old || !done.has(old.status)) map.set(key(s), { ...old, ...s, firstSeen: old?.firstSeen ?? s.firstSeen }); }
   const cut = new Date(now - keepDays * 864e5).toISOString();
   return [...map.values()].filter((s) => s.t >= cut).sort((a, b) => (a.t < b.t ? 1 : -1));
 }
 
+/** finished signals, counted from `since` (signal time): the live record excludes signals found looking back on day one */
 export function liveStats(signals, since) {
-  const fin = signals.filter((s) => s.R != null && (!since || s.firstSeen >= since));
+  const fin = signals.filter((s) => s.R != null && (!since || s.t >= since));
   const n = fin.length, w = fin.filter((s) => s.R > 0).length;
   return { n, winRate: n ? w / n : null, expectancyR: n ? fin.reduce((a, s) => a + s.R, 0) / n : null, open: signals.filter((s) => s.status === 'open').length, waiting: signals.filter((s) => s.status === 'waiting').length };
 }
@@ -44,14 +47,14 @@ async function main() {
       const b4 = toFourHour(hb); if (b4.length < 80) continue;
       if (!asOf || b4.at(-1).t > asOf) asOf = b4.at(-1).t;
       const m = meta.get(sym) ?? {};
-      for (const s of signalsFor(b4, { since: b4.length - 70 })) fresh.push({ symbol: sym, name: m.name ?? sym, sector: m.sector ?? null, ...s, firstSeen: now });
+      for (const s of signalsFor(b4, { since: b4.length - 140 })) /* long enough to follow open trades (60 bars) after a 10-bar fill window */ fresh.push({ symbol: sym, name: m.name ?? sym, sector: m.sector ?? null, ...s, firstSeen: now });
     }
   }
   const signals = mergeSignals(prev?.signals, fresh);
   const firstLive = prev?.firstLive ?? now;
   const out = { model: 'ict4h-v1', generatedAt: now, asOf, firstLive, universe: symbols.length, backtest: BACKTEST_4H,
     rules: { bars: '정규장 4시간봉(09:30-13:30, 13:30-16:00 ET)', entry: '구조 전환 뒤 갭(FVG)·오더블록 지정가, 10봉(약 5거래일) 유효', stop: '쓸고 간 저점 아래(0.2 ATR)', exit: '60봉 고점(매수 쪽 유동성)에서 전량, 60봉(약 30거래일) 지나면 정리', minRR: 1.5 },
-    stats: liveStats(signals, firstLive), signals };
+    stats: liveStats(signals, firstLive), recent: liveStats(signals), signals };
   mkdirSync(dirname(arg('out', 'desk/ict4h.json')), { recursive: true });
   writeFileSync(arg('out', 'desk/ict4h.json'), JSON.stringify(out));
   console.log(`ict4h-live: ${symbols.length} stocks, ${fresh.length} recent signals (${signals.filter((s) => s.status === 'waiting').length} waiting, ${signals.filter((s) => s.status === 'open').length} open), ${((Date.now() - t0) / 1000).toFixed(0)}s`);
