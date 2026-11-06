@@ -429,7 +429,13 @@ details summary{font-family:var(--sans)}
     <section id="sec-ict" hidden>
       <div class="sec-head"><h2>ICT 관찰 장부</h2><p id="i-sub"></p></div>
       <p class="callout" id="i-note"></p>
-      <h3 style="margin-top:14px">새 ICT 주문</h3>
+      <div id="i4-box" hidden>
+        <h3 style="margin-top:14px">4시간봉 ICT 신호</h3>
+        <p class="callout" id="i4-note"></p>
+        <div class="cards" id="i4-new"></div>
+        <details style="margin-top:10px"><summary id="i4-hist-sum">4시간봉 신호 기록</summary><div class="tcards show" id="i4-hist"></div></details>
+      </div>
+      <h3 style="margin-top:18px">일봉 ICT 장부: 새 주문</h3>
       <div class="cards" id="i-new"></div>
       <h3 style="margin-top:18px">ICT 장부 보유</h3>
       <div class="tcards show" id="i-hold"></div>
@@ -871,14 +877,14 @@ async function loadHeavy() {
   DATA.real ??= real ?? undefined; DATA.watch ??= watch ?? undefined;
 }
 async function loadData() {
-  if (DATA && DATA.desk && DATA.backtest) return DATA;
+  if (DATA && DATA.desk && DATA.backtest && DATA.ict4h) return DATA;
   if (!DATA) {
     const [latest, brief] = await Promise.all([snap('latest.json', true), snap('market-brief/latest.json')]);
     DATA = { asOf: latest.asOf, model: latest.model, generatedAt: latest.generatedAt, market: brief ? { state: brief.decision?.state, label: brief.decision?.label, reasons: brief.decision?.reasons ?? [] } : null, stocks: stocksFromLatest(latest) };
   }
   // the desk needs only these two small files; a missing one leaves its section on its own empty state
-  const [desk, backtest] = await Promise.all([DATA.desk ? null : snap('desk/account.json'), DATA.backtest ? null : snap('desk/backtest.json')]);
-  DATA.desk ??= desk ?? undefined; DATA.backtest ??= backtest ?? undefined;
+  const [desk, backtest, ict4h] = await Promise.all([DATA.desk ? null : snap('desk/account.json'), DATA.backtest ? null : snap('desk/backtest.json'), DATA.ict4h ? null : snap('desk/ict4h.json')]);
+  DATA.desk ??= desk ?? undefined; DATA.backtest ??= backtest ?? undefined; DATA.ict4h ??= ict4h ?? undefined;
   return DATA;
 }
 
@@ -1433,9 +1439,34 @@ const openCard = (p) => `<div class="tc"><div class="s">${esc(p.symbol)}<small>$
   <div class="l2">$${p.entry} → $${p.last} · 손절 $${p.stop}${p.target ? ` · 목표 $${p.target}` : ''}</div><div class="l2 ${sign(p.R)}" style="text-align:right">${p.R >= 0 ? '+' : ''}${p.R.toFixed(2)}R</div>
   <div class="l3">${p.partial ? `${sellsHalf() ? '절반 익절, ' : '+2R 넘음, '}${esc(p.trailLabel)} 추적` : p.stop >= p.entry ? '본전 손절로 보호' : `${p.days}일째`}${p.weight != null ? ` · 비중 ${pctU(p.weight)}` : ''}</div></div>`;
 
+const ST4 = { waiting: '지정가 대기', open: '보유 중', won: '목표 도달', lost: '손절', timeout: '기간 만료 정리', expired: '미체결 만료', cancelled: '체결 전 취소' };
+function renderIct4h() {
+  const X = DATA.ict4h; $('#i4-box').hidden = !X; if (!X) return;
+  const B = X.backtest, S = X.stats, acct = acctUsd(), when = (t) => { const d = new Date(t); return `${t.slice(5, 10)} ${d.getUTCHours() < 17 ? '오전' : '오후'}봉`; };
+  $('#i4-note').innerHTML = `4시간봉에서 스윕 → 구조 전환(MSS)이 나오면 갭(FVG)·오더블록까지 되돌릴 때 지정가로 사고, 쓸고 간 저점 아래 손절, 60봉 고점(위쪽 유동성)에서 전량 정리합니다. `
+    + `<b>백테스트(${esc(B.study)})</b>: ${B.limit.n}건, 승률 ${pctU(B.limit.winRate, 0)}, 거래당 +${B.limit.expectancyR.toFixed(2)}R(앞 1년 +${B.limit.first.toFixed(2)}R, 최근 1년 +${B.limit.last.toFixed(2)}R). `
+    + `일봉이 50일선 위인 종목만 보면 ${B.trendLimit.n}건, 승률 ${pctU(B.trendLimit.winRate, 0)}, +${B.trendLimit.expectancyR.toFixed(2)}R로 두 해 모두 더 고르게 좋았습니다(<b>추세 일치</b> 표시). `
+    + `계좌 단위가 아니라 신호 하나하나의 결과이고, 2년이라 아직 짧습니다. 실전 기록: 종료 ${S.n}건${S.n ? `, 승률 ${pctU(S.winRate, 0)}, 거래당 ${S.expectancyR >= 0 ? '+' : ''}${S.expectancyR.toFixed(2)}R` : ''}, 보유 ${S.open}, 대기 ${S.waiting}. 기준 시각 ${esc((X.asOf ?? '').slice(0, 10))}.`;
+  const live = X.signals.filter((s) => s.status === 'waiting' || s.status === 'open').sort((a, b) => (b.trend - a.trend) || (a.t < b.t ? 1 : -1));
+  const rw = (k, v, cls = '') => `<div class="row"><span class="k">${k}</span><i aria-hidden="true"></i><span class="v ${cls}">${v}</span></div>`;
+  $('#i4-new').innerHTML = live.length ? live.slice(0, 12).map((s) => {
+    const entry = s.entry ?? s.limit, n = sizeFor(acct, 0.005, entry, s.stop), loss = n * (entry - s.stop);
+    return `<article class="card"><header><h3>${esc(s.symbol)}</h3><span>${s.trend ? '<b>추세 일치</b> · ' : ''}${ST4[s.status]} · ${when(s.t)} 신호</span></header>
+      ${s.status === 'open' ? rw('체결', `${usd(s.entry)} · 현재 ${usd(s.last)} (${pct(s.last / s.entry - 1)})`, sign(s.last - s.entry)) : rw('지정가 매수', `${usd(s.limit)} (${esc(s.zone)}, 약 5거래일 유효)`)}
+      ${rw('손절가', `${usd(s.stop)} (${pct(s.stop / entry - 1)})`, 'down')}${rw('목표(위쪽 유동성)', `${usd(s.target)} (${pct(s.target / entry - 1)}, +${((s.target - entry) / (entry - s.stop)).toFixed(1)}R)`, 'up')}
+      ${rw('수량 (위험 0.5%)', `${n}주 · 최대 손실 ${usd(loss, 0)}`)}
+      <p class="fine desc">쓸고 간 저점 ${usd(s.sweepLow)}, 넘은 스윙 고점 ${usd(s.swingHigh)}. 신호 봉 종가 ${usd(s.close)}.</p></article>`;
+  }).join('') : '<p class="empty">지금 걸려 있는 4시간봉 신호가 없습니다.</p>';
+  const done = X.signals.filter((s) => s.R != null);
+  $('#i4-hist-sum').textContent = `4시간봉 신호 기록 (종료 ${done.length}건)`;
+  $('#i4-hist').innerHTML = done.length ? done.slice(0, 40).map((s) => `<div class="tc"><div class="s">${esc(s.symbol)}<small>${s.trend ? '추세 일치 · ' : ''}${when(s.t)} · ${ST4[s.status]}</small></div><div class="big ${sign(s.R)}">${s.R >= 0 ? '+' : ''}${s.R.toFixed(2)}R</div>
+    <div class="l2">$${s.entry.toFixed(2)} → $${s.exit.toFixed(2)}</div><div class="l2" style="text-align:right">${pct(s.exit / s.entry - 1)}</div></div>`).join('') : '<p class="empty" style="padding:12px 0">아직 끝난 신호가 없습니다.</p>';
+}
+
 function renderIct() {
+  renderIct4h();
   const D = DATA.desk, I = D?.ict;
-  $('#sec-ict').hidden = !I; if (!I) return;
+  $('#sec-ict').hidden = !I && !DATA.ict4h; if (!I) return;
   const S = I.stats, acct = acctUsd(), picks = pickLookup(I);
   $('#i-sub').textContent = '스윙 저점 아래를 쓸고(스윕) 되돌린 뒤 직전 하락 스윙 고점을 장대 양봉 종가로 넘는 구조 전환(MSS). 다음 날 시가에 사고, 손절은 쓸고 간 저점 아래, 목표는 위쪽 유동성(60일 고점)에서 전량 정리';
   $('#i-note').innerHTML = `<b>검증 전 전략입니다.</b> 3년 백테스트(538종목)에서 이 규칙은 92건, 승률 37%, 거래당 -0.00R(앞 2년 -0.10R, 최근 1년 +0.16R)로 본전 수준이었고, 같은 기간 메인 데스크(+0.08R)보다 못했습니다. 그래서 메인 계좌와 따로 모의 계좌를 두고, 시세를 받는 전 종목에서 신호를 찾아 성적을 쌓습니다. 지금까지 청산 ${S.closed}건${S.closed ? `, 승률 ${pctU(S.winRate, 0)}, 계좌 ${pct(S.totalReturn)}` : ''}. 30건이 쌓이기 전에는 판단하지 않습니다.`;

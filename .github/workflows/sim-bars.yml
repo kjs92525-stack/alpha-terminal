@@ -35,7 +35,7 @@ jobs:
   bars:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.research && 90 || 45 }}
     env:
       ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
       ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
@@ -76,6 +76,10 @@ jobs:
       - name: Analyst desk (main)
         if: env.PUBLISH_DATA == 'true'
         run: node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json --out data-branch
+      - name: ICT 4-hour signals (main)
+        if: env.PUBLISH_DATA == 'true'
+        continue-on-error: true
+        run: node scripts/ict4h-live.mjs --universe data-branch/latest.json --prev data-branch/desk/ict4h.json --out data-branch/desk/ict4h.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
       - name: Multi-year backtest (main)
         if: env.PUBLISH_DATA == 'true'
         run: node scripts/desk-backtest.mjs --universe data-branch/latest.json --out data-branch/desk/backtest.json --years 3 --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"

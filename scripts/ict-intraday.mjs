@@ -12,7 +12,14 @@ import { chooseUniverse } from './desk-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const ET = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-const etParts = (iso) => { const p = Object.fromEntries(ET.formatToParts(new Date(iso)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, h: Number(p.hour), m: Number(p.minute) }; };
+const offsetCache = new Map(); // UTC date → New York offset in hours (DST-aware, computed once a day)
+const etParts = (iso) => {
+  const d = iso.slice(0, 10);
+  let off = offsetCache.get(d);
+  if (off == null) { const p = Object.fromEntries(ET.formatToParts(new Date(`${d}T16:00:00Z`)).map((x) => [x.type, x.value])); off = Number(p.hour) - 16; offsetCache.set(d, off); }
+  const t = new Date(Date.parse(iso) + off * 3600e3);
+  return { day: t.toISOString().slice(0, 10), h: t.getUTCHours(), m: t.getUTCMinutes() };
+};
 
 /** Alpaca 1-hour bars → regular-session 4-hour bars (09:30-13:30 and 13:30-16:00 ET) plus daily closes. */
 export function toFourHour(hourly) {
@@ -108,9 +115,11 @@ async function main() {
   const start = new Date(Date.now() - (years + 0.3) * 365 * 864e5).toISOString().slice(0, 10);
   const t0 = Date.now();
   const series = new Map();
-  for (let i = 0; i < symbols.length; i += 25) { // keep memory flat: convert each batch to 4-hour bars right away
-    const { bars } = await fetchDailyBars({ symbols: symbols.slice(i, i + 25), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 25 });
-    for (const [s, b] of Object.entries(bars)) { const f = toFourHour(b); if (f.length > 200) series.set(s, f); }
+  for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
+    const tb = Date.now();
+    const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); }
+    console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
   const split = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
@@ -124,3 +133,40 @@ async function main() {
   const out = arg('out'); if (out) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), years, stocks: series.size, split, variants: rows })); }
 }
 if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(e); process.exit(1); });
+
+/**
+ * Live view of the same rule (4-hour shift, limit in the gap / order block, stop under the swept low, target the 60-bar
+ * high): every signal in `bars` with its plan and where it stands now. status: waiting (limit not reached yet), expired,
+ * cancelled (opened under the stop first), open, won, lost, timeout. trend: the daily close was above its 50-day average.
+ */
+export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0 } = {}) {
+  const rules = { ...DESK_RULES, mssRaw: true };
+  const atr = atrSeries(bars), bias = dailyBias(bars), out = [];
+  for (let i = Math.max(62, since); i < bars.length; i++) {
+    if (!(atr[i] > 0)) continue;
+    const m = structureShift(bars, i, atr[i], rules); if (!m) continue;
+    const stop = m.sweepLow - 0.2 * atr[i];
+    let hi = 0; for (let j = i - 60; j < i; j++) hi = Math.max(hi, bars[j].h);
+    const zone = m.fvg ? m.fvg[1] : m.ob ? m.ob.hi : (m.swingHigh + bars[i].c) / 2;
+    const limit = Math.min(bars[i].c, Math.max(zone, stop + 1.2 * atr[i]));
+    if (!(limit > stop) || (limit - stop) / limit > 0.15 || (hi - limit) / (limit - stop) < minRR) continue;
+    const s = { t: bars[i].t, day: bars[i].day, close: bars[i].c, limit, stop, target: hi, rr: (hi - limit) / (limit - stop), trend: bias.get(bars[i].day) === true,
+      zone: m.fvg ? 'FVG' : m.ob ? '오더블록' : '돌파 구간', sweepLow: m.sweepLow, swingHigh: m.swingHigh, status: 'waiting' };
+    let k = i + 1, entry = null;
+    for (; k < bars.length && k <= i + fillBars; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; } if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
+    if (entry == null) { if (s.status !== 'cancelled' && k > i + fillBars) s.status = 'expired'; out.push(s); continue; }
+    s.entry = entry; s.filledAt = bars[k].t; s.status = 'open';
+    const R = entry - stop; let exit = null, j;
+    if (bars[k].l <= stop) { exit = Math.min(bars[k].o, stop); s.status = 'lost'; j = k; }
+    for (j = k + 1; exit == null && j < Math.min(bars.length, k + maxHold); j++) {
+      const b = bars[j];
+      if (b.o <= stop) { exit = b.o; s.status = 'lost'; } else if (b.l <= stop) { exit = stop; s.status = 'lost'; }
+      else if (b.o >= hi) { exit = b.o; s.status = 'won'; } else if (b.h >= hi) { exit = hi; s.status = 'won'; }
+    }
+    if (exit == null && k + maxHold <= bars.length) { exit = bars[k + maxHold - 1].c; s.status = 'timeout'; }
+    if (exit != null) { s.exit = exit; s.R = (exit - entry - cost * (entry + exit)) / R; }
+    else s.last = bars.at(-1).c;
+    out.push(s);
+  }
+  return out;
+}
