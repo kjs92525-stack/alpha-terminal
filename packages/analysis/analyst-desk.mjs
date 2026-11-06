@@ -61,11 +61,12 @@ export const DESK_RULES = {
   mssTf: 'D',                    // 'D': daily structure; 'W': weekly structure (rolling 5-session bars ending today)
   mssRaw: false,                 // research: no trend / relative-strength / volume filters on the structure setup
 };
-/** The ICT book: structure shifts only (sweep → displacement close through the lower high), limit entry in the gap or
- * order block, stop under the swept low, everything sold at buy-side liquidity (60-day high). Tracked in its own paper
- * account so its record builds up separately; the 3-year test lost money, so it is shown as unproven. */
-export const ICT_RULES = { ...DESK_RULES, setups: ['structure'], volumeRules: true, mssEntry: 'limit', mssExit: 'liquidity', mssMinRR: 2, mssDiscount: null,
-  minQualityWait: DESK_RULES.minQuality, picksPerDay: { SELECTIVE: 3, LIMIT: 3, UNKNOWN: 3, WAIT: 2 } };
+/** The ICT book: a sweep of a swing low, then a displacement close through the lower swing high (MSS), bought at the next
+ * open, stop under the swept low, everything sold at buy-side liquidity (60-day high). No trend / strength / volume filters:
+ * in the 3-year test (538 stocks) this raw daily form had the most trades and the best result of the ICT variants
+ * (92 trades, win 37%, -0.00R; first two years -0.10R, last year +0.16R), so it runs in its own paper account. */
+export const ICT_RULES = { ...DESK_RULES, setups: ['structure'], mssRaw: true, volumeRules: false, mssEntry: 'market', mssExit: 'liquidity', mssMinRR: 1.5, mssDiscount: null,
+  minQuality: 0, minQualityWait: 0, picksPerDay: { SELECTIVE: 3, LIMIT: 3, UNKNOWN: 3, WAIT: 2 } };
 const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
 
 export const SETUP_LABEL = { breakout: '신고가 돌파', structure: '구조 전환(MSS)', base: '수축 후 돌파 대기', pullback: '추세 눌림목', reversal: '과매도 반등' };

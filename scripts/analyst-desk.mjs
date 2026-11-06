@@ -100,7 +100,7 @@ function ictBook({ docs, latest, data, stored, today, mcap }) {
   const { ledgers, created } = runBook({ docs, latest, data, stored, today, mcap, rules: ICT_RULES, candidatesOf });
   const r = replayDesk(ledgers, data, ICT_RULES);
   const days = ledgers.map((l) => ({ date: l.date, live: l.live, market: l.market, picks: l.picks.map((p) => ({ ...p, outcome: r.outcomes[`${l.date}:${p.symbol}`] ?? { status: 'unknown' } })) }));
-  return { created, book: { rules: { entry: '갭(FVG)·오더블록 되돌림 지정가', stop: '쓸고 간 저점 아래', exit: '60일 고점(매수 쪽 유동성)에서 전량' },
+  return { created, book: { rules: { entry: '구조 전환 다음 날 시가', stop: '쓸고 간 저점 아래', exit: '60일 고점(매수 쪽 유동성)에서 전량' },
     stats: deskStats(r.trades, r.equity), open: r.open, pending: r.pending, trades: r.trades.slice(-30), events: r.events.slice(-30), ledgers: days.slice(-20),
     firstLive: ledgers.find((l) => l.live)?.date ?? null } };
 }

@@ -1435,18 +1435,18 @@ function renderIct() {
   const D = DATA.desk, I = D?.ict;
   $('#sec-ict').hidden = !I; if (!I) return;
   const S = I.stats, acct = acctUsd(), picks = pickLookup(I);
-  $('#i-sub').textContent = '스윙 저점 아래를 쓸고(스윕) 되돌린 뒤 직전 고점을 장대 양봉으로 넘는 구조 전환(MSS). 갭·오더블록 되돌림에 지정가로 사고, 목표는 위쪽 유동성(60일 고점)에서 전량 정리';
-  $('#i-note').innerHTML = `<b>검증 전 전략입니다.</b> 3년 백테스트(538종목)에서 일봉 ICT 신호는 10~20건뿐이었고 손실이었습니다(거래당 -0.03~-0.94R). 그래서 메인 데스크 계좌와 따로 모의 계좌를 두고, 시세를 받는 전 종목에서 신호를 찾아 성적을 쌓습니다. 지금까지 청산 ${S.closed}건${S.closed ? `, 승률 ${pctU(S.winRate, 0)}, 계좌 ${pct(S.totalReturn)}` : ''}. 30건이 쌓이기 전에는 판단하지 않습니다.`;
+  $('#i-sub').textContent = '스윙 저점 아래를 쓸고(스윕) 되돌린 뒤 직전 하락 스윙 고점을 장대 양봉 종가로 넘는 구조 전환(MSS). 다음 날 시가에 사고, 손절은 쓸고 간 저점 아래, 목표는 위쪽 유동성(60일 고점)에서 전량 정리';
+  $('#i-note').innerHTML = `<b>검증 전 전략입니다.</b> 3년 백테스트(538종목)에서 이 규칙은 92건, 승률 37%, 거래당 -0.00R(앞 2년 -0.10R, 최근 1년 +0.16R)로 본전 수준이었고, 같은 기간 메인 데스크(+0.08R)보다 못했습니다. 그래서 메인 계좌와 따로 모의 계좌를 두고, 시세를 받는 전 종목에서 신호를 찾아 성적을 쌓습니다. 지금까지 청산 ${S.closed}건${S.closed ? `, 승률 ${pctU(S.winRate, 0)}, 계좌 ${pct(S.totalReturn)}` : ''}. 30건이 쌓이기 전에는 판단하지 않습니다.`;
   const rows = I.pending.map((o) => ({ o, p: picks.get(`${o.pickDate}:${o.symbol}`) })).filter((x) => x.p);
   const rw = (k, v, cls = '') => `<div class="row"><span class="k">${k}</span><i aria-hidden="true"></i><span class="v ${cls}">${v}</span></div>`;
   $('#i-new').innerHTML = rows.length ? rows.map(({ o, p }) => {
     if (o.blocked) return `<article class="card void"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(o.pickDate)} 신호</span></header><p class="warnline">주문하지 마세요. ${esc(o.blocked)}</p></article>`;
-    const entry = p.plan.trigger, n = sizeFor(acct, p.plan.riskPct, entry, p.plan.stop), loss = n * (entry - p.plan.stop), tgt = p.plan.exitAt ?? p.plan.target, st = p.structure;
+    const entry = p.plan.entryType === 'market' ? p.plan.refClose : p.plan.trigger, n = sizeFor(acct, p.plan.riskPct, entry, p.plan.stop), loss = n * (entry - p.plan.stop), tgt = p.plan.exitAt ?? p.plan.target, st = p.structure;
     return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(o.pickDate)} 신호</span></header>
-      ${rw('지정가 매수', `${usd(entry)} (${o.sessionsLeft > 0 ? `${o.sessionsLeft}거래일 유효` : '내일까지'})`)}${rw('수량', `${n}주 · ${usd(n * entry, 0)}`)}
+      ${rw(p.plan.entryType === 'market' ? '진입' : '지정가 매수', p.plan.entryType === 'market' ? `내일 시가 (약 ${usd(entry)}, ${usd(entry * 1.04)} 넘게 시작하면 사지 않음)` : `${usd(entry)} (${o.sessionsLeft > 0 ? `${o.sessionsLeft}거래일 유효` : '내일까지'})`)}${rw('수량', `${n}주 · ${usd(n * entry, 0)}`)}
       ${rw('손절가', `${usd(p.plan.stop)} (${pct(p.plan.stop / entry - 1)})`, 'down')}${rw('목표(위쪽 유동성)', `${usd(tgt)} (${pct(tgt / entry - 1)}, +${((tgt - entry) / (entry - p.plan.stop)).toFixed(1)}R) 전량`, 'up')}
       ${rw('최대 손실', `${usd(loss, 0)} · ${krw(loss)}`)}
-      <p class="fine desc">${st ? `쓸고 간 저점 ${usd(st.sweepLow)}(스윙 저점 ${usd(st.swingLow)} 아래), 넘은 스윙 고점 ${usd(st.swingHigh)}${st.fvg ? `, 갭 ${usd(st.fvg[0])}~${usd(st.fvg[1])}` : ''}. ` : ''}가격이 지정가까지 내려오지 않으면 사지 않습니다.</p></article>`;
+      <p class="fine desc">${st ? `쓸고 간 저점 ${usd(st.sweepLow)}(스윙 저점 ${usd(st.swingLow)} 아래), 넘은 스윙 고점 ${usd(st.swingHigh)}${st.fvg ? `, 갭 ${usd(st.fvg[0])}~${usd(st.fvg[1])}` : ''}. ` : ''}${p.plan.entryType === 'market' ? '체결되면 손절가에 스톱 주문을 거세요.' : '가격이 지정가까지 내려오지 않으면 사지 않습니다.'}</p></article>`;
   }).join('') : '<p class="empty">새 ICT 신호가 없습니다. 일봉 구조 전환은 시세 보유 전 종목에서 일주일에 한 번 꼴로 나옵니다.</p>';
   $('#i-hold').innerHTML = I.open.length ? I.open.map(openCard).join('') : '<p class="empty" style="padding:12px 0">ICT 장부가 들고 있는 종목이 없습니다.</p>';
   const tr = [...I.trades].sort((a, b) => (a.exitDate < b.exitDate ? 1 : -1));
