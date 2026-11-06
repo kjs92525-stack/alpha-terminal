@@ -732,6 +732,8 @@ const DESK_RULES = {
   mssExit: 'desk',               // 'desk': +2R half then trail; 'liquidity': sell everything at the buy-side liquidity (prior high)
   mssMinRR: 2,                   // ... and only when that target pays at least this many R
   mssDiscount: null,             // e.g. 0.5: the entry must sit in the lower half of the 60-day range (ICT discount)
+  mssTf: 'D',                    // 'D': daily structure; 'W': weekly structure (rolling 5-session bars ending today)
+  mssRaw: false,                 // research: no trend / relative-strength / volume filters on the structure setup
 };
 /** The ICT book: structure shifts only (sweep → displacement close through the lower high), limit entry in the gap or
  * order block, stop under the swept low, everything sold at buy-side liquidity (60-day high). Tracked in its own paper
@@ -788,6 +790,13 @@ function distributionDays(bars, i, atrPct, rules = DESK_RULES) {
   }
   return out;
 }
+/** Rolling weekly bars: 5-session blocks ending at bar i (the last block ends today). */
+function weeklyBars(bars, i) {
+  const out = [];
+  for (let e = i; e - 4 >= 0; e -= 5) { let h = -Infinity, l = Infinity, v = 0; for (let j = e - 4; j <= e; j++) { h = Math.max(h, bars[j].h); l = Math.min(l, bars[j].l); v += bars[j].v; } out.push({ o: bars[e - 4].o, h, l, c: bars[e].c, v }); }
+  return out.reverse();
+}
+
 /** Volume character over the last n sessions: up-day volume / down-day volume, and the last 5 days' volume vs the n-day average. */
 function volumeProfile(bars, i, n = 50) {
   let up = 0, dn = 0, all = 0, k = 0;
@@ -804,7 +813,7 @@ function volumeProfile(bars, i, n = 50) {
  */
 function structureShift(bars, i, atr, rules = DESK_RULES) {
   const k = rules.mssPivot, b = bars[i];
-  if (i < 60 || !(atr > 0)) return null;
+  if (i < rules.mssLookback + 2 * k + 2 || !(atr > 0)) return null;
   const swingHigh = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].h >= bars[j].h) return false; return true; };
   const swingLow = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].l <= bars[j].l) return false; return true; };
   // the pullback's last swing high, confirmed before today, that today closes through for the first time
@@ -892,7 +901,7 @@ function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   const dil = meta.dilution ?? null; // edge-signals dilutionSignal() over 180 days, or null when not checked
   const recentOffer = dil?.offering ? dil.recent.find((d) => /^424B/i.test(d.form) && Date.parse(meta.asOf ?? d.date) - Date.parse(d.date) <= rules.offeringBlackoutDays * 864e5) : null;
   if (recentOffer) return { pass: `${recentOffer.date} 증자 공시(${recentOffer.form}), 매물 부담으로 제외` };
-  if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200) return { pass: '200일선 아래 하락 추세' };
+  if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200 && !(rules.mssRaw && (rules.setups ?? []).includes('structure'))) return { pass: '200일선 아래 하락 추세' };
   if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
   if (x.atrPct < rules.minAtrPct) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님` };
   if (x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
@@ -904,15 +913,20 @@ function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (on.has('breakout') && up && x.c > x.hi20 && nearHigh >= 0.97 && x.relVol >= 1.4 && x.ret1 > 0) {
     setup = 'breakout'; entryType = 'market'; trigger = x.c; validDays = 1;
     stop = clamp(x.lo5 - 0.25 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
-  } else if (on.has('structure') && up && volOk(rules.mssVol) && (mss = structureShift(bars, i, x.atr, rules))) {
-    setup = 'structure'; stop = mss.sweepLow - 0.2 * x.atr;
+  } else if (on.has('structure') && (rules.mssRaw || (up && volOk(rules.mssVol))) && (mss = (() => {
+    const tf = rules.mssTf === 'W' ? weeklyBars(bars, i) : bars, ti = rules.mssTf === 'W' ? tf.length - 1 : i, ta = rules.mssTf === 'W' ? atrAt(tf, ti, 14) : x.atr;
+    const m = structureShift(tf, ti, ta, rules); if (m) { m.tfAtr = ta; m.tf = tf; } return m;
+  })())) {
+    setup = 'structure'; stop = mss.sweepLow - 0.2 * (rules.mssTf === 'W' ? x.atr : x.atr);
     if (rules.mssEntry === 'market') { entryType = 'market'; trigger = x.c; validDays = 1; }
     else { // retrace into the gap (its top) or the order block (its top), never below the old swing high's midpoint to the close
       const zone = mss.fvg ? mss.fvg[1] : mss.ob ? mss.ob.hi : (mss.swingHigh + x.c) / 2;
       entryType = 'limit'; trigger = Math.min(x.c, Math.max(zone, stop + 1.2 * x.atr)); validDays = rules.mssValidDays;
     }
-    // dealing range of the last 60 sessions: buy-side liquidity above (its high), discount below its midpoint
-    let rHi = 0, rLo = Infinity; for (let j = Math.max(0, i - 60); j < i; j++) { rHi = Math.max(rHi, bars[j].h); rLo = Math.min(rLo, bars[j].l); }
+    // dealing range (60 sessions, or 26 weeks on the weekly chart): buy-side liquidity above (its high), discount below its midpoint
+    const rb = mss.tf, re = rules.mssTf === 'W' ? rb.length - 1 : i, rn = rules.mssTf === 'W' ? 26 : 60;
+    let rHi = 0, rLo = Infinity; for (let j = Math.max(0, re - rn); j < re; j++) { rHi = Math.max(rHi, rb[j].h); rLo = Math.min(rLo, rb[j].l); }
+    delete mss.tf;
     mss.rangeHi = rHi; mss.rangeLo = rLo;
     if (rules.mssDiscount != null && trigger > rLo + rules.mssDiscount * (rHi - rLo)) return { pass: `구조 전환이지만 진입가가 60일 범위의 ${(((trigger - rLo) / (rHi - rLo)) * 100).toFixed(0)}% 위치(프리미엄 구간)` };
     if (rules.mssExit === 'liquidity') {
@@ -937,7 +951,7 @@ function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   const reasons = [], warnings = [];
   const rs = x.ret126 != null && meta.spyRet126 != null ? x.ret126 - meta.spyRet126 : null;
   // buy weakness only in leaders: a pullback or base in a stock lagging the market is not a setup
-  if ((setup === 'pullback' || setup === 'base' || setup === 'structure') && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
+  if ((setup === 'pullback' || setup === 'base' || (setup === 'structure' && !rules.mssRaw)) && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
   // a pullback is quiet: sellers hitting the stock on heavy volume is a breakdown, not a buying chance
   const dist = distributionDays(bars, i, x.atrPct, rules);
   if (dist.length && (setup === 'pullback' || setup === 'base' || setup === 'reversal')) {
@@ -1242,7 +1256,7 @@ function deskVerdict(stats, sel) {
   return { stage: 'neutral', label: '아직 우위 불분명', text: '손실은 아니지만 기준(기대값 +0.1R, 이익 계수 1.3, 후보 대비 우위)에 못 미칩니다. 모의로 계속 기록합니다.', progress: n / 60 };
 }
 
-return { DESK_RULES, ICT_RULES, SETUP_LABEL, capBucket, seriesFor, indicatorsAt, distributionDays, volumeProfile, structureShift, ictRead, wilson, analyze, pickForDay, replayDesk, regimeFromSpy, deskStats, selectionEdge, deskVerdict };
+return { DESK_RULES, ICT_RULES, SETUP_LABEL, capBucket, seriesFor, indicatorsAt, distributionDays, weeklyBars, volumeProfile, structureShift, ictRead, wilson, analyze, pickForDay, replayDesk, regimeFromSpy, deskStats, selectionEdge, deskVerdict };
 })();</script>
 <script>
 "use strict";
