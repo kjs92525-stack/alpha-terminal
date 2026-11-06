@@ -12,7 +12,14 @@ import { chooseUniverse } from './desk-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const ET = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-const etParts = (iso) => { const p = Object.fromEntries(ET.formatToParts(new Date(iso)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, h: Number(p.hour), m: Number(p.minute) }; };
+const offsetCache = new Map(); // UTC date → New York offset in hours (DST-aware, computed once a day)
+const etParts = (iso) => {
+  const d = iso.slice(0, 10);
+  let off = offsetCache.get(d);
+  if (off == null) { const p = Object.fromEntries(ET.formatToParts(new Date(`${d}T16:00:00Z`)).map((x) => [x.type, x.value])); off = Number(p.hour) - 16; offsetCache.set(d, off); }
+  const t = new Date(Date.parse(iso) + off * 3600e3);
+  return { day: t.toISOString().slice(0, 10), h: t.getUTCHours(), m: t.getUTCMinutes() };
+};
 
 /** Alpaca 1-hour bars → regular-session 4-hour bars (09:30-13:30 and 13:30-16:00 ET) plus daily closes. */
 export function toFourHour(hourly) {
@@ -108,9 +115,11 @@ async function main() {
   const start = new Date(Date.now() - (years + 0.3) * 365 * 864e5).toISOString().slice(0, 10);
   const t0 = Date.now();
   const series = new Map();
-  for (let i = 0; i < symbols.length; i += 25) { // keep memory flat: convert each batch to 4-hour bars right away
-    const { bars } = await fetchDailyBars({ symbols: symbols.slice(i, i + 25), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 25 });
-    for (const [s, b] of Object.entries(bars)) { const f = toFourHour(b); if (f.length > 200) series.set(s, f); }
+  for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
+    const tb = Date.now();
+    const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); }
+    console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
   const split = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
