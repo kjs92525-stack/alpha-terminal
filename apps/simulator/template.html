@@ -1449,20 +1449,23 @@ function renderBacktest() {
 // ================= MY STOCK =================
 function accessFrom(payload) {
   const cache = new Map(), earn = payload.earnings ?? null;
-  return { cal: payload.cal, volumeReliable: payload.volumeReliable ?? /feed=sip/.test(payload.source ?? ''), earningsChecked: payload.earningsChecked ?? null,
+  return { cal: payload.cal, live: !!payload.live, volumeReliable: payload.volumeReliable ?? /feed=sip/.test(payload.source ?? ''), earningsChecked: payload.earningsChecked ?? null,
     earnings: earn ? (sym) => earn[sym] : null,
     get(sym) { if (cache.has(sym)) return cache.get(sym); const x = payload.bars[sym]; const v = x ? { s: x.s, bars: x.d.map(([o, h, l, c, vol]) => ({ o, h, l, c, v: vol })) } : null; cache.set(sym, v); return v; } };
 }
 /** bars from the deployed API (/api/v1/bars) → the same payload shape */
 async function apiPayload(sym) {
-  const get = async (s) => { const r = await fetch(`/api/v1/bars/${encodeURIComponent(s)}?tf=1D`); if (!r.ok) throw new Error(`${s} 시세 HTTP ${r.status}`); return (await r.json()).bars ?? []; };
+  const get = async (s) => { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 12000);
+    try { const r = await fetch(`/api/v1/bars/${encodeURIComponent(s)}?tf=1D`, { signal: ctl.signal }); if (!r.ok) throw new Error(`${s} 시세 HTTP ${r.status}`);
+      const j = await r.json(), bars = j.bars ?? []; return j.lastBarClosed === false ? bars.slice(0, -1) : bars; } // the desk reads closes only: drop today's unfinished bar
+    finally { clearTimeout(t); } };
   const [spy, x] = await Promise.all([get('SPY'), get(sym)]);
   if (x.length < 60) throw new Error(`${sym} 시세가 60일보다 짧습니다`);
   const day = (t) => new Date(t * 1000).toISOString().slice(0, 10), cal = spy.map((b) => day(b.time)), pos = new Map(cal.map((d, i) => [d, i]));
   const pack = (arr) => { const rows = []; let s = -1, prev = null; const by = new Map(arr.map((b) => [day(b.time), b]));
     for (let i = 0; i < cal.length; i++) { const b = by.get(cal[i]); if (s < 0) { if (!b) continue; s = i; } if (b) { rows.push([b.open, b.high, b.low, b.close, b.volume]); prev = b.close; } else rows.push([prev, prev, prev, prev, 0]); }
     return { s, d: rows }; };
-  return { cal, bars: { SPY: pack(spy), [sym]: pack(x) }, volumeReliable: true, earningsChecked: false, source: 'Alpaca (배포 사이트 API)' };
+  return { cal, bars: { SPY: pack(spy), [sym]: pack(x) }, volumeReliable: true, earningsChecked: false, live: true, source: 'Alpaca (배포 사이트 API)' };
 }
 function availableSymbols() {
   const w = DATA.watch?.symbols ?? [], r = REAL.ok ? [...REAL.series.keys()].filter((s) => s !== 'SPY' && s !== 'QQQ') : [];
@@ -1481,10 +1484,16 @@ function initMine() {
       const sym = $('#m-sym').value.trim().toUpperCase().replace(/[^A-Z.\-]/g, ''); if (!sym) return;
       $('#m-status').textContent = `${sym} 계산 중`;
       try {
-        let acc = null;
-        if (DATA.watch?.bars?.[sym]) acc = accessFrom(DATA.watch);
-        else if (REAL.ok && REAL.series.has(sym)) acc = accessFrom(REAL.raw);
-        else { try { acc = accessFrom(await apiPayload(sym)); } catch (err) { throw new Error(`${sym} 시세가 여기 없습니다. 저장소 config/watchlist.txt에 ${sym}를 추가하면 다음 날 아침부터 열립니다. (${err.message})`); } }
+        // live daily bars from the deployed API first (fresh as of the last close); the nightly files are the fallback
+        const nightly = DATA.watch?.bars?.[sym] ? DATA.watch : REAL.ok && REAL.series.has(sym) ? REAL.raw : null;
+        let live = null, liveErr = null;
+        try { live = await apiPayload(sym); } catch (err) { liveErr = err; }
+        let acc;
+        if (live && (!nightly || live.cal.at(-1) >= nightly.cal.at(-1))) {
+          if (nightly?.earnings?.[sym]) { live.earnings = { [sym]: nightly.earnings[sym] }; live.earningsChecked = nightly.earningsChecked ?? null; }
+          acc = accessFrom(live);
+        } else if (nightly) acc = accessFrom(nightly);
+        else throw new Error(`${sym} 시세가 여기 없습니다. 저장소 config/watchlist.txt에 ${sym}를 추가하면 다음 날 아침부터 열립니다. (${liveErr?.message ?? ''})`);
         ui.mine = { sym, acc }; renderMine(ui.mine); $('#m-status').textContent = '';
         try { if (location.hash !== '#mine') history.replaceState(null, '', '#mine'); } catch { /* sandbox */ }
       } catch (err) { $('#m-status').textContent = err.message; $('#m-out').hidden = true; }
@@ -1508,7 +1517,7 @@ function renderMine({ sym, acc }) {
   const ind = E.indicatorsAt(bars, i), acct = Math.max(100, Number($('#m-acct').value) || 10000), riskBase = R.riskPct[market] ?? 0.007;
   $('#m-out').hidden = false;
   $('#m-title').textContent = `${sym} 시나리오`;
-  $('#m-sub').textContent = `${dKo(dates[i])} 종가 ${usd(ind.c)}. 시장 판정 ${STATE_KO[market] ?? market}, 거래당 위험 ${pctU(riskBase, 2)}`;
+  $('#m-sub').textContent = `${dKo(dates[i])} 종가 ${usd(ind.c)} (${acc.live ? '실시간 API 일봉' : '야간 갱신 파일'}). 시장 판정 ${STATE_KO[market] ?? market}, 거래당 위험 ${pctU(riskBase, 2)}`;
   const cell = (label, v, sub, cls = '') => `<div><span>${label}</span><b class="${cls}">${v}</b><small>${sub}</small></div>`;
   const planCells = (entry, stop, target, riskPct, entryLabel) => { const n = sizeFor(acct, riskPct, entry, stop), loss = n * (entry - stop);
     const wide = 1 - stop / entry > R.maxStopPct;
