@@ -216,3 +216,47 @@ test('a symbol missing from the earnings calendar is "unknown", not "no report"'
   const none = analyze(bars, i, { score: 80, spyRet126: 0, earningsIn: null, earningsChecked: true });
   assert.ok(none.reasons.some((r) => /실적 발표 없음/.test(r)));
 });
+
+/** uptrend, then a pullback: swing low, lower swing high, a sweep under the swing low that closes back above it,
+ * and a wide full-bodied bar closing through the lower high (bullish market structure shift) */
+const MSS = { ...DESK_RULES, setups: ['breakout', 'structure', 'base', 'pullback', 'reversal'], volumeRules: true };
+function mssBars({ sweep = true } = {}) {
+  const bars = trend(260), C = bars.at(-1).c;
+  let prev = C;
+  const add = (c, { h, l, v = 1e6 } = {}) => { const o = prev; bars.push({ o: o * C / C, h: h ?? Math.max(o, c * C) * 1.003, l: l ?? Math.min(o, c * C) * 0.997, c: c * C, v }); prev = c * C; };
+  add(0.98); add(0.96); add(0.95, { l: 0.94 * C }); add(0.97); add(0.975, { h: 0.985 * C }); add(0.965); add(0.955);
+  add(0.945, { l: (sweep ? 0.925 : 0.946) * C, v: 2e6 }); add(0.96);
+  bars.push({ o: 0.965 * C, h: 1.0 * C, l: 0.962 * C, c: 0.995 * C, v: 2.5e6 });
+  return { bars, C };
+}
+
+test('a sweep of the swing low and a displacement close through the lower high is read as a structure shift', () => {
+  const { bars, C } = mssBars();
+  const a = analyze(bars, bars.length - 1, { score: 70, spyRet126: 0 }, MSS);
+  assert.equal(a.setup, 'structure', a.pass);
+  assert.equal(a.plan.entryType, 'limit');
+  assert.ok(a.plan.stop < 0.925 * C, 'stop under the swept low');
+  assert.ok(a.plan.trigger < 0.995 * C && a.plan.trigger > 0.94 * C, 'limit in the retrace zone, below the close');
+  assert.ok(a.structure.fvg, 'fair-value gap found in the leg up');
+  assert.match(a.thesis, /유동성/);
+});
+
+test('without a sweep of the swing low there is no structure shift', () => {
+  const { bars } = mssBars({ sweep: false });
+  const a = analyze(bars, bars.length - 1, { score: 70, spyRet126: 0 }, MSS);
+  assert.notEqual(a.setup, 'structure');
+});
+
+test('the structure setup can be switched off and a limit order fills only on a retrace', () => {
+  const { bars, C } = mssBars();
+  assert.notEqual(analyze(bars, bars.length - 1, { score: 70, spyRet126: 0 }).setup, 'structure', 'off in the live rules');
+  const a = analyze(bars, bars.length - 1, { score: 70, spyRet126: 0 }, MSS);
+  const day = bars.length - 1, more = [{ o: 1.0 * C, h: 1.01 * C, l: 0.99 * C, c: 1.0 * C, v: 1e6 }, { o: 0.99 * C, h: 0.995 * C, l: a.plan.trigger * 0.998, c: 0.98 * C, v: 1e6 }];
+  const all = [...bars, ...more, ...trend(5, { start: 0.98 * C })], dates = cal(all.length);
+  const data = { cal: dates, get: (s) => (s === 'X' ? { s: 0, bars: all } : null) };
+  const pick = { symbol: 'X', name: 'X', setup: a.setup, label: a.label, quality: a.quality, plan: { ...a.plan, riskPct: 0.01 } };
+  const r = replayDesk([{ date: dates[day], picks: [pick] }], data, MSS);
+  const o = r.ledgers?.[0]?.picks?.[0]?.outcome ?? r.trades[0] ?? r.open?.[0];
+  const entryDate = o?.entryDate;
+  assert.equal(entryDate, dates[day + 2], 'not filled the day it stayed above the limit, filled on the retrace');
+});
