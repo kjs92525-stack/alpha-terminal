@@ -12,11 +12,11 @@ export function alpacaDayToUtc(t) {
   return Date.parse(`${d}T00:00:00Z`) / 1000;
 }
 
-export function parseAlpacaBars(json) {
+export function parseAlpacaBars(json, intraday = false) {
   const out = {};
   for (const [sym, arr] of Object.entries(json?.bars ?? {})) {
     out[sym] = (arr || [])
-      .map((b) => ({ time: alpacaDayToUtc(b.t), open: b.o, high: b.h, low: b.l, close: b.c, volume: b.v }))
+      .map((b) => ({ time: intraday ? Date.parse(b.t) / 1000 : alpacaDayToUtc(b.t), open: b.o, high: b.h, low: b.l, close: b.c, volume: b.v }))
       .filter((b) => [b.open, b.high, b.low, b.close].every(Number.isFinite));
   }
   return out;
@@ -50,7 +50,7 @@ export async function fetchDailyBars({ symbols, start, end, keyId, secretKey, fe
       }
       if (!res.ok) throw new Error(`Alpaca bars HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
       const json = await res.json();
-      for (const [sym, bars] of Object.entries(parseAlpacaBars(json))) (result[sym] ??= []).push(...bars);
+      for (const [sym, bars] of Object.entries(parseAlpacaBars(json, timeframe !== '1Day'))) (result[sym] ??= []).push(...bars);
       token = json.next_page_token || null;
       if (!token) break;
     }

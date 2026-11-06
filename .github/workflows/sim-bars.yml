@@ -24,7 +24,7 @@ on:
         description: 'Research only: years of history to test'
         default: '3'
       variant_set:
-        description: 'Research only: ict or growth'
+        description: 'Research only: ict, growth or ict4h (4-hour ICT event study)'
         default: 'ict'
 permissions:
   contents: write
@@ -96,7 +96,11 @@ jobs:
         if: inputs.research == true
         run: |
           git fetch origin data --depth=1
-          node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years "${{ inputs.years || '3' }}" --variants --variant-set "${{ inputs.variant_set || 'ict' }}" --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
+          if [ "${{ inputs.variant_set }}" = "ict4h" ]; then
+            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '2' }}" --size 300 --out research/ict4h.json
+          else
+            node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years "${{ inputs.years || '3' }}" --variants --variant-set "${{ inputs.variant_set || 'ict' }}" --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
+          fi
       - if: inputs.research == true
         uses: actions/upload-artifact@v4
         with:

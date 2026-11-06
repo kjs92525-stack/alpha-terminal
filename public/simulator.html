@@ -682,7 +682,7 @@ details summary{font-family:var(--sans)}
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 const DESK_RULES = {
-  version: 5,
+  version: 6,
   startEquity: 100_000,
   costPerSide: 0.001,            // commission + spread, each side (liquid names)
   costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
@@ -709,8 +709,11 @@ const DESK_RULES = {
   minAtrPct: 0.008,              // daily range under 0.8%: pinned price (pending takeover, etc.), not a trend trade              // skip plans whose stop is further than 12% below the trigger
   maxChase: 0.04,                // never buy an open more than 4% above the planned price
   partialAtR: 2, breakevenAtR: 1,
-  partialFrac: 0.5,              // share sold at +2R; 0 = sell nothing there, only start trailing (let the winner run)
-  trailMa: null,                 // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
+  // v6: 7-year comparison (538 stocks, 2019-10 → 2026-11): selling nothing at +2R and holding the whole position until a
+  // close under the 50-day average lifted expectancy +0.05R → +0.12R (first six years +0.13R, last year +0.08R),
+  // CAGR 2.5% → 3.5%, max drawdown -32% → -26%, and doubled the 30%+ winners (9 → 18). Win rate falls 35% → 26%.
+  partialFrac: 0,                // share sold at +2R; 0 = sell nothing there, only start trailing (let the winner run)
+  trailMa: 'sma50',              // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
   maxMcap: null,                 // e.g. 10e9: only stocks below this market cap (unknown caps pass)
   minAtrPick: null,              // e.g. 0.03: only stocks whose daily range is at least this share of price
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
@@ -1010,7 +1013,9 @@ function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   }[setup];
   const thesis = exitAt != null
     ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 목표는 위쪽 유동성(60일 고점) $${r2(exitAt)}(+${((exitAt - trigger) / R).toFixed(1)}R)에서 전량 정리합니다.`
-    : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
+    : rules.partialFrac > 0
+      ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`
+      : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), +1R에 손절을 매수가로 올리고, $${r2(target)}(+${rules.partialAtR}R)를 넘으면 그때부터 ${trail.label} 종가 이탈까지 전량 보유합니다(중간 익절 없음).`;
   return { setup, label: SETUP_LABEL[setup], quality: Math.round(clamp(q, 0, 100)), reasons, warnings, thesis,
     plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), exitAt: exitAt != null ? r2(exitAt) : undefined, refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
     ict: ictRead(bars, i, rules),
@@ -1114,7 +1119,7 @@ function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
           const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares * (rules.partialFrac ?? 0.5));
           if (half > 0) { const v = half * px, c = v * pos.costRate; cash += v - c; pos.realized += half * (px - pos.entry) - c; pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
           pos.partial = true; pos.stop = Math.max(pos.stop, pos.entry);
-          events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: `+${rules.partialAtR}R 절반 익절 $${r2(px)}` });
+          events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: half > 0 ? `+${rules.partialAtR}R 절반 익절 $${r2(px)}` : `+${rules.partialAtR}R 도달 $${r2(px)}, 이제 ${pos.trailLabel} 이탈까지 전량 보유` });
         }
         if (pos.stop < pos.entry && b.h >= pos.entry + rules.breakevenAtR * pos.R) { pos.stop = pos.entry; events.push({ date: cal[d], symbol: pos.symbol, kind: 'breakeven', text: `+1R 도달, 손절을 매수가 $${r2(pos.entry)}로` }); }
         const ma = maAt(pos.symbol, d, pos.trailMa);
@@ -1996,7 +2001,9 @@ function renderDesk() {
     `<p><b>자리 판단</b> 신고가 돌파(거래량 1.4배 이상), 수축 후 돌파 대기, 상승 추세 속 눌림목, 200일선 위 과매도 반등 네 가지만 삽니다. 하락 추세, RSI 78 초과, 50일선 대비 25% 넘게 뜬 종목은 거릅니다.</p>`,
     `<p><b>고르기</b> 분석 점수 ${R.minQuality}점 이상 중 높은 순, 하루 한 섹터 한 종목. 시장 판정이 선별 진입이면 ${R.picksPerDay.SELECTIVE}개, 축소면 ${R.picksPerDay.LIMIT}개, 대기면 ${R.minQualityWait}점 이상 ${R.picksPerDay.WAIT}개만. 눌림목·수축은 6개월 수익률이 SPY보다 강한 주도주에서만 삽니다.</p>`,
     `<p><b>비중</b> 손절까지 잃는 돈이 계좌의 ${(R.riskPct.SELECTIVE * 100).toFixed(1)}%(선별)~${(R.riskPct.WAIT * 100).toFixed(1)}%(대기)가 되도록 수량을 정합니다. 반등 매매는 절반. 한 종목 최대 ${(R.maxPositionPct * 100).toFixed(0)}%, 동시 보유 ${R.maxOpen}종목.</p>`,
-    `<p><b>매도</b> +1R에 손절을 매수가로 올리고, +${R.partialAtR}R에 절반 익절, 나머지는 종목 변동성에 맞춘 이평선(50일선, 20일 또는 10일 지수이평) 종가 이탈에 정리. ${R.timeStopSessions}거래일 동안 +0.5R을 못 넘으면 정리.</p>`,
+    (R.partialFrac ?? 0.5) > 0
+      ? `<p><b>매도</b> +1R에 손절을 매수가로 올리고, +${R.partialAtR}R에 절반 익절, 나머지는 종목 변동성에 맞춘 이평선(50일선, 20일 또는 10일 지수이평) 종가 이탈에 정리. ${R.timeStopSessions}거래일 동안 +0.5R을 못 넘으면 정리.</p>`
+      : `<p><b>매도</b> +1R에 손절을 매수가로 올리고, 중간 익절 없이 들고 갑니다. +${R.partialAtR}R를 넘으면 그때부터 50일선 종가 이탈에 전량 정리(7년 검증: 30%+ 수익 거래가 두 배, 승률은 26%로 낮아짐). ${R.timeStopSessions}거래일 동안 +0.5R을 못 넘으면 정리.</p>`,
     `<p><b>계좌 보호</b> 열린 포지션이 모두 손절돼도 계좌의 ${(R.maxHeatPct * 100).toFixed(0)}% 넘게 잃지 않게 수량을 줄입니다. 고점 대비 −${(R.ddHalfRisk * 100).toFixed(0)}%면 새 위험을 절반으로, −${(R.ddHalt * 100).toFixed(0)}%면 신규 매수를 멈춥니다. 한 섹터는 ${R.maxSectorOpen}종목까지, 손절된 종목은 ${R.reentryCooldown}거래일 다시 사지 않습니다.</p>`,
     `<p><b>실적 발표</b> 발표 ${R.earningsBlackout}거래일 안이면 새로 사지 않고, +1R 보호가 안 된 포지션은 발표 전 마지막 종가에 정리합니다.</p>`,
     `<p><b>체결 가정</b> 다음 거래일 일봉으로 판정. 같은 날 손절과 목표가 함께 닿으면 손절로 보고, 시가가 계획보다 ${(R.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않습니다. 비용은 매수·매도마다 ${(R.costPerSide * 100).toFixed(1)}%(소형주·$10 미만 ${(R.costSmallPerSide * 100).toFixed(2)}%), 손절은 ${(R.stopSlippage * 100).toFixed(1)}% 밀려 체결된다고 봅니다.</p>`,
@@ -2030,10 +2037,10 @@ function ictLines(ict) {
 const ictBox = (ict) => { const l = ictLines(ict); return l.length ? `<div class="ictbox"><b>ICT·거래량 판독</b> <span class="muted">(참고용, 데스크 매매 규칙 밖)</span><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''; };
 const tradeCard = (t) => `<div class="tc"><div class="s">${esc(t.symbol)}<small>${esc(t.label)} · ${esc(t.cap ?? '')}${t.live === false ? ' · 소급' : ''}</small></div><div class="big ${sign(t.pnlPct)}">${pct(t.pnlPct)}</div>
   <div class="l2">${t.entryDate.slice(5)} → ${t.exitDate.slice(5)} (${t.days}일) · $${t.entry} → $${t.exit}</div><div class="l2 ${sign(t.R)}" style="text-align:right">${t.R >= 0 ? '+' : ''}${t.R.toFixed(2)}R</div>
-  <div class="l3">${esc(t.reason)}${t.partial ? ' (절반 익절 뒤)' : ''}</div></div>`;
+  <div class="l3">${esc(t.reason)}${t.partial && sellsHalf() ? ' (절반 익절 뒤)' : ''}</div></div>`;
 const openCard = (p) => `<div class="tc"><div class="s">${esc(p.symbol)}<small>${esc(p.label)} · ${p.entryDate.slice(5)} 매수${p.live === false ? ' · 소급' : ''}</small></div><div class="big ${sign(p.pnlPct)}">${pct(p.pnlPct)}</div>
   <div class="l2">$${p.entry} → $${p.last} · 손절 $${p.stop}${p.target ? ` · 목표 $${p.target}` : ''}</div><div class="l2 ${sign(p.R)}" style="text-align:right">${p.R >= 0 ? '+' : ''}${p.R.toFixed(2)}R</div>
-  <div class="l3">${p.partial ? `절반 익절, ${esc(p.trailLabel)} 추적` : p.stop >= p.entry ? '본전 손절로 보호' : `${p.days}일째`}${p.weight != null ? ` · 비중 ${pctU(p.weight)}` : ''}</div></div>`;
+  <div class="l3">${p.partial ? `${sellsHalf() ? '절반 익절, ' : '+2R 넘음, '}${esc(p.trailLabel)} 추적` : p.stop >= p.entry ? '본전 손절로 보호' : `${p.days}일째`}${p.weight != null ? ` · 비중 ${pctU(p.weight)}` : ''}</div></div>`;
 
 function renderIct() {
   const D = DATA.desk, I = D?.ict;
@@ -2058,6 +2065,7 @@ function renderIct() {
   $('#i-trades').innerHTML = tr.length ? tr.map(tradeCard).join('') : '<p class="empty" style="padding:12px 0">아직 청산된 거래가 없습니다.</p>';
 }
 
+const sellsHalf = () => (DATA.desk?.rules?.partialFrac ?? 0.5) > 0;
 function pickLookup(D) { const m = new Map(); for (const l of D.ledgers) for (const p of l.picks) m.set(`${l.date}:${p.symbol}`, p); return m; }
 
 function renderOrders() {
@@ -2074,16 +2082,17 @@ function renderOrders() {
     return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(o.pickDate)} 추천</span></header>${rep}
       ${rw('수량', `${n}주`)}${rw('금액', `${usd(n * entry, 0)} (${pctU(n * entry / acct, 0)})`)}<div class="won">${krw(n * entry)}</div>
       ${rw('진입가', `${mkt ? '약 ' : ''}${usd(entry)}`)}${rw('손절가', `${usd(p.plan.stop)} (${pct(p.plan.stop / entry - 1)})`, 'down')}
-      ${rw('1차 익절 (절반)', `${usd(p.plan.target)} (${pct(p.plan.target / entry - 1)})`, 'up')}${rw('나머지 정리', `${esc(p.plan.trailLabel)} 이탈`)}
+      ${sellsHalf() ? `${rw('1차 익절 (절반)', `${usd(p.plan.target)} (${pct(p.plan.target / entry - 1)})`, 'up')}${rw('나머지 정리', `${esc(p.plan.trailLabel)} 이탈`)}` : `${rw('+2R (추적 시작)', `${usd(p.plan.target)} (${pct(p.plan.target / entry - 1)})`, 'up')}${rw('매도', `${esc(p.plan.trailLabel)} 종가 이탈 때 전량`)}`}
       ${rw('최대 손실', `${usd(loss, 0)} · ${krw(loss)}`)}<p class="fine desc">${how}</p></article>`;
   }).join('') : '<p class="empty">내일 넣을 새 주문이 없습니다. 기준을 넘는 자리가 없거나 계좌 위험 한도가 찼습니다.</p>';
   $('#o-note').innerHTML = rows.length
     ? '체결되면 그 자리에서 손절가에 스톱 주문을 거세요. 시가로 산 종목은 실제 체결가로 다시 계산합니다: 손절가는 그대로, 1차 익절가 = 체결가 + 2 × (체결가 − 손절가). 실적 발표 전에 +1R 보호가 안 됐으면 발표 전날 종가에 정리합니다. 이 표는 데스크의 모의 기록을 그대로 옮긴 것이고, 투자 판단과 책임은 본인에게 있습니다.'
     : '';
   $('#o-hold').innerHTML = D.open.length ? D.open.map((p) => {
-    const todo = p.partial ? `절반 익절 끝. 남은 물량은 ${esc(p.trailLabel)} 아래 종가에 정리, 손절 스톱 ${usd(p.stop)} 유지`
-      : p.stop >= p.entry ? `손절 스톱을 매수가 ${usd(p.stop)}로 올려 두기(본전 보호). ${usd(p.target)}에 절반 익절 지정가`
-      : `손절 스톱 ${usd(p.stop)} 유지, ${usd(p.target)}에 절반 익절 지정가. ${Math.max(0, 25 - p.days)}거래일 안에 +0.5R 못 넘으면 정리`;
+    const half = sellsHalf();
+    const todo = p.partial ? (half ? `절반 익절 끝. 남은 물량은 ${esc(p.trailLabel)} 아래 종가에 정리, 손절 스톱 ${usd(p.stop)} 유지` : `+2R 넘음. ${esc(p.trailLabel)} 아래로 종가가 마감하면 전량 정리, 그 전까지 보유. 손절 스톱 ${usd(p.stop)} 유지`)
+      : p.stop >= p.entry ? `손절 스톱을 매수가 ${usd(p.stop)}로 올려 두기(본전 보호). ${half ? `${usd(p.target)}에 절반 익절 지정가` : `중간 익절 없이 보유, +2R ${usd(p.target)}부터 ${esc(p.trailLabel)} 추적`}`
+      : `손절 스톱 ${usd(p.stop)} 유지${half ? `, ${usd(p.target)}에 절반 익절 지정가` : ', 중간 익절 없이 보유'}. ${Math.max(0, 25 - p.days)}거래일 안에 +0.5R 못 넘으면 정리`;
     const rep = p.earnings ? `<p class="warnline">실적 발표 ${dKo(p.earnings)}. 그때까지 +1R 보호(손절가가 매수가 이상)가 안 되면 발표 전날 종가에 정리합니다.</p>` : '';
     return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(p.entryDate)} 매수</span></header>${rep}
       ${rw('매수가', usd(p.entry))}${rw('현재가', usd(p.last))}${rw('수익률', pct(p.pnlPct), sign(p.pnlPct))}${rw('손절 스톱', usd(p.stop), 'down')}<p class="fine desc">${todo}</p></article>`;

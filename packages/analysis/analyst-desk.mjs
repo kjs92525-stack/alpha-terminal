@@ -8,7 +8,7 @@
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 export const DESK_RULES = {
-  version: 5,
+  version: 6,
   startEquity: 100_000,
   costPerSide: 0.001,            // commission + spread, each side (liquid names)
   costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
@@ -35,8 +35,11 @@ export const DESK_RULES = {
   minAtrPct: 0.008,              // daily range under 0.8%: pinned price (pending takeover, etc.), not a trend trade              // skip plans whose stop is further than 12% below the trigger
   maxChase: 0.04,                // never buy an open more than 4% above the planned price
   partialAtR: 2, breakevenAtR: 1,
-  partialFrac: 0.5,              // share sold at +2R; 0 = sell nothing there, only start trailing (let the winner run)
-  trailMa: null,                 // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
+  // v6: 7-year comparison (538 stocks, 2019-10 → 2026-11): selling nothing at +2R and holding the whole position until a
+  // close under the 50-day average lifted expectancy +0.05R → +0.12R (first six years +0.13R, last year +0.08R),
+  // CAGR 2.5% → 3.5%, max drawdown -32% → -26%, and doubled the 30%+ winners (9 → 18). Win rate falls 35% → 26%.
+  partialFrac: 0,                // share sold at +2R; 0 = sell nothing there, only start trailing (let the winner run)
+  trailMa: 'sma50',              // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
   maxMcap: null,                 // e.g. 10e9: only stocks below this market cap (unknown caps pass)
   minAtrPick: null,              // e.g. 0.03: only stocks whose daily range is at least this share of price
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
@@ -336,7 +339,9 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   }[setup];
   const thesis = exitAt != null
     ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 목표는 위쪽 유동성(60일 고점) $${r2(exitAt)}(+${((exitAt - trigger) / R).toFixed(1)}R)에서 전량 정리합니다.`
-    : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
+    : rules.partialFrac > 0
+      ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`
+      : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), +1R에 손절을 매수가로 올리고, $${r2(target)}(+${rules.partialAtR}R)를 넘으면 그때부터 ${trail.label} 종가 이탈까지 전량 보유합니다(중간 익절 없음).`;
   return { setup, label: SETUP_LABEL[setup], quality: Math.round(clamp(q, 0, 100)), reasons, warnings, thesis,
     plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), exitAt: exitAt != null ? r2(exitAt) : undefined, refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
     ict: ictRead(bars, i, rules),
@@ -440,7 +445,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
           const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares * (rules.partialFrac ?? 0.5));
           if (half > 0) { const v = half * px, c = v * pos.costRate; cash += v - c; pos.realized += half * (px - pos.entry) - c; pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
           pos.partial = true; pos.stop = Math.max(pos.stop, pos.entry);
-          events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: `+${rules.partialAtR}R 절반 익절 $${r2(px)}` });
+          events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: half > 0 ? `+${rules.partialAtR}R 절반 익절 $${r2(px)}` : `+${rules.partialAtR}R 도달 $${r2(px)}, 이제 ${pos.trailLabel} 이탈까지 전량 보유` });
         }
         if (pos.stop < pos.entry && b.h >= pos.entry + rules.breakevenAtR * pos.R) { pos.stop = pos.entry; events.push({ date: cal[d], symbol: pos.symbol, kind: 'breakeven', text: `+1R 도달, 손절을 매수가 $${r2(pos.entry)}로` }); }
         const ma = maAt(pos.symbol, d, pos.trailMa);
