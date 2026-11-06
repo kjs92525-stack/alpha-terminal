@@ -1446,7 +1446,9 @@ function renderIct4h() {
   $('#i4-note').innerHTML = `4시간봉에서 스윕 → 구조 전환(MSS)이 나오면 갭(FVG)·오더블록까지 되돌릴 때 지정가로 사고, 쓸고 간 저점 아래 손절, 60봉 고점(위쪽 유동성)에서 전량 정리합니다. `
     + `<b>백테스트(${esc(B.study)})</b>: ${B.limit.n}건, 승률 ${pctU(B.limit.winRate, 0)}, 거래당 +${B.limit.expectancyR.toFixed(2)}R(앞 1년 +${B.limit.first.toFixed(2)}R, 최근 1년 +${B.limit.last.toFixed(2)}R). `
     + `일봉이 50일선 위인 종목만 보면 ${B.trendLimit.n}건, 승률 ${pctU(B.trendLimit.winRate, 0)}, +${B.trendLimit.expectancyR.toFixed(2)}R로 두 해 모두 더 고르게 좋았습니다(<b>추세 일치</b> 표시). `
-    + `계좌 단위가 아니라 신호 하나하나의 결과이고, 2년이라 아직 짧습니다. 실전 기록: 종료 ${S.n}건${S.n ? `, 승률 ${pctU(S.winRate, 0)}, 거래당 ${S.expectancyR >= 0 ? '+' : ''}${S.expectancyR.toFixed(2)}R` : ''}, 보유 ${S.open}, 대기 ${S.waiting}. 기준 시각 ${esc((X.asOf ?? '').slice(0, 10))}.`;
+    + `계좌 단위가 아니라 신호 하나하나의 결과이고, 2년이라 아직 짧습니다. `
+    + (X.recent?.n ? `최근 약 4주 소급: 종료 ${X.recent.n}건, 승률 ${pctU(X.recent.winRate, 0)}, 거래당 ${X.recent.expectancyR >= 0 ? '+' : ''}${X.recent.expectancyR.toFixed(2)}R. ` : '')
+    + `실시간 기록(${esc((X.firstLive ?? '').slice(0, 10))}부터): 종료 ${S.n}건${S.n ? `, 승률 ${pctU(S.winRate, 0)}, 거래당 ${S.expectancyR >= 0 ? '+' : ''}${S.expectancyR.toFixed(2)}R` : ''}, 보유 ${S.open}, 대기 ${S.waiting}. 기준 시각 ${esc((X.asOf ?? '').slice(0, 10))}.`;
   const live = X.signals.filter((s) => s.status === 'waiting' || s.status === 'open').sort((a, b) => (b.trend - a.trend) || (a.t < b.t ? 1 : -1));
   const rw = (k, v, cls = '') => `<div class="row"><span class="k">${k}</span><i aria-hidden="true"></i><span class="v ${cls}">${v}</span></div>`;
   $('#i4-new').innerHTML = live.length ? live.slice(0, 12).map((s) => {

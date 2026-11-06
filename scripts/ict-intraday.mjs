@@ -139,7 +139,7 @@ if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { conso
  * high): every signal in `bars` with its plan and where it stands now. status: waiting (limit not reached yet), expired,
  * cancelled (opened under the stop first), open, won, lost, timeout. trend: the daily close was above its 50-day average.
  */
-export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0 } = {}) {
+export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01 } = {}) {
   const rules = { ...DESK_RULES, mssRaw: true };
   const atr = atrSeries(bars), bias = dailyBias(bars), out = [];
   for (let i = Math.max(62, since); i < bars.length; i++) {
@@ -150,6 +150,7 @@ export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fill
     const zone = m.fvg ? m.fvg[1] : m.ob ? m.ob.hi : (m.swingHigh + bars[i].c) / 2;
     const limit = Math.min(bars[i].c, Math.max(zone, stop + 1.2 * atr[i]));
     if (!(limit > stop) || (limit - stop) / limit > 0.15 || (hi - limit) / (limit - stop) < minRR) continue;
+    if ((limit - stop) / limit < minRiskPct) continue; // a stop under 1% away is noise or a pinned price (pending takeover)
     const s = { t: bars[i].t, day: bars[i].day, close: bars[i].c, limit, stop, target: hi, rr: (hi - limit) / (limit - stop), trend: bias.get(bars[i].day) === true,
       zone: m.fvg ? 'FVG' : m.ob ? '오더블록' : '돌파 구간', sweepLow: m.sweepLow, swingHigh: m.swingHigh, status: 'waiting' };
     let k = i + 1, entry = null;

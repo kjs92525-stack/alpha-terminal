@@ -43,4 +43,5 @@ test('live 4-hour signals carry a plan and a status, and finished results are ke
   const merged = mergeSignals([a], [{ ...a, status: 'open', R: undefined, firstSeen: '2026-11-05' }], 9999, Date.parse('2026-11-06'));
   assert.equal(merged[0].status, 'won', 'a finished signal is not reopened');
   assert.equal(liveStats(merged).n, 1);
+  assert.equal(liveStats(merged, "2026-11-02").n, 0, "a signal from before the live start is not live");
 });
