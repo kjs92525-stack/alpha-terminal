@@ -8,7 +8,7 @@ import { splitMessage } from '../../../packages/analysis/telegram.mjs';
 export interface TgEnv {
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
-  TG_STATE?: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<void> };
+  TG_STATE?: { get(key: string): Promise<string | null>; put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void> };
   SNAPSHOT_BASE_URL?: string;
 }
 interface TgState { chatId: string | null; digestId: string | null }

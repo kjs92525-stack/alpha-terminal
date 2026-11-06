@@ -23,8 +23,9 @@ on:
       - 'packages/pipeline/early-alpha.mjs'
       - '.github/workflows/nightly.yml'
   schedule:
-    # 21:30 UTC Mon-Fri = 06:30 KST Tue-Sat; 17:30 EDT / 16:30 EST — after the close plus the
-    # free feed's 15-minute delay, so the day's final bar is in (results ready ~07:00-07:10 KST)
+    # Backup only. The Cloudflare Worker cron (apps/api/src/nightly-kick.ts) dispatches this at
+    # 16:25 New York time; GitHub's schedule has been firing 4+ hours late. When the data branch
+    # is already fresh (< 8 h) the scheduled run skips itself.
     - cron: '30 21 * * 1-5'
   workflow_dispatch:
     inputs:
@@ -64,6 +65,10 @@ jobs:
               exit 1
             fi
             echo "::notice::Secrets not set ($missing) — scheduled run skipped."
+          elif [ "${{ github.event_name }}" = "schedule" ] && fresh=$(curl -fsS --max-time 20 https://raw.githubusercontent.com/${{ github.repository }}/data/latest.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const h=(Date.now()-Date.parse(JSON.parse(s).generatedAt))/36e5;console.log(h<8?h.toFixed(1):'')})") && [ -n "$fresh" ]; then
+            # The Worker cron (apps/api/src/nightly-kick.ts) already ran this right after the close;
+            # GitHub's schedule fires hours late, so it is only the backup.
+            echo "::notice::Data already refreshed ${fresh}h ago by the post-close start — scheduled backup skipped."
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
