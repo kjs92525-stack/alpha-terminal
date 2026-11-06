@@ -651,7 +651,7 @@ details summary{font-family:var(--sans)}
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 const DESK_RULES = {
-  version: 3,
+  version: 4,
   startEquity: 100_000,
   costPerSide: 0.001,            // commission + spread, each side (liquid names)
   costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
@@ -682,11 +682,12 @@ const DESK_RULES = {
   minPrice: 5,
   minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
   maxAdvPct: 0.01,               // never more than 1% of a day's dollar volume
-  // which chart setups the desk trades. 'structure' (MSS) and volumeRules are off until the multi-year
-  // comparison (scripts/desk-backtest.mjs --variants) shows they help; the backtest switches them on per variant.
+  // which chart setups the desk trades. 3-year comparison (536 stocks, 2023-11 → 2026-11,
+  // scripts/desk-backtest.mjs --variants): MSS alone lost (111 trades, win 25%, -0.20R), so 'structure' stays off;
+  // the volume rules lifted CAGR 5.5% → 8.2% and cut max drawdown -20.5% → -18.3%, so they are on (v4).
   setups: ['breakout', 'base', 'pullback', 'reversal'],
   // volume reading (accumulation vs distribution, quiet pullbacks)
-  volumeRules: false,
+  volumeRules: true,
   // market structure shift (ICT-style, daily bars): sweep of a swing low, then a displacement close through the
   // pullback's last swing high
   mssPivot: 2,                   // a swing point needs this many bars on each side
