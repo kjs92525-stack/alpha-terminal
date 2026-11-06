@@ -8,7 +8,7 @@
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 export const DESK_RULES = {
-  version: 4,
+  version: 5,
   startEquity: 100_000,
   costPerSide: 0.001,            // commission + spread, each side (liquid names)
   costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
@@ -39,12 +39,13 @@ export const DESK_RULES = {
   minPrice: 5,
   minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
   maxAdvPct: 0.01,               // never more than 1% of a day's dollar volume
-  // which chart setups the desk trades. 3-year comparison (536 stocks, 2023-11 → 2026-11,
-  // scripts/desk-backtest.mjs --variants): MSS alone lost (111 trades, win 25%, -0.20R), so 'structure' stays off;
-  // the volume rules lifted CAGR 5.5% → 8.2% and cut max drawdown -20.5% → -18.3%, so they are on (v4).
+  // which chart setups the desk trades. 3-year comparisons (538 stocks, 2023-11 → 2026-11, scripts/desk-backtest.mjs
+  // --variants): ICT structure shifts on daily bars lost in every form (10-20 trades, -0.03 to -0.94R), and the volume
+  // score that looked better on 11-05 lost in the last 12 months (-0.21R vs +0.06R without it), so both stay out of
+  // the account's rules (v5). They are still read and shown on every pick, and ICT signals run in their own book.
   setups: ['breakout', 'base', 'pullback', 'reversal'],
-  // volume reading (accumulation vs distribution, quiet pullbacks)
-  volumeRules: true,
+  // volume reading (accumulation vs distribution, quiet pullbacks) in the quality score
+  volumeRules: false,
   // market structure shift (ICT-style, daily bars): sweep of a swing low, then a displacement close through the
   // pullback's last swing high
   mssPivot: 2,                   // a swing point needs this many bars on each side
@@ -58,6 +59,11 @@ export const DESK_RULES = {
   mssMinRR: 2,                   // ... and only when that target pays at least this many R
   mssDiscount: null,             // e.g. 0.5: the entry must sit in the lower half of the 60-day range (ICT discount)
 };
+/** The ICT book: structure shifts only (sweep → displacement close through the lower high), limit entry in the gap or
+ * order block, stop under the swept low, everything sold at buy-side liquidity (60-day high). Tracked in its own paper
+ * account so its record builds up separately; the 3-year test lost money, so it is shown as unproven. */
+export const ICT_RULES = { ...DESK_RULES, setups: ['structure'], volumeRules: true, mssEntry: 'limit', mssExit: 'liquidity', mssMinRR: 2, mssDiscount: null,
+  minQualityWait: DESK_RULES.minQuality, picksPerDay: { SELECTIVE: 3, LIMIT: 3, UNKNOWN: 3, WAIT: 2 } };
 const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
 
 export const SETUP_LABEL = { breakout: '신고가 돌파', structure: '구조 전환(MSS)', base: '수축 후 돌파 대기', pullback: '추세 눌림목', reversal: '과매도 반등' };
@@ -151,6 +157,42 @@ export function structureShift(bars, i, atr, rules = DESK_RULES) {
   let fvg = null; for (let t = i - 1; t >= s + 1; t--) if (bars[t + 1].l > bars[t - 1].h) { fvg = [bars[t - 1].h, bars[t + 1].l]; break; }
   let ob = null; for (let t = i - 1; t >= s; t--) if (bars[t].c < bars[t].o) { ob = { lo: bars[t].l, hi: bars[t].h }; break; }
   return { swingHigh: H, swingHighIdx: jH, swingLow: L, swingLowIdx: jL, sweepLow, sweepIdx: s, fvg, ob };
+}
+
+/**
+ * What an ICT / volume reader sees on the daily chart at bar i (information only; the desk's rules do not trade it):
+ * last confirmed swing high/low, a recent sweep of sell-side liquidity, the nearest unfilled bullish fair-value gap below
+ * the close, buy-side liquidity above (60-day high), where the close sits in the 60-day range, and the volume character.
+ */
+export function ictRead(bars, i, rules = DESK_RULES) {
+  if (i < 62) return null;
+  const k = rules.mssPivot, c = bars[i].c;
+  const isH = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].h >= bars[j].h) return false; return true; };
+  const isL = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].l <= bars[j].l) return false; return true; };
+  let sh = null, sl = null;
+  for (let j = i - k; j >= Math.max(k, i - 60) && (sh == null || sl == null); j--) { if (sh == null && isH(j)) sh = j; if (sl == null && isL(j)) sl = j; }
+  // a sweep in the last 10 sessions: a low under an earlier swing low, closed back above it within 2 sessions
+  let sweep = null;
+  for (let s = i; s >= Math.max(k + 2, i - 9) && !sweep; s--) {
+    for (let j = s - 1 - k; j >= Math.max(k, s - 40); j--) {
+      if (!isL(j)) continue;
+      if (bars[s].l < bars[j].l) { for (let t = s; t <= Math.min(s + 2, i); t++) if (bars[t].c > bars[j].l) { sweep = { date: s, level: bars[j].l, low: bars[s].l }; break; } }
+      break;
+    }
+  }
+  let fvg = null;
+  for (let t = i - 1; t >= Math.max(1, i - 30) && !fvg; t--) {
+    const lo = bars[t - 1].h, hi = bars[t + 1].l;
+    if (hi > lo && hi < c) { let filled = false; for (let u = t + 2; u <= i; u++) if (bars[u].l <= lo) { filled = true; break; } if (!filled) fvg = [lo, hi]; }
+  }
+  let hi60 = 0, lo60 = Infinity; for (let j = i - 59; j <= i; j++) { hi60 = Math.max(hi60, bars[j].h); lo60 = Math.min(lo60, bars[j].l); }
+  const atr = atrAt(bars, i, 14), mss = structureShift(bars, i, atr, rules), vp = volumeProfile(bars, i);
+  return {
+    swingHigh: sh != null ? r2(bars[sh].h) : null, swingLow: sl != null ? r2(bars[sl].l) : null,
+    sweep: sweep ? { level: r2(sweep.level), low: r2(sweep.low), sessionsAgo: i - sweep.date } : null,
+    fvg: fvg ? fvg.map(r2) : null, buySideLiquidity: r2(hi60), rangePos: hi60 > lo60 ? Math.round((c - lo60) / (hi60 - lo60) * 100) / 100 : null,
+    mss: !!mss, udRatio: vp.udRatio != null ? Math.round(vp.udRatio * 100) / 100 : null, dryUp: vp.dryUp != null ? Math.round(vp.dryUp * 100) / 100 : null,
+  };
 }
 
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -273,6 +315,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
   return { setup, label: SETUP_LABEL[setup], quality: Math.round(clamp(q, 0, 100)), reasons, warnings, thesis,
     plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), exitAt: exitAt != null ? r2(exitAt) : undefined, refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
+    ict: ictRead(bars, i, rules),
     structure: mss ? { swingHigh: r2(mss.swingHigh), swingLow: r2(mss.swingLow), sweepLow: r2(mss.sweepLow), fvg: mss.fvg?.map(r2) ?? null, ob: mss.ob ? { lo: r2(mss.ob.lo), hi: r2(mss.ob.hi) } : null } : undefined,
     snapshot: { close: r2(x.c), rsi: x.rsi != null ? Math.round(x.rsi) : null, atrPct: Math.round(x.atrPct * 1000) / 1000, relVol: Math.round(x.relVol * 10) / 10, ext50: x.ext50 != null ? Math.round(x.ext50 * 1000) / 1000 : null, rs126: rs != null ? Math.round(rs * 1000) / 1000 : null } };
 }
@@ -302,7 +345,7 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
     if (sec && sectors.has(sec)) { passed.push({ symbol: c.symbol, why: `${sec} 이미 담음` }); continue; }
     if (sec) sectors.add(sec);
     picks.push({ symbol: c.symbol, name: c.name ?? c.symbol, sector: c.sector ?? null, cap: capBucket(c.mcap), mcap: c.mcap ?? null, source: c.source, listScore: c.score ?? null,
-      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, structure: a.structure, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null, dilution: c.dilution ?? null });
+      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, structure: a.structure, ict: a.ict, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null, dilution: c.dilution ?? null });
   }
   return { date, market: state, picks, passed };
 }
