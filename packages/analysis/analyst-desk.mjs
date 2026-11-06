@@ -54,6 +54,9 @@ export const DESK_RULES = {
   mssVol: 1.2,                   // ... on at least this multiple of average volume (SIP volume only)
   mssEntry: 'limit',             // 'limit': wait for a retrace into the gap / order block; 'market': next open
   mssValidDays: 5,
+  mssExit: 'desk',               // 'desk': +2R half then trail; 'liquidity': sell everything at the buy-side liquidity (prior high)
+  mssMinRR: 2,                   // ... and only when that target pays at least this many R
+  mssDiscount: null,             // e.g. 0.5: the entry must sit in the lower half of the 60-day range (ICT discount)
 };
 const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
 
@@ -192,6 +195,14 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
       const zone = mss.fvg ? mss.fvg[1] : mss.ob ? mss.ob.hi : (mss.swingHigh + x.c) / 2;
       entryType = 'limit'; trigger = Math.min(x.c, Math.max(zone, stop + 1.2 * x.atr)); validDays = rules.mssValidDays;
     }
+    // dealing range of the last 60 sessions: buy-side liquidity above (its high), discount below its midpoint
+    let rHi = 0, rLo = Infinity; for (let j = Math.max(0, i - 60); j < i; j++) { rHi = Math.max(rHi, bars[j].h); rLo = Math.min(rLo, bars[j].l); }
+    mss.rangeHi = rHi; mss.rangeLo = rLo;
+    if (rules.mssDiscount != null && trigger > rLo + rules.mssDiscount * (rHi - rLo)) return { pass: `구조 전환이지만 진입가가 60일 범위의 ${(((trigger - rLo) / (rHi - rLo)) * 100).toFixed(0)}% 위치(프리미엄 구간)` };
+    if (rules.mssExit === 'liquidity') {
+      mss.liquidity = rHi;
+      if (rHi - trigger < rules.mssMinRR * (trigger - stop)) return { pass: `구조 전환이지만 위 유동성 $${r2(rHi)}까지 ${((rHi - trigger) / (trigger - stop)).toFixed(1)}R, 보상 부족` };
+    }
   } else if (on.has('base') && up && x.c >= x.hi20 * 0.94 && x.c <= x.hi20 && x.contraction < 0.8 && nearHigh >= 0.85) {
     setup = 'base'; entryType = 'buy-stop'; trigger = x.hi20 * 1.002; validDays = 10;
     stop = clamp(x.lo10 - 0.2 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
@@ -249,7 +260,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     else if (!dil.count) reasons.push('최근 180일 증자 공시 없음');
   } else if (meta.dilutionChecked === false) warnings.push('증자 공시를 확인하지 못함');
 
-  const trail = trailFor(x.atrPct), R = trigger - stop, target = trigger + rules.partialAtR * R;
+  const trail = trailFor(x.atrPct), R = trigger - stop, exitAt = mss?.liquidity ?? null, target = exitAt ?? trigger + rules.partialAtR * R;
   const lead = {
     breakout: `20일 고점 $${r2(x.hi20)}을 거래량 ${x.relVol.toFixed(1)}배로 넘었고 52주 고점의 ${(nearHigh * 100).toFixed(0)}% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 ${(rules.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않음).`,
     base: `고점 $${r2(x.hi20)} 바로 아래에서 변동폭이 줄며 쉬고 있습니다. $${r2(trigger)}를 넘는 날 돌파 매수, ${validDays}거래일 안에 안 넘으면 주문을 거둡니다.`,
@@ -257,9 +268,11 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     structure: mss ? `상승 추세의 조정 중 스윙 저점 $${r2(mss.swingLow)} 아래 손절 물량을 $${r2(mss.sweepLow)}까지 쓸고(유동성 사냥) 되돌린 뒤, 오늘 직전 스윙 고점 $${r2(mss.swingHigh)}를 장대 양봉(거래량 ${x.relVol.toFixed(1)}배)으로 종가 돌파해 구조가 상승으로 바뀌었습니다. ${entryType === 'market' ? '다음 날 시가에 삽니다.' : `${mss.fvg ? `갭(FVG) $${r2(mss.fvg[0])}~$${r2(mss.fvg[1])}` : mss.ob ? `오더블록 $${r2(mss.ob.lo)}~$${r2(mss.ob.hi)}` : '돌파 구간'}으로 되돌릴 때 $${r2(trigger)} 지정가로 사고, ${validDays}거래일 안에 안 오면 주문을 거둡니다.`} 쓸고 간 저점 아래가 손절입니다.` : '',
     reversal: `200일선 위 종목이 5일 ${pctS(x.ret5, 0)} 급락해 RSI ${x.rsi.toFixed(0)}입니다. 오늘 고점 $${r2(trigger)} 회복 때만 들어가고, 위험은 평소의 절반만 겁니다.`,
   }[setup];
-  const thesis = `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
+  const thesis = exitAt != null
+    ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 목표는 위쪽 유동성(60일 고점) $${r2(exitAt)}(+${((exitAt - trigger) / R).toFixed(1)}R)에서 전량 정리합니다.`
+    : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
   return { setup, label: SETUP_LABEL[setup], quality: Math.round(clamp(q, 0, 100)), reasons, warnings, thesis,
-    plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
+    plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), exitAt: exitAt != null ? r2(exitAt) : undefined, refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
     structure: mss ? { swingHigh: r2(mss.swingHigh), swingLow: r2(mss.swingLow), sweepLow: r2(mss.sweepLow), fvg: mss.fvg?.map(r2) ?? null, ob: mss.ob ? { lo: r2(mss.ob.lo), hi: r2(mss.ob.hi) } : null } : undefined,
     snapshot: { close: r2(x.c), rsi: x.rsi != null ? Math.round(x.rsi) : null, atrPct: Math.round(x.atrPct * 1000) / 1000, relVol: Math.round(x.relVol * 10) / 10, ext50: x.ext50 != null ? Math.round(x.ext50 * 1000) / 1000 : null, rs126: rs != null ? Math.round(rs * 1000) / 1000 : null } };
 }
@@ -354,6 +367,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
       if (b.o <= pos.stop) { close(pos, d, b.o, pos.stop >= pos.entry ? '본전 손절(갭)' : '손절(갭)'); }
       else if (b.l <= pos.stop) { close(pos, d, Math.min(b.o, pos.stop * (1 - rules.stopSlippage)), pos.stop >= pos.entry ? '본전 손절' : '손절'); }
       else {
+        if (pos.plan?.exitAt != null && b.h >= pos.plan.exitAt) { close(pos, d, Math.max(b.o, pos.plan.exitAt), '유동성 목표 도달'); open.splice(open.indexOf(pos), 1); continue; }
         if (!pos.partial && b.h >= pos.target) {
           const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares / 2);
           if (half > 0) { const v = half * px, c = v * pos.costRate; cash += v - c; pos.realized += half * (px - pos.entry) - c; pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
@@ -402,7 +416,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
       for (const [n, why] of caps) if (n < shares) { shares = n; limit = why; }
       if (shares < 1) { drop('cancelled', limit || '수량 0'); continue; }
       const v = shares * fill; cash -= v + v * rate;
-      const pos = { ...o, shares, initShares: shares, entry: fill, entryIdx: d, R, stop: o.plan.stop, target: fill + rules.partialAtR * R, trailMa: o.plan.trailMa, trailLabel: o.plan.trailLabel,
+      const pos = { ...o, shares, initShares: shares, entry: fill, entryIdx: d, R, stop: o.plan.stop, target: o.plan.exitAt ?? fill + rules.partialAtR * R, trailMa: o.plan.trailMa, trailLabel: o.plan.trailLabel,
         partial: false, realized: 0, entryCost: v * rate, costRate: rate, exitValue: 0, exitShares: 0, sizedBy: limit || null, riskUsed: riskPct };
       pos.realized = 0; open.push(pos); pending.splice(pending.indexOf(o), 1);
       outcomes.set(key(o.pickDate, o.symbol), { status: 'open', entryDate: cal[d], entry: r2(fill), shares });

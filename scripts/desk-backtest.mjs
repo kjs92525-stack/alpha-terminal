@@ -31,20 +31,28 @@ export function bySetup(trades) {
   return g;
 }
 
-// Rule variants compared on the same bars: the current desk against the volume and market-structure additions.
+// Rule variants compared on the same bars: the current desk (v4) against ICT market-structure readings.
+// Trades are also split by entry date: the last 12 months are the out-of-sample check for anything tuned earlier.
 const BASE_SETUPS = ['breakout', 'base', 'pullback', 'reversal'];
+const ICT = { mssEntry: 'limit', mssExit: 'liquidity', mssMinRR: 2, mssDiscount: 0.5 };
 export const VARIANTS = {
-  'v3 (기존)': { setups: BASE_SETUPS, volumeRules: false },
-  '+거래량': { setups: BASE_SETUPS, volumeRules: true },
-  '+거래량+MSS(지정가)': { setups: ['breakout', 'structure', ...BASE_SETUPS.slice(1)], volumeRules: true, mssEntry: 'limit' },
-  '+거래량+MSS(시가)': { setups: ['breakout', 'structure', ...BASE_SETUPS.slice(1)], volumeRules: true, mssEntry: 'market' },
-  'MSS만(지정가)': { setups: ['structure'], volumeRules: true, mssEntry: 'limit' },
-  '돌파+MSS(지정가)': { setups: ['breakout', 'structure'], volumeRules: true, mssEntry: 'limit' },
+  'v4 (현재)': {},
+  'v4 거래량 끔': { volumeRules: false },
+  'ICT만: 스윕+MSS+FVG, 할인, 유동성 목표': { setups: ['structure'], ...ICT },
+  'ICT만, 스윙 3봉·거래량 1.5배': { setups: ['structure'], ...ICT, mssPivot: 3, mssVol: 1.5 },
+  'ICT만, 할인 조건 없음': { setups: ['structure'], ...ICT, mssDiscount: null },
+  'ICT만, 시가 진입': { setups: ['structure'], ...ICT, mssEntry: 'market', mssDiscount: null },
+  'v4 + ICT': { setups: ['breakout', 'structure', ...BASE_SETUPS.slice(1)], ...ICT },
+  '돌파 + ICT': { setups: ['breakout', 'structure'], ...ICT },
+  '돌파만': { setups: ['breakout'] },
 };
+const half = (trades) => { const n = trades.length, w = trades.filter((t) => t.R > 0).length, R = trades.reduce((a, t) => a + t.R, 0); return { n, winRate: n ? w / n : null, expectancyR: n ? R / n : null }; };
 export function compareVariants(payload, meta, { years = 3 } = {}) {
   return Object.entries(VARIANTS).map(([name, v]) => {
     const r = runBacktest(payload, meta, { years, rules: { ...DESK_RULES, ...v } }), s = r.stats;
-    return { name, trades: s.closed, winRate: s.winRate, expectancyR: s.expectancyR, profitFactor: s.profitFactor, totalReturn: s.totalReturn, cagr: r.cagr, spyCagr: r.spyCagr, maxDrawdown: s.maxDrawdown, exposure: r.exposure, bySetup: r.bySetup };
+    const split = new Date(Date.parse(r.to) - 365 * 864e5).toISOString().slice(0, 10);
+    return { name, trades: s.closed, winRate: s.winRate, expectancyR: s.expectancyR, profitFactor: s.profitFactor, totalReturn: s.totalReturn, cagr: r.cagr, spyCagr: r.spyCagr, maxDrawdown: s.maxDrawdown, exposure: r.exposure, bySetup: r.bySetup,
+      split, inSample: half(r.trades.filter((t) => t.entryDate < split)), outOfSample: half(r.trades.filter((t) => t.entryDate >= split)) };
   });
 }
 
@@ -133,7 +141,7 @@ async function main() {
     const rows = compareVariants(payload, meta, { years });
     const p = (x) => (x == null ? '   -  ' : `${(x * 100).toFixed(1).padStart(5)}%`);
     for (const r of rows) {
-      console.log(`VARIANT ${r.name.padEnd(18)} trades ${String(r.trades).padStart(4)}  win ${p(r.winRate)}  exp ${r.expectancyR?.toFixed(2)}R  PF ${r.profitFactor?.toFixed(2)}  CAGR ${p(r.cagr)} (SPY ${p(r.spyCagr)})  maxDD ${p(r.maxDrawdown)}  exposure ${p(r.exposure)}`);
+      console.log(`VARIANT ${r.name}\n    trades ${String(r.trades).padStart(4)}  win ${p(r.winRate)}  exp ${r.expectancyR?.toFixed(2)}R  PF ${r.profitFactor?.toFixed(2)}  CAGR ${p(r.cagr)} (SPY ${p(r.spyCagr)})  maxDD ${p(r.maxDrawdown)}  exposure ${p(r.exposure)}\n    학습(~${r.split}) ${r.inSample.n}건 승률 ${p(r.inSample.winRate)} ${r.inSample.expectancyR?.toFixed(2)}R | 검증(최근 1년) ${r.outOfSample.n}건 승률 ${p(r.outOfSample.winRate)} ${r.outOfSample.expectancyR?.toFixed(2)}R`);
       for (const [k, a] of Object.entries(r.bySetup)) console.log(`    ${k.padEnd(10)} ${String(a.n).padStart(4)}  win ${p(a.winRate)}  exp ${a.expectancyR.toFixed(2)}R  sum ${a.sumR}R`);
     }
     if (arg('variants-out')) { mkdirSync(dirname(arg('variants-out')), { recursive: true }); writeFileSync(arg('variants-out'), JSON.stringify({ generatedAt: new Date().toISOString(), years, variants: rows })); }
