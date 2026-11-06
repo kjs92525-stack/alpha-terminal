@@ -8,7 +8,7 @@
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 export const DESK_RULES = {
-  version: 4,
+  version: 5,
   startEquity: 100_000,
   costPerSide: 0.001,            // commission + spread, each side (liquid names)
   costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
@@ -35,16 +35,21 @@ export const DESK_RULES = {
   minAtrPct: 0.008,              // daily range under 0.8%: pinned price (pending takeover, etc.), not a trend trade              // skip plans whose stop is further than 12% below the trigger
   maxChase: 0.04,                // never buy an open more than 4% above the planned price
   partialAtR: 2, breakevenAtR: 1,
+  partialFrac: 0.5,              // share sold at +2R; 0 = sell nothing there, only start trailing (let the winner run)
+  trailMa: null,                 // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
+  maxMcap: null,                 // e.g. 10e9: only stocks below this market cap (unknown caps pass)
+  minAtrPick: null,              // e.g. 0.03: only stocks whose daily range is at least this share of price
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
   minPrice: 5,
   minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
   maxAdvPct: 0.01,               // never more than 1% of a day's dollar volume
-  // which chart setups the desk trades. 3-year comparison (536 stocks, 2023-11 → 2026-11,
-  // scripts/desk-backtest.mjs --variants): MSS alone lost (111 trades, win 25%, -0.20R), so 'structure' stays off;
-  // the volume rules lifted CAGR 5.5% → 8.2% and cut max drawdown -20.5% → -18.3%, so they are on (v4).
+  // which chart setups the desk trades. 3-year comparisons (538 stocks, 2023-11 → 2026-11, scripts/desk-backtest.mjs
+  // --variants): ICT structure shifts on daily bars lost in every form (10-20 trades, -0.03 to -0.94R), and the volume
+  // score that looked better on 11-05 lost in the last 12 months (-0.21R vs +0.06R without it), so both stay out of
+  // the account's rules (v5). They are still read and shown on every pick, and ICT signals run in their own book.
   setups: ['breakout', 'base', 'pullback', 'reversal'],
-  // volume reading (accumulation vs distribution, quiet pullbacks)
-  volumeRules: true,
+  // volume reading (accumulation vs distribution, quiet pullbacks) in the quality score
+  volumeRules: false,
   // market structure shift (ICT-style, daily bars): sweep of a swing low, then a displacement close through the
   // pullback's last swing high
   mssPivot: 2,                   // a swing point needs this many bars on each side
@@ -54,7 +59,19 @@ export const DESK_RULES = {
   mssVol: 1.2,                   // ... on at least this multiple of average volume (SIP volume only)
   mssEntry: 'limit',             // 'limit': wait for a retrace into the gap / order block; 'market': next open
   mssValidDays: 5,
+  mssExit: 'desk',               // 'desk': +2R half then trail; 'liquidity': sell everything at the buy-side liquidity (prior high)
+  mssMinRR: 2,                   // ... and only when that target pays at least this many R
+  mssDiscount: null,             // e.g. 0.5: the entry must sit in the lower half of the 60-day range (ICT discount)
+  mssTf: 'D',                    // 'D': daily structure; 'W': weekly structure (rolling 5-session bars ending today)
+  mssRaw: false,                 // research: no trend / relative-strength / volume filters on the structure setup
+  mssVolReq: null,               // e.g. 1.5: the shift bar's volume must be this multiple of the prior 20 bars' average (on its own timeframe)
 };
+/** The ICT book: a sweep of a swing low, then a displacement close through the lower swing high (MSS), bought at the next
+ * open, stop under the swept low, everything sold at buy-side liquidity (60-day high). No trend / strength / volume filters:
+ * in the 3-year test (538 stocks) this raw daily form had the most trades and the best result of the ICT variants
+ * (92 trades, win 37%, -0.00R; first two years -0.10R, last year +0.16R), so it runs in its own paper account. */
+export const ICT_RULES = { ...DESK_RULES, setups: ['structure'], mssRaw: true, volumeRules: false, mssEntry: 'market', mssExit: 'liquidity', mssMinRR: 1.5, mssDiscount: null,
+  minQuality: 0, minQualityWait: 0, picksPerDay: { SELECTIVE: 3, LIMIT: 3, UNKNOWN: 3, WAIT: 2 } };
 const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
 
 export const SETUP_LABEL = { breakout: '신고가 돌파', structure: '구조 전환(MSS)', base: '수축 후 돌파 대기', pullback: '추세 눌림목', reversal: '과매도 반등' };
@@ -105,6 +122,13 @@ export function distributionDays(bars, i, atrPct, rules = DESK_RULES) {
   }
   return out;
 }
+/** Rolling weekly bars: 5-session blocks ending at bar i (the last block ends today). */
+export function weeklyBars(bars, i) {
+  const out = [];
+  for (let e = i; e - 4 >= 0; e -= 5) { let h = -Infinity, l = Infinity, v = 0; for (let j = e - 4; j <= e; j++) { h = Math.max(h, bars[j].h); l = Math.min(l, bars[j].l); v += bars[j].v; } out.push({ o: bars[e - 4].o, h, l, c: bars[e].c, v }); }
+  return out.reverse();
+}
+
 /** Volume character over the last n sessions: up-day volume / down-day volume, and the last 5 days' volume vs the n-day average. */
 export function volumeProfile(bars, i, n = 50) {
   let up = 0, dn = 0, all = 0, k = 0;
@@ -121,7 +145,7 @@ export function volumeProfile(bars, i, n = 50) {
  */
 export function structureShift(bars, i, atr, rules = DESK_RULES) {
   const k = rules.mssPivot, b = bars[i];
-  if (i < 60 || !(atr > 0)) return null;
+  if (i < rules.mssLookback + 2 * k + 2 || !(atr > 0)) return null;
   const swingHigh = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].h >= bars[j].h) return false; return true; };
   const swingLow = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].l <= bars[j].l) return false; return true; };
   // the pullback's last swing high, confirmed before today, that today closes through for the first time
@@ -144,10 +168,49 @@ export function structureShift(bars, i, atr, rules = DESK_RULES) {
   // displacement
   const range = b.h - b.l, body = b.c - b.o;
   if (range < rules.mssDisplacementAtr * atr || body < rules.mssBody * range) return null;
+  let volMult = null;
+  { let v = 0, n = 0; for (let j = Math.max(0, i - 20); j < i; j++) { v += bars[j].v; n++; } if (n && v > 0) volMult = b.v / (v / n); }
+  if (rules.mssVolReq != null && !(volMult >= rules.mssVolReq)) return null;          // a shift nobody traded is not a shift
   // the latest bullish fair-value gap in the leg up from the sweep, and the last down candle before it (order block)
   let fvg = null; for (let t = i - 1; t >= s + 1; t--) if (bars[t + 1].l > bars[t - 1].h) { fvg = [bars[t - 1].h, bars[t + 1].l]; break; }
   let ob = null; for (let t = i - 1; t >= s; t--) if (bars[t].c < bars[t].o) { ob = { lo: bars[t].l, hi: bars[t].h }; break; }
-  return { swingHigh: H, swingHighIdx: jH, swingLow: L, swingLowIdx: jL, sweepLow, sweepIdx: s, fvg, ob };
+  return { swingHigh: H, swingHighIdx: jH, swingLow: L, swingLowIdx: jL, sweepLow, sweepIdx: s, fvg, ob, volMult: volMult != null ? Math.round(volMult * 10) / 10 : null };
+}
+
+/**
+ * What an ICT / volume reader sees on the daily chart at bar i (information only; the desk's rules do not trade it):
+ * last confirmed swing high/low, a recent sweep of sell-side liquidity, the nearest unfilled bullish fair-value gap below
+ * the close, buy-side liquidity above (60-day high), where the close sits in the 60-day range, and the volume character.
+ */
+export function ictRead(bars, i, rules = DESK_RULES) {
+  if (i < 62) return null;
+  const k = rules.mssPivot, c = bars[i].c;
+  const isH = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].h >= bars[j].h) return false; return true; };
+  const isL = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].l <= bars[j].l) return false; return true; };
+  let sh = null, sl = null;
+  for (let j = i - k; j >= Math.max(k, i - 60) && (sh == null || sl == null); j--) { if (sh == null && isH(j)) sh = j; if (sl == null && isL(j)) sl = j; }
+  // a sweep in the last 10 sessions: a low under an earlier swing low, closed back above it within 2 sessions
+  let sweep = null;
+  for (let s = i; s >= Math.max(k + 2, i - 9) && !sweep; s--) {
+    for (let j = s - 1 - k; j >= Math.max(k, s - 40); j--) {
+      if (!isL(j)) continue;
+      if (bars[s].l < bars[j].l) { for (let t = s; t <= Math.min(s + 2, i); t++) if (bars[t].c > bars[j].l) { sweep = { date: s, level: bars[j].l, low: bars[s].l }; break; } }
+      break;
+    }
+  }
+  let fvg = null;
+  for (let t = i - 1; t >= Math.max(1, i - 30) && !fvg; t--) {
+    const lo = bars[t - 1].h, hi = bars[t + 1].l;
+    if (hi > lo && hi < c) { let filled = false; for (let u = t + 2; u <= i; u++) if (bars[u].l <= lo) { filled = true; break; } if (!filled) fvg = [lo, hi]; }
+  }
+  let hi60 = 0, lo60 = Infinity; for (let j = i - 59; j <= i; j++) { hi60 = Math.max(hi60, bars[j].h); lo60 = Math.min(lo60, bars[j].l); }
+  const atr = atrAt(bars, i, 14), mss = structureShift(bars, i, atr, rules), vp = volumeProfile(bars, i);
+  return {
+    swingHigh: sh != null ? r2(bars[sh].h) : null, swingLow: sl != null ? r2(bars[sl].l) : null,
+    sweep: sweep ? { level: r2(sweep.level), low: r2(sweep.low), sessionsAgo: i - sweep.date } : null,
+    fvg: fvg ? fvg.map(r2) : null, buySideLiquidity: r2(hi60), rangePos: hi60 > lo60 ? Math.round((c - lo60) / (hi60 - lo60) * 100) / 100 : null,
+    mss: !!mss, udRatio: vp.udRatio != null ? Math.round(vp.udRatio * 100) / 100 : null, dryUp: vp.dryUp != null ? Math.round(vp.dryUp * 100) / 100 : null,
+  };
 }
 
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -173,9 +236,10 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   const dil = meta.dilution ?? null; // edge-signals dilutionSignal() over 180 days, or null when not checked
   const recentOffer = dil?.offering ? dil.recent.find((d) => /^424B/i.test(d.form) && Date.parse(meta.asOf ?? d.date) - Date.parse(d.date) <= rules.offeringBlackoutDays * 864e5) : null;
   if (recentOffer) return { pass: `${recentOffer.date} 증자 공시(${recentOffer.form}), 매물 부담으로 제외` };
-  if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200) return { pass: '200일선 아래 하락 추세' };
+  if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200 && !(rules.mssRaw && (rules.setups ?? []).includes('structure'))) return { pass: '200일선 아래 하락 추세' };
   if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
   if (x.atrPct < rules.minAtrPct) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님` };
+  if (rules.minAtrPick && x.atrPct < rules.minAtrPick) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%, 큰 수익을 노리기엔 움직임이 작음` };
   if (x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
   if (x.ext50 != null && x.ext50 > 0.25) return { pass: `50일선 대비 ${pctS(x.ext50, 0)} 과도한 이격` };
 
@@ -185,12 +249,25 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (on.has('breakout') && up && x.c > x.hi20 && nearHigh >= 0.97 && x.relVol >= 1.4 && x.ret1 > 0) {
     setup = 'breakout'; entryType = 'market'; trigger = x.c; validDays = 1;
     stop = clamp(x.lo5 - 0.25 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
-  } else if (on.has('structure') && up && volOk(rules.mssVol) && (mss = structureShift(bars, i, x.atr, rules))) {
-    setup = 'structure'; stop = mss.sweepLow - 0.2 * x.atr;
+  } else if (on.has('structure') && (rules.mssRaw || (up && volOk(rules.mssVol))) && (mss = (() => {
+    const tf = rules.mssTf === 'W' ? weeklyBars(bars, i) : bars, ti = rules.mssTf === 'W' ? tf.length - 1 : i, ta = rules.mssTf === 'W' ? atrAt(tf, ti, 14) : x.atr;
+    const m = structureShift(tf, ti, ta, rules); if (m) { m.tfAtr = ta; m.tf = tf; } return m;
+  })())) {
+    setup = 'structure'; stop = mss.sweepLow - 0.2 * (rules.mssTf === 'W' ? x.atr : x.atr);
     if (rules.mssEntry === 'market') { entryType = 'market'; trigger = x.c; validDays = 1; }
     else { // retrace into the gap (its top) or the order block (its top), never below the old swing high's midpoint to the close
       const zone = mss.fvg ? mss.fvg[1] : mss.ob ? mss.ob.hi : (mss.swingHigh + x.c) / 2;
       entryType = 'limit'; trigger = Math.min(x.c, Math.max(zone, stop + 1.2 * x.atr)); validDays = rules.mssValidDays;
+    }
+    // dealing range (60 sessions, or 26 weeks on the weekly chart): buy-side liquidity above (its high), discount below its midpoint
+    const rb = mss.tf, re = rules.mssTf === 'W' ? rb.length - 1 : i, rn = rules.mssTf === 'W' ? 26 : 60;
+    let rHi = 0, rLo = Infinity; for (let j = Math.max(0, re - rn); j < re; j++) { rHi = Math.max(rHi, rb[j].h); rLo = Math.min(rLo, rb[j].l); }
+    delete mss.tf;
+    mss.rangeHi = rHi; mss.rangeLo = rLo;
+    if (rules.mssDiscount != null && trigger > rLo + rules.mssDiscount * (rHi - rLo)) return { pass: `구조 전환이지만 진입가가 60일 범위의 ${(((trigger - rLo) / (rHi - rLo)) * 100).toFixed(0)}% 위치(프리미엄 구간)` };
+    if (rules.mssExit === 'liquidity') {
+      mss.liquidity = rHi;
+      if (rHi - trigger < rules.mssMinRR * (trigger - stop)) return { pass: `구조 전환이지만 위 유동성 $${r2(rHi)}까지 ${((rHi - trigger) / (trigger - stop)).toFixed(1)}R, 보상 부족` };
     }
   } else if (on.has('base') && up && x.c >= x.hi20 * 0.94 && x.c <= x.hi20 && x.contraction < 0.8 && nearHigh >= 0.85) {
     setup = 'base'; entryType = 'buy-stop'; trigger = x.hi20 * 1.002; validDays = 10;
@@ -210,7 +287,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   const reasons = [], warnings = [];
   const rs = x.ret126 != null && meta.spyRet126 != null ? x.ret126 - meta.spyRet126 : null;
   // buy weakness only in leaders: a pullback or base in a stock lagging the market is not a setup
-  if ((setup === 'pullback' || setup === 'base' || setup === 'structure') && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
+  if ((setup === 'pullback' || setup === 'base' || (setup === 'structure' && !rules.mssRaw)) && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
   // a pullback is quiet: sellers hitting the stock on heavy volume is a breakdown, not a buying chance
   const dist = distributionDays(bars, i, x.atrPct, rules);
   if (dist.length && (setup === 'pullback' || setup === 'base' || setup === 'reversal')) {
@@ -249,7 +326,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     else if (!dil.count) reasons.push('최근 180일 증자 공시 없음');
   } else if (meta.dilutionChecked === false) warnings.push('증자 공시를 확인하지 못함');
 
-  const trail = trailFor(x.atrPct), R = trigger - stop, target = trigger + rules.partialAtR * R;
+  const trail = rules.trailMa ? { ma: rules.trailMa, label: { sma50: '50일선', ema20: '20일 지수이평', ema10: '10일 지수이평' }[rules.trailMa] } : trailFor(x.atrPct), R = trigger - stop, exitAt = mss?.liquidity ?? null, target = exitAt ?? trigger + rules.partialAtR * R;
   const lead = {
     breakout: `20일 고점 $${r2(x.hi20)}을 거래량 ${x.relVol.toFixed(1)}배로 넘었고 52주 고점의 ${(nearHigh * 100).toFixed(0)}% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 ${(rules.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않음).`,
     base: `고점 $${r2(x.hi20)} 바로 아래에서 변동폭이 줄며 쉬고 있습니다. $${r2(trigger)}를 넘는 날 돌파 매수, ${validDays}거래일 안에 안 넘으면 주문을 거둡니다.`,
@@ -257,9 +334,12 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     structure: mss ? `상승 추세의 조정 중 스윙 저점 $${r2(mss.swingLow)} 아래 손절 물량을 $${r2(mss.sweepLow)}까지 쓸고(유동성 사냥) 되돌린 뒤, 오늘 직전 스윙 고점 $${r2(mss.swingHigh)}를 장대 양봉(거래량 ${x.relVol.toFixed(1)}배)으로 종가 돌파해 구조가 상승으로 바뀌었습니다. ${entryType === 'market' ? '다음 날 시가에 삽니다.' : `${mss.fvg ? `갭(FVG) $${r2(mss.fvg[0])}~$${r2(mss.fvg[1])}` : mss.ob ? `오더블록 $${r2(mss.ob.lo)}~$${r2(mss.ob.hi)}` : '돌파 구간'}으로 되돌릴 때 $${r2(trigger)} 지정가로 사고, ${validDays}거래일 안에 안 오면 주문을 거둡니다.`} 쓸고 간 저점 아래가 손절입니다.` : '',
     reversal: `200일선 위 종목이 5일 ${pctS(x.ret5, 0)} 급락해 RSI ${x.rsi.toFixed(0)}입니다. 오늘 고점 $${r2(trigger)} 회복 때만 들어가고, 위험은 평소의 절반만 겁니다.`,
   }[setup];
-  const thesis = `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
+  const thesis = exitAt != null
+    ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 목표는 위쪽 유동성(60일 고점) $${r2(exitAt)}(+${((exitAt - trigger) / R).toFixed(1)}R)에서 전량 정리합니다.`
+    : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`;
   return { setup, label: SETUP_LABEL[setup], quality: Math.round(clamp(q, 0, 100)), reasons, warnings, thesis,
-    plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
+    plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), exitAt: exitAt != null ? r2(exitAt) : undefined, refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
+    ict: ictRead(bars, i, rules),
     structure: mss ? { swingHigh: r2(mss.swingHigh), swingLow: r2(mss.swingLow), sweepLow: r2(mss.sweepLow), fvg: mss.fvg?.map(r2) ?? null, ob: mss.ob ? { lo: r2(mss.ob.lo), hi: r2(mss.ob.hi) } : null } : undefined,
     snapshot: { close: r2(x.c), rsi: x.rsi != null ? Math.round(x.rsi) : null, atrPct: Math.round(x.atrPct * 1000) / 1000, relVol: Math.round(x.relVol * 10) / 10, ext50: x.ext50 != null ? Math.round(x.ext50 * 1000) / 1000 : null, rs126: rs != null ? Math.round(rs * 1000) / 1000 : null } };
 }
@@ -274,6 +354,7 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
     if (seen.has(c.symbol)) continue; seen.add(c.symbol);
     if (FUND_NAME.test(c.name ?? '') || ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'UPRO', 'SPXL', 'IWM'].includes(c.symbol)) { passed.push({ symbol: c.symbol, why: 'ETF·레버리지 상품 제외' }); continue; }
     if (busy.has(c.symbol)) { passed.push({ symbol: c.symbol, why: '이미 보유·주문 중' }); continue; }
+    if (rules.maxMcap && c.mcap && c.mcap > rules.maxMcap) { passed.push({ symbol: c.symbol, why: `시가총액 $${(c.mcap / 1e9).toFixed(0)}B, 중소형주만 봄` }); continue; }
     if (cooldown.has(c.symbol)) { passed.push({ symbol: c.symbol, why: `${cooldown.get(c.symbol)} 손절 뒤 ${rules.reentryCooldown}거래일 쉬는 중` }); continue; }
     const a = analyze(c.bars, c.i, { score: c.score, spyRet126, volumeReliable, earningsIn: c.earningsIn ?? null, earningsChecked, dilution: c.dilution ?? null, dilutionChecked: c.dilutionChecked ?? null, asOf: date }, rules);
     if (a.pass) { passed.push({ symbol: c.symbol, why: a.pass }); continue; }
@@ -289,7 +370,7 @@ export function pickForDay({ date, candidates, market, spyRet126, busy = new Set
     if (sec && sectors.has(sec)) { passed.push({ symbol: c.symbol, why: `${sec} 이미 담음` }); continue; }
     if (sec) sectors.add(sec);
     picks.push({ symbol: c.symbol, name: c.name ?? c.symbol, sector: c.sector ?? null, cap: capBucket(c.mcap), mcap: c.mcap ?? null, source: c.source, listScore: c.score ?? null,
-      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, structure: a.structure, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null, dilution: c.dilution ?? null });
+      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, structure: a.structure, ict: a.ict, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null, dilution: c.dilution ?? null });
   }
   return { date, market: state, picks, passed };
 }
@@ -354,8 +435,9 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
       if (b.o <= pos.stop) { close(pos, d, b.o, pos.stop >= pos.entry ? '본전 손절(갭)' : '손절(갭)'); }
       else if (b.l <= pos.stop) { close(pos, d, Math.min(b.o, pos.stop * (1 - rules.stopSlippage)), pos.stop >= pos.entry ? '본전 손절' : '손절'); }
       else {
+        if (pos.plan?.exitAt != null && b.h >= pos.plan.exitAt) { close(pos, d, Math.max(b.o, pos.plan.exitAt), '유동성 목표 도달'); open.splice(open.indexOf(pos), 1); continue; }
         if (!pos.partial && b.h >= pos.target) {
-          const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares / 2);
+          const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares * (rules.partialFrac ?? 0.5));
           if (half > 0) { const v = half * px, c = v * pos.costRate; cash += v - c; pos.realized += half * (px - pos.entry) - c; pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
           pos.partial = true; pos.stop = Math.max(pos.stop, pos.entry);
           events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: `+${rules.partialAtR}R 절반 익절 $${r2(px)}` });
@@ -402,7 +484,7 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
       for (const [n, why] of caps) if (n < shares) { shares = n; limit = why; }
       if (shares < 1) { drop('cancelled', limit || '수량 0'); continue; }
       const v = shares * fill; cash -= v + v * rate;
-      const pos = { ...o, shares, initShares: shares, entry: fill, entryIdx: d, R, stop: o.plan.stop, target: fill + rules.partialAtR * R, trailMa: o.plan.trailMa, trailLabel: o.plan.trailLabel,
+      const pos = { ...o, shares, initShares: shares, entry: fill, entryIdx: d, R, stop: o.plan.stop, target: o.plan.exitAt ?? fill + rules.partialAtR * R, trailMa: o.plan.trailMa, trailLabel: o.plan.trailLabel,
         partial: false, realized: 0, entryCost: v * rate, costRate: rate, exitValue: 0, exitShares: 0, sizedBy: limit || null, riskUsed: riskPct };
       pos.realized = 0; open.push(pos); pending.splice(pending.indexOf(o), 1);
       outcomes.set(key(o.pickDate, o.symbol), { status: 'open', entryDate: cal[d], entry: r2(fill), shares });

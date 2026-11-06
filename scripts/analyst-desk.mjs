@@ -4,7 +4,7 @@
 // Usage: node scripts/analyst-desk.mjs --data data-branch --bars data-branch/sim/bars.json [--out data-branch]
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { pickForDay, replayDesk, deskStats, deskVerdict, selectionEdge, DESK_RULES } from '../packages/analysis/analyst-desk.mjs';
+import { pickForDay, replayDesk, deskStats, deskVerdict, selectionEdge, DESK_RULES, ICT_RULES } from '../packages/analysis/analyst-desk.mjs';
 import { dilutionSignal } from '../packages/analysis/edge-signals.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
@@ -15,7 +15,7 @@ const dated = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => /^\d{4}
 export function barsAccess(payload) {
   const cache = new Map();
   const earnings = payload.earnings ?? null;
-  return { cal: payload.cal, gates: payload.gates ?? {},
+  return { cal: payload.cal, gates: payload.gates ?? {}, symbols: Object.keys(payload.bars ?? {}),
     volumeReliable: payload.volumeReliable ?? /feed=sip/.test(payload.source ?? ''),
     earningsChecked: payload.earningsChecked ?? (earnings ? true : null),
     earnings: earnings ? (sym) => earnings[sym] : null, // undefined: this symbol is not in the calendar
@@ -51,32 +51,65 @@ export function candidatesFor(doc, data, d, mcap) {
 }
 function spyRet126(data, d) { const x = data.get('SPY'); const i = d - (x?.s ?? 0); return x && i >= 126 ? x.bars[i].c / x.bars[i - 126].c - 1 : null; }
 /** state of the account as of session d: symbols held or with a working order, and names cooling off after a stop */
-function stateAt(ledgers, data, d) {
+function stateAt(ledgers, data, d, rules = DESK_RULES) {
   if (!ledgers.length) return { busy: new Set(), cooldown: new Map() };
-  const r = replayDesk(ledgers, { ...data, cal: data.cal.slice(0, d + 1), get: data.get.bind(data) });
+  const r = replayDesk(ledgers, { ...data, cal: data.cal.slice(0, d + 1), get: data.get.bind(data) }, rules);
   const cooldown = new Map();
-  for (const [sym, date] of Object.entries(r.stoppedAt)) { const k = data.cal.indexOf(date); if (k >= 0 && d - k < DESK_RULES.reentryCooldown) cooldown.set(sym, date.slice(5)); }
+  for (const [sym, date] of Object.entries(r.stoppedAt)) { const k = data.cal.indexOf(date); if (k >= 0 && d - k < rules.reentryCooldown) cooldown.set(sym, date.slice(5)); }
   return { busy: new Set([...r.open.map((p) => p.symbol), ...r.pending.map((p) => p.symbol)]), cooldown };
 }
 
-export function runDesk({ docs, latest, data, stored, today }) {
-  const mcap = new Map(); for (const k of ['mid', 'short']) for (const r of latest?.[k] ?? []) if (r.mcap) mcap.set(r.symbol, r.mcap);
+/** One book of daily picks: stored days are kept as they are, missing days are picked with that day's data only. */
+function runBook({ docs, latest, data, stored, today, mcap, rules, universe, candidatesOf = (doc, d) => candidatesFor(doc, data, d, mcap) }) {
   const liveStart = stored.length ? stored[0].date : null;
-  const ledgers = [], created = [], universe = new Map();
+  const ledgers = [], created = [];
   for (const doc of docs) {
     const d = calIdx(data.cal, doc.asOf); if (d < 0 || data.cal[d] !== doc.asOf) continue; // need that day's close
-    const cands = candidatesFor(doc, data, d, mcap);
-    universe.set(doc.asOf, [...new Set(cands.map((c) => c.symbol))]);
+    const cands = candidatesOf(doc, d);
+    universe?.set(doc.asOf, [...new Set(cands.map((c) => c.symbol))]);
     const have = stored.find((s) => s.date === doc.asOf);
     if (have) { ledgers.push(have); continue; }
     const market = data.gates[doc.asOf] ?? (doc.asOf === latest?.asOf ? latest?.marketState : null) ?? 'UNKNOWN';
-    const { busy, cooldown } = stateAt(ledgers, data, d);
-    const res = pickForDay({ date: doc.asOf, candidates: cands, market, spyRet126: spyRet126(data, d), busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked });
+    const { busy, cooldown } = stateAt(ledgers, data, d, rules);
+    const res = pickForDay({ date: doc.asOf, candidates: cands, market, spyRet126: spyRet126(data, d), busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked }, rules);
     const live = doc.asOf === today;
-    const entry = { date: doc.asOf, rulesVersion: DESK_RULES.version, live, backfill: !live, late: !live && liveStart != null && doc.asOf > liveStart, createdAt: new Date().toISOString(), market: res.market, picks: res.picks, passed: res.passed.slice(0, 40) };
+    const entry = { date: doc.asOf, rulesVersion: rules.version, live, backfill: !live, late: !live && liveStart != null && doc.asOf > liveStart, createdAt: new Date().toISOString(), market: res.market, picks: res.picks, passed: res.passed.slice(0, 40) };
     ledgers.push(entry); if (live) created.push(entry);
   }
   ledgers.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return { ledgers, created };
+}
+
+/** The ICT book's own paper account (see ICT_RULES): same candidates, structure shifts only. */
+function ictBook({ docs, latest, data, stored, today, mcap }) {
+  // every stock with bars, not only that day's ranking lists: structure shifts are rare (about one a week)
+  const names = new Map(); for (const k of ['mid', 'short']) for (const r of latest?.[k] ?? []) if (!names.has(r.symbol)) names.set(r.symbol, r);
+  const symbols = (data.symbols ?? []).filter((s) => s !== 'SPY' && s !== 'QQQ');
+  const candidatesOf = (doc, d) => {
+    const listed = new Map(candidatesFor(doc, data, d, mcap).map((c) => [c.symbol, c]));
+    const out = [...listed.values()];
+    for (const sym of symbols) {
+      if (listed.has(sym)) continue;
+      const x = data.get(sym); if (!x || d < x.s || d - x.s >= x.bars.length) continue;
+      const n = names.get(sym), filings = data.filings ? data.filings(sym) : undefined;
+      out.push({ symbol: sym, name: n?.name ?? sym, sector: n?.sector ?? null, score: 60, mcap: mcap.get(sym) ?? null, source: '시세 보유 전 종목', bars: x.bars, i: d - x.s, earningsIn: earningsIn(data, sym, d),
+        dilution: filings ? dilutionSignal(filings, doc.asOf, 180, mcap.get(sym) ?? null) : null, dilutionChecked: filings ? true : data.filings ? false : null });
+    }
+    return out;
+  };
+  const { ledgers, created } = runBook({ docs, latest, data, stored, today, mcap, rules: ICT_RULES, candidatesOf });
+  const r = replayDesk(ledgers, data, ICT_RULES);
+  const days = ledgers.map((l) => ({ date: l.date, live: l.live, market: l.market, picks: l.picks.map((p) => ({ ...p, outcome: r.outcomes[`${l.date}:${p.symbol}`] ?? { status: 'unknown' } })) }));
+  return { created, book: { rules: { entry: '구조 전환 다음 날 시가', stop: '쓸고 간 저점 아래', exit: '60일 고점(매수 쪽 유동성)에서 전량' },
+    stats: deskStats(r.trades, r.equity), open: r.open, pending: r.pending, trades: r.trades.slice(-30), events: r.events.slice(-30), ledgers: days.slice(-20),
+    firstLive: ledgers.find((l) => l.live)?.date ?? null } };
+}
+
+export function runDesk({ docs, latest, data, stored, today, storedIct = [] }) {
+  const mcap = new Map(); for (const k of ['mid', 'short']) for (const r of latest?.[k] ?? []) if (r.mcap) mcap.set(r.symbol, r.mcap);
+  const universe = new Map();
+  const { ledgers, created } = runBook({ docs, latest, data, stored, today, mcap, rules: DESK_RULES, universe });
+  const ict = ictBook({ docs, latest, data, stored: storedIct, today, mcap });
   const r = replayDesk(ledgers, data);
   const liveTrades = r.trades.filter((t) => t.live);
   const firstLive = ledgers.find((l) => l.live)?.date ?? null;
@@ -86,8 +119,9 @@ export function runDesk({ docs, latest, data, stored, today }) {
   const stats = deskStats(r.trades, r.equity);
   const selection = selectionEdge(ledgers.map((l) => ({ date: l.date, picks: l.picks.map((p) => p.symbol), candidates: universe.get(l.date) ?? [] })), data);
   return {
-    created,
+    created, createdIct: ict.created,
     account: {
+      ict: ict.book,
       model: `analyst-desk-v${DESK_RULES.version}`, generatedAt: new Date().toISOString(), asOf: data.cal.at(-1), rules: DESK_RULES, firstLive,
       data: { volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked, filingsChecked: Boolean(data.filings) },
       stats, statsLive: deskStats(liveTrades, liveEquity), selection, verdict: deskVerdict(stats, selection), risk: r.risk,
@@ -154,12 +188,16 @@ async function main() {
     data.earnings = (sym) => earningsCache[sym]?.dates ?? calendar?.(sym);
     data.earningsChecked = true;
   }
-  const { created, account } = runDesk({ docs, latest, data, stored, today });
-  mkdirSync(ldir, { recursive: true });
-  for (const c of created) {
-    const p = join(ldir, `${c.date}.json`);
-    if (existsSync(p)) continue; // written once, never replaced
-    const { backfill, late, ...rest } = c; writeFileSync(p, JSON.stringify(rest, null, 1));
+  const idir = join(out, 'desk/ict-ledger'), isrc = join(dataDir, 'desk/ict-ledger');
+  const storedIct = [...new Set([...dated(isrc), ...dated(idir)])].map((f) => readJSON(existsSync(join(idir, f)) ? join(idir, f) : join(isrc, f)));
+  const { created, createdIct, account } = runDesk({ docs, latest, data, stored, today, storedIct });
+  for (const [dir, list] of [[ldir, created], [idir, createdIct]]) {
+    mkdirSync(dir, { recursive: true });
+    for (const c of list) {
+      const p = join(dir, `${c.date}.json`);
+      if (existsSync(p)) continue; // written once, never replaced
+      const { backfill, late, ...rest } = c; writeFileSync(p, JSON.stringify(rest, null, 1));
+    }
   }
   writeFileSync(join(out, 'desk/account.json'), JSON.stringify(account));
   if (Object.keys(filingsCache).length) writeFileSync(join(out, 'desk/filings.json'), JSON.stringify(filingsCache));

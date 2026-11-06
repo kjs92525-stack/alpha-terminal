@@ -20,6 +20,12 @@ on:
         description: 'Only compare desk rule variants over 3 years (prints and uploads results, commits nothing)'
         type: boolean
         default: false
+      years:
+        description: 'Research only: years of history to test'
+        default: '3'
+      variant_set:
+        description: 'Research only: ict or growth'
+        default: 'ict'
 permissions:
   contents: write
 concurrency:
@@ -90,7 +96,7 @@ jobs:
         if: inputs.research == true
         run: |
           git fetch origin data --depth=1
-          node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years 3 --variants --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
+          node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years "${{ inputs.years || '3' }}" --variants --variant-set "${{ inputs.variant_set || 'ict' }}" --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
       - if: inputs.research == true
         uses: actions/upload-artifact@v4
         with:
