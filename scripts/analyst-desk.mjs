@@ -18,7 +18,7 @@ export function barsAccess(payload) {
   return { cal: payload.cal, gates: payload.gates ?? {},
     volumeReliable: payload.volumeReliable ?? /feed=sip/.test(payload.source ?? ''),
     earningsChecked: payload.earningsChecked ?? (earnings ? true : null),
-    earnings: earnings ? (sym) => earnings[sym] ?? [] : null,
+    earnings: earnings ? (sym) => earnings[sym] : null, // undefined: this symbol is not in the calendar
     get(sym) {
     if (cache.has(sym)) return cache.get(sym);
     const x = payload.bars[sym]; const v = x ? { s: x.s, bars: x.d.map(([o, h, l, c, v2]) => ({ o, h, l, c, v: v2 })) } : null;
@@ -30,7 +30,8 @@ const calIdx = (cal, date) => { let lo = 0, hi = cal.length - 1, a = -1; while (
 /** trading sessions from session d to the next earnings date (null: none within the data, undefined: unknown) */
 function earningsIn(data, sym, d) {
   if (!data.earnings) return undefined;
-  const e = data.earnings(sym).find((x) => x.date > data.cal[d]); if (!e) return null;
+  const list = data.earnings(sym); if (!list) return undefined; // unknown, not "no report"
+  const e = list.find((x) => x.date > data.cal[d]); if (!e) return null;
   let n = 0; for (let t = Date.parse(data.cal[d]) + 864e5; t <= Date.parse(e.date); t += 864e5) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; }
   return n <= 30 ? n : null;
 }
@@ -128,7 +129,7 @@ async function main() {
   const today = arg('today', latest.asOf);
   // share-offering filings (Finnhub), point-in-time by filing date
   const cachePath = existsSync(join(out, 'desk/filings.json')) ? join(out, 'desk/filings.json') : join(dataDir, 'desk/filings.json');
-  let filingsCache = existsSync(cachePath) ? readJSON(cachePath) : {};
+  let filingsCache = existsSync(cachePath) ? readJSON(cachePath) : {}, earningsCache = {};
   if (process.env.FINNHUB_API_KEY) {
     const { makeFinnhubClient, fetchFilings } = await import('../packages/pipeline/finnhub.mjs');
     const client = makeFinnhubClient({ apiKey: process.env.FINNHUB_API_KEY });
@@ -137,6 +138,21 @@ async function main() {
     filingsCache = await refreshFilings({ cache: filingsCache, todaySymbols: todayDoc ? syms(todayDoc) : [], otherSymbols: docs.flatMap(syms), budget: Number(process.env.FILINGS_BUDGET ?? 250),
       fetch1: (sym) => fetchFilings(client, sym, from, new Date().toISOString().slice(0, 10)), log: (m) => console.log(m) });
     data.filings = (sym) => filingsCache[sym]?.filings;
+    // earnings dates per symbol: candidates of the last 10 sessions (they become pending orders) first
+    const ePath = existsSync(join(out, 'desk/earnings.json')) ? join(out, 'desk/earnings.json') : join(dataDir, 'desk/earnings.json');
+    earningsCache = existsSync(ePath) ? readJSON(ePath) : {};
+    const { fetchEarningsFor } = await import('../packages/pipeline/finnhub.mjs');
+    const recent = docs.slice(-10).reverse().flatMap(syms), eFrom = new Date(Date.parse(docs[0]?.asOf ?? latest.asOf) - 30 * 864e5).toISOString().slice(0, 10), eTo = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
+    let eCalls = 0;
+    for (const sym of [...new Set(recent)]) {
+      const c = earningsCache[sym]; if (c && Date.now() - Date.parse(c.fetchedAt) < 20 * 3600e3) continue;
+      if (eCalls++ >= Number(process.env.EARNINGS_BUDGET ?? 200)) break;
+      try { earningsCache[sym] = { fetchedAt: new Date().toISOString(), dates: await fetchEarningsFor(client, sym, eFrom, eTo) }; } catch (e) { if (e.fatal) break; }
+    }
+    console.log(`earnings: ${eCalls} calls, cache ${Object.keys(earningsCache).length} symbols`);
+    const calendar = data.earnings;
+    data.earnings = (sym) => earningsCache[sym]?.dates ?? calendar?.(sym);
+    data.earningsChecked = true;
   }
   const { created, account } = runDesk({ docs, latest, data, stored, today });
   mkdirSync(ldir, { recursive: true });
@@ -147,6 +163,7 @@ async function main() {
   }
   writeFileSync(join(out, 'desk/account.json'), JSON.stringify(account));
   if (Object.keys(filingsCache).length) writeFileSync(join(out, 'desk/filings.json'), JSON.stringify(filingsCache));
+  if (Object.keys(earningsCache).length) writeFileSync(join(out, 'desk/earnings.json'), JSON.stringify(earningsCache));
   const s = account.stats;
   console.log(`desk: ${account.ledgers.length} days (${created.length} new live), closed ${s.closed}, win ${s.winRate == null ? '-' : (s.winRate * 100).toFixed(0) + '%'}, return ${(s.totalReturn * 100).toFixed(2)}% vs SPY ${s.spyReturn == null ? '-' : (s.spyReturn * 100).toFixed(2) + '%'}, open ${account.open.length}, pending ${account.pending.length}`);
 }

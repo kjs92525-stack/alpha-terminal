@@ -221,6 +221,13 @@ export async function fetchEarningsCalendar(client, from, to) {
   return out;
 }
 
+/** Earnings dates for one symbol (1 call): [{ date, hour }] sorted. The whole-market calendar is capped (~1,500 rows a month), so names go missing there; per symbol they do not. */
+export async function fetchEarningsFor(client, symbol, from, to) {
+  const j = await client.json(`/calendar/earnings?from=${from}&to=${to}&symbol=${encodeURIComponent(symbol)}`);
+  if (!Array.isArray(j?.earningsCalendar)) throw new Error('earnings calendar schema');
+  return j.earningsCalendar.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r?.date ?? '')).map((r) => ({ date: r.date, hour: r.hour ?? '' })).sort((x, y) => (x.date < y.date ? -1 : 1));
+}
+
 /** SEC filing list for one symbol from Finnhub (1 call): [{ form, filingDate, url }]. Throws on schema change. */
 export async function fetchFilings(client, symbol, from, to) {
   const j = await client.json(`/stock/filings?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}`);

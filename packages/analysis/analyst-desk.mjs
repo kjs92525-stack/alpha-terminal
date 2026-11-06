@@ -8,7 +8,7 @@
 // touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
 
 export const DESK_RULES = {
-  version: 2,
+  version: 3,
   startEquity: 100_000,
   costPerSide: 0.001,            // commission + spread, each side (liquid names)
   costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
@@ -24,7 +24,10 @@ export const DESK_RULES = {
   recoverGain: 0.05,             // after a restart, new risk stays halved until equity is 5% above the restart level
   reentryCooldown: 10,           // sessions before re-buying a name that was stopped out
   earningsBlackout: 5,           // no new entry with a report inside this many sessions
-  offeringBlackoutDays: 90,      // a share offering (424B, non-large-cap) this recent excludes the stock
+  offeringBlackoutDays: 90,
+  distributionLookback: 5,       // a heavy-volume down day this recent means sellers, not a pullback
+  distributionVol: 1.3,          // ... volume at least this multiple of the prior 20-day average
+  distributionMove: 1.2,         // ... and a drop of at least this many daily ranges (ATR) or 3%      // a share offering (424B, non-large-cap) this recent excludes the stock
   minQuality: 55,
   minQualityWait: 80,            // when the market verdict is WAIT, only the strongest single setup
   maxStopPct: 0.12,
@@ -77,7 +80,19 @@ export function indicatorsAt(bars, i) {
   };
 }
 
+/** Heavy-volume down days in the last `n` sessions: [{ i, ret, vol }] (vol = multiple of the prior 20-day average). */
+export function distributionDays(bars, i, atrPct, rules = DESK_RULES) {
+  const out = [];
+  for (let k = Math.max(21, i - rules.distributionLookback + 1); k <= i; k++) {
+    let v = 0; for (let j = k - 20; j < k; j++) v += bars[j].v;
+    const avg = v / 20, ret = bars[k].c / bars[k - 1].c - 1;
+    if (avg > 0 && bars[k].v >= rules.distributionVol * avg && ret <= -Math.max(rules.distributionMove * atrPct, 0.03)) out.push({ i: k, ret, vol: bars[k].v / avg });
+  }
+  return out;
+}
 const r2 = (x) => Math.round(x * 100) / 100;
+/** weekday sessions after `from` up to and including `to` (both YYYY-MM-DD) */
+const sessionsBetween = (from, to) => { let n = 0; for (let t = Date.parse(from) + 864e5; t <= Date.parse(to); t += 864e5) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; } return n; };
 const nextWeekday = (date) => { const t = new Date(date + 'T00:00:00Z'); do t.setUTCDate(t.getUTCDate() + 1); while (t.getUTCDay() % 6 === 0); return t.toISOString().slice(0, 10); };
 /** Wilson 95% interval for a proportion: how wide the truth can be around an observed win rate. */
 export function wilson(k, n, z = 1.96) { if (!n) return null; const p = k / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return [Math.max(0, c - h), Math.min(1, c + h)]; }
@@ -128,8 +143,17 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   const rs = x.ret126 != null && meta.spyRet126 != null ? x.ret126 - meta.spyRet126 : null;
   // buy weakness only in leaders: a pullback or base in a stock lagging the market is not a setup
   if ((setup === 'pullback' || setup === 'base') && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
-  if (meta.earningsIn == null && meta.earningsChecked) reasons.push('30거래일 안에 실적 발표 없음');
-  if (meta.earningsChecked === false) warnings.push('실적 발표일을 확인하지 못함');
+  // a pullback is quiet: sellers hitting the stock on heavy volume is a breakdown, not a buying chance
+  const dist = distributionDays(bars, i, x.atrPct, rules);
+  if (dist.length && (setup === 'pullback' || setup === 'base' || setup === 'reversal')) {
+    const w = dist.reduce((a, b) => (b.ret < a.ret ? b : a));
+    return { pass: `최근 ${rules.distributionLookback}거래일에 대량 하락일(${pctS(w.ret)}, 거래량 ${w.vol.toFixed(1)}배) — 눌림이 아니라 매도 압력` };
+  }
+  if (dist.length) warnings.push(`최근 대량 하락일 ${dist.length}번 — 돌파 실패 위험`);
+  // earningsIn: number = sessions to the report, null = calendar checked and nothing within 30 sessions,
+  // undefined = this symbol's date is unknown (missing from the calendar)
+  if (meta.earningsIn === null && meta.earningsChecked) reasons.push('30거래일 안에 실적 발표 없음');
+  if (meta.earningsIn === undefined && meta.earningsChecked !== null) { warnings.push('실적 발표일을 확인하지 못함, 주문 전에 직접 확인'); }
   else if (meta.earningsIn != null && meta.earningsIn <= 20) warnings.push(`${meta.earningsIn}거래일 뒤 실적 발표, 그 전에 +1R 보호가 안 되면 정리`);
   let q = 0.35 * (meta.score ?? 60) + { breakout: 30, base: 26, pullback: 24, reversal: 14 }[setup];
   if (rs != null) { q += clamp(rs * 40, -10, 15); if (rs > 0.15) reasons.push(`6개월 수익률이 SPY보다 ${pctS(rs, 0)}p 강함`); else if (rs < 0) warnings.push(`6개월 수익률이 SPY보다 약함 (${pctS(rs, 0)}p)`); }
@@ -227,6 +251,20 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
     trades.push(t); outcomes.set(key(pos.pickDate, pos.symbol), { status: 'closed', ...t }); events.push({ date: cal[d], symbol: pos.symbol, kind: 'exit', text: `${reason} $${r2(px)} (${pctS(t.pnlPct)})` });
   };
 
+  /**
+   * Re-check a working order with the closes up to session k before it can fill on `fillDate`:
+   * a pullback/base order is void once sellers hit the stock on heavy volume, and no order fills
+   * within the earnings blackout. Returns the reason, or null.
+   */
+  const orderBlock = (o, k, fillDate) => {
+    if (['pullback', 'base', 'reversal'].includes(o.setup)) {
+      const xs = data.get(o.symbol), j = k - (xs?.s ?? 0);
+      if (xs && j >= 21 && j < xs.bars.length) { const dd = distributionDays(xs.bars, j, indicatorsAt(xs.bars, j).atrPct, rules); if (dd.length) { const w = dd.reduce((a, c) => (c.ret < a.ret ? c : a)); return `대량 하락일(${pctS(w.ret)}, 거래량 ${w.vol.toFixed(1)}배) 뒤라 눌림 매수 주문 취소`; } }
+    }
+    const rep = nextReport(o.symbol, k + 1 <= cal.length - 1 ? k + 1 : k);
+    if (rep && rep.date >= fillDate && sessionsBetween(fillDate, rep.date) < rules.earningsBlackout) return `실적 발표(${rep.date.slice(5)}) ${sessionsBetween(fillDate, rep.date) + 1}거래일 전이라 주문 취소`;
+    return null;
+  };
   const stopped = new Map(); // symbol -> session of its last losing stop
   for (let d = first; d <= endIdx; d++) {
     // 1) manage open positions
@@ -265,6 +303,8 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
       if (o.plan.entryType === 'market') { if (b.o > o.plan.refClose * (1 + rules.maxChase)) { drop('cancelled', `시가가 ${pctS(b.o / o.plan.refClose - 1)} 갭 상승해 추격 안 함`); continue; } fill = b.o; }
       else if (b.h >= o.plan.trigger) { if (b.o > o.plan.trigger * (1 + rules.maxChase)) { drop('cancelled', '매수 가격 위로 크게 갭 상승해 추격 안 함'); continue; } fill = Math.max(b.o, o.plan.trigger); }
       if (fill == null) continue;
+      const block = orderBlock(o, d - 1, cal[d]);
+      if (block) { drop('cancelled', block); continue; }
       if (open.length >= rules.maxOpen) { drop('cancelled', `보유 종목 ${rules.maxOpen}개 한도`); continue; }
       const dd = prevEquity / peak - 1;
       if (haltSince != null) { drop('cancelled', `계좌 낙폭 ${pctS(dd)}로 신규 매수 중단 중 (${cal[Math.min(haltSince + rules.ddHaltSessions, cal.length - 1)]}까지)`); continue; }
@@ -313,8 +353,8 @@ export function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
   }
   const last = endIdx;
   const openRows = open.map((p) => { const px = lastClose(p.symbol, last); return { symbol: p.symbol, name: p.name, setup: p.setup, label: p.label, cap: p.cap, live: p.live, pickDate: p.pickDate, entryDate: cal[p.entryIdx], entry: r2(p.entry), last: r2(px), shares: p.shares, stop: r2(p.stop), target: r2(p.target), partial: p.partial, trailLabel: p.trailLabel,
-    unrealized: r2(p.shares * (px - p.entry) + p.realized), pnlPct: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.entry), R: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.R), weight: (p.shares * px) / equity.at(-1).equity, days: last - p.entryIdx }; });
-  const pendingRows = pending.map((o) => ({ symbol: o.symbol, name: o.name, setup: o.setup, label: o.label, pickDate: o.pickDate, live: o.live, entryType: o.plan.entryType, trigger: o.plan.trigger, stop: o.plan.stop, expires: cal[Math.min(o.expiry, last)] ?? null, sessionsLeft: o.expiry - last }));
+    unrealized: r2(p.shares * (px - p.entry) + p.realized), pnlPct: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.entry), R: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.R), weight: (p.shares * px) / equity.at(-1).equity, days: last - p.entryIdx, earnings: nextReport(p.symbol, last)?.date ?? null }; });
+  const pendingRows = pending.map((o) => ({ symbol: o.symbol, name: o.name, setup: o.setup, label: o.label, pickDate: o.pickDate, live: o.live, entryType: o.plan.entryType, trigger: o.plan.trigger, stop: o.plan.stop, expires: cal[Math.min(o.expiry, last)] ?? null, sessionsLeft: o.expiry - last, earnings: nextReport(o.symbol, last)?.date ?? null, blocked: orderBlock(o, last, cal[last + 1] ?? nextWeekday(cal[last])) }));
   const lastEq = equity.at(-1)?.equity ?? rules.startEquity;
   const heatNow = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, last) ?? p.entry) - p.stop), 0);
   const ddNow = lastEq / peak - 1;

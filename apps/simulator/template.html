@@ -306,6 +306,9 @@ button.primary:hover{background:var(--ink);filter:none;opacity:.88}
 .card header span{font-family:var(--sans);font-size:12px;color:var(--muted)}
 .card .v{font-weight:600}
 .card .v.down,.card .v.up{font-weight:700}
+.card.void{opacity:.85;border-style:dashed}
+.card.void h3{text-decoration:line-through;text-decoration-thickness:2px}
+.warnline{margin:0;padding:6px 8px;border:1px solid var(--up);color:var(--up);font-family:var(--sans);font-size:12.5px;line-height:1.5}
 .won{align-self:flex-end;margin-top:-4px;font-family:var(--sans);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .card .desc{border-top:1px dotted var(--ink);padding-top:8px;margin-top:2px}
 .callout{border-left:0;border-top:1px solid var(--ink);background:transparent;padding:8px 0 0;font-size:12.5px}
@@ -1391,9 +1394,11 @@ function renderOrders() {
   const acct = acctUsd(), picks = pickLookup(D);
   const rows = D.pending.map((o) => ({ o, p: picks.get(`${o.pickDate}:${o.symbol}`) })).filter((x) => x.p);
   $('#o-new').innerHTML = rows.length ? rows.map(({ o, p }) => {
+    if (o.blocked) return `<article class="card void"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(o.pickDate)} 추천</span></header><p class="warnline">주문하지 마세요. ${esc(o.blocked)}</p><p class="fine desc">추천 당시 계획: ${p.plan.entryType === 'market' ? '시가 매수' : `${usd(p.plan.trigger)} 돌파 매수`}, 손절 ${usd(p.plan.stop)}. 기록은 그대로 남기고, 모의 계좌도 이 주문을 체결하지 않습니다.</p></article>`;
     const mkt = p.plan.entryType === 'market', entry = mkt ? p.plan.refClose : p.plan.trigger, n = sizeFor(acct, p.plan.riskPct, entry, p.plan.stop), loss = n * (entry - p.plan.stop);
     const how = mkt ? `내일 시가 매수. 시가가 ${usd(p.plan.refClose * 1.04)} 넘게 시작하면 사지 않음` : `${usd(p.plan.trigger)} 넘으면 매수 (스톱 지정가: 스톱 ${usd(p.plan.trigger)}, 지정 ${usd(p.plan.trigger * 1.01)}. ${o.sessionsLeft > 0 ? `${o.sessionsLeft}거래일 유효` : '내일까지'})`;
-    return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(o.pickDate)} 추천${p.earningsIn != null ? ` · ${p.earningsIn}거래일 뒤 실적` : ''}</span></header>
+    const rep = o.earnings ? `<p class="warnline">실적 발표 ${dKo(o.earnings)}. 발표 5거래일 안에는 사지 않고, 그 전에 체결되지 않은 주문은 취소합니다.</p>` : '';
+    return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(o.pickDate)} 추천</span></header>${rep}
       ${rw('수량', `${n}주`)}${rw('금액', `${usd(n * entry, 0)} (${pctU(n * entry / acct, 0)})`)}<div class="won">${krw(n * entry)}</div>
       ${rw('진입가', `${mkt ? '약 ' : ''}${usd(entry)}`)}${rw('손절가', `${usd(p.plan.stop)} (${pct(p.plan.stop / entry - 1)})`, 'down')}
       ${rw('1차 익절 (절반)', `${usd(p.plan.target)} (${pct(p.plan.target / entry - 1)})`, 'up')}${rw('나머지 정리', `${esc(p.plan.trailLabel)} 이탈`)}
@@ -1406,7 +1411,8 @@ function renderOrders() {
     const todo = p.partial ? `절반 익절 끝. 남은 물량은 ${esc(p.trailLabel)} 아래 종가에 정리, 손절 스톱 ${usd(p.stop)} 유지`
       : p.stop >= p.entry ? `손절 스톱을 매수가 ${usd(p.stop)}로 올려 두기(본전 보호). ${usd(p.target)}에 절반 익절 지정가`
       : `손절 스톱 ${usd(p.stop)} 유지, ${usd(p.target)}에 절반 익절 지정가. ${Math.max(0, 25 - p.days)}거래일 안에 +0.5R 못 넘으면 정리`;
-    return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(p.entryDate)} 매수</span></header>
+    const rep = p.earnings ? `<p class="warnline">실적 발표 ${dKo(p.earnings)}. 그때까지 +1R 보호(손절가가 매수가 이상)가 안 되면 발표 전날 종가에 정리합니다.</p>` : '';
+    return `<article class="card"><header><h3>${esc(p.symbol)}</h3><span>${esc(p.label)} · ${dKo(p.entryDate)} 매수</span></header>${rep}
       ${rw('매수가', usd(p.entry))}${rw('현재가', usd(p.last))}${rw('수익률', pct(p.pnlPct), sign(p.pnlPct))}${rw('손절 스톱', usd(p.stop), 'down')}<p class="fine desc">${todo}</p></article>`;
   }).join('') : '<p class="empty">데스크가 들고 있는 종목이 없습니다.</p>';
 }
@@ -1444,7 +1450,7 @@ function renderBacktest() {
 function accessFrom(payload) {
   const cache = new Map(), earn = payload.earnings ?? null;
   return { cal: payload.cal, volumeReliable: payload.volumeReliable ?? /feed=sip/.test(payload.source ?? ''), earningsChecked: payload.earningsChecked ?? null,
-    earnings: earn ? (sym) => earn[sym] ?? [] : null,
+    earnings: earn ? (sym) => earn[sym] : null,
     get(sym) { if (cache.has(sym)) return cache.get(sym); const x = payload.bars[sym]; const v = x ? { s: x.s, bars: x.d.map(([o, h, l, c, vol]) => ({ o, h, l, c, v: vol })) } : null; cache.set(sym, v); return v; } };
 }
 /** bars from the deployed API (/api/v1/bars) → the same payload shape */
@@ -1488,7 +1494,8 @@ function initMine() {
 }
 function earningsInFor(acc, sym, d) {
   if (!acc.earnings) return undefined;
-  const e = acc.earnings(sym).find((x) => x.date > acc.cal[d]); if (!e) return null;
+  const list = acc.earnings(sym); if (!list) return undefined;
+  const e = list.find((x) => x.date > acc.cal[d]); if (!e) return null;
   let n = 0; for (let t = Date.parse(acc.cal[d]) + 864e5; t <= Date.parse(e.date); t += 864e5) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; }
   return n <= 30 ? n : null;
 }
