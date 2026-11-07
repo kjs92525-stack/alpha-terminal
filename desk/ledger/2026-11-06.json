@@ -1,0 +1,365 @@
+{
+ "date": "2026-11-06",
+ "rulesVersion": 6,
+ "live": true,
+ "createdAt": "2026-11-07T01:46:35.789Z",
+ "market": "LIMIT",
+ "picks": [
+  {
+   "symbol": "AMRX",
+   "name": "Amneal Pharmaceuticals, Inc",
+   "sector": "Health Care",
+   "cap": "중형주",
+   "mcap": 7014762000,
+   "source": "단기 랭킹",
+   "listScore": 78.7,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 70,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +52%p 강함",
+    "50일선이 200일선 위 정배열"
+   ],
+   "warnings": [
+    "증자 가능 서류 제출(S-3ASR 2026-09-03)"
+   ],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 51입니다. 오늘 고점 $20.45를 다시 넘어 반등이 확인되면 삽니다. 손절은 $18.77(-8.2%), +1R에 손절을 매수가로 올리고, $23.81(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 21.68,
+    "swingLow": 19.02,
+    "sweep": null,
+    "fvg": null,
+    "buySideLiquidity": 21.68,
+    "rangePos": 0.7,
+    "mss": false,
+    "udRatio": 1.09,
+    "dryUp": 1.6
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 20.45,
+    "stop": 18.77,
+    "target": 23.81,
+    "refClose": 20.14,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.0821,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 20.14,
+    "rsi": 51,
+    "atrPct": 0.04,
+    "relVol": 1,
+    "ext50": 0.042,
+    "rs126": 0.524
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 1,
+    "shelf": true,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": [
+     {
+      "form": "S-3ASR",
+      "date": "2026-09-03",
+      "url": "https://www.sec.gov/Archives/edgar/data/1723128/000114036126035617/ny20081412x1_s3asr.htm"
+     }
+    ]
+   }
+  },
+  {
+   "symbol": "JXN",
+   "name": "Jackson Financial Inc.",
+   "sector": "Financials",
+   "cap": "중형주",
+   "mcap": 8919363700,
+   "source": "중장기 랭킹",
+   "listScore": 82.9,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 68,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +18%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 47입니다. 오늘 고점 $134.07를 다시 넘어 반등이 확인되면 삽니다. 손절은 $127.41(-5.0%), +1R에 손절을 매수가로 올리고, $147.4(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 150,
+    "swingLow": 127.91,
+    "sweep": null,
+    "fvg": null,
+    "buySideLiquidity": 150,
+    "rangePos": 0.3,
+    "mss": false,
+    "udRatio": 1.1,
+    "dryUp": 1.1
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 134.07,
+    "stop": 127.41,
+    "target": 147.4,
+    "refClose": 131.69,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.049699999999999994,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 131.69,
+    "rsi": 47,
+    "atrPct": 0.042,
+    "relVol": 0.8,
+    "ext50": -0.012,
+    "rs126": 0.183
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "MSGE",
+   "name": "Madison Square Garden Entertainment Corp",
+   "sector": "Communication Services",
+   "cap": "중형주",
+   "mcap": 3654955800,
+   "source": "눌림목 셋업",
+   "listScore": 52,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 57,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +18%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 44입니다. 오늘 고점 $77.81를 다시 넘어 반등이 확인되면 삽니다. 손절은 $73.18(-5.9%), +1R에 손절을 매수가로 올리고, $87.07(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 82.06,
+    "swingLow": 76.9,
+    "sweep": {
+     "level": 76.9,
+     "low": 74.05,
+     "sessionsAgo": 0
+    },
+    "fvg": null,
+    "buySideLiquidity": 86.88,
+    "rangePos": 0.23,
+    "mss": false,
+    "udRatio": 0.78,
+    "dryUp": 0.92
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 77.81,
+    "stop": 73.18,
+    "target": 87.07,
+    "refClose": 77.06,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.059500000000000004,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 77.06,
+    "rsi": 44,
+    "atrPct": 0.037,
+    "relVol": 0.7,
+    "ext50": -0.025,
+    "rs126": 0.179
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  }
+ ],
+ "passed": [
+  {
+   "symbol": "UVE",
+   "why": "2026-09-21 증자 공시(424B3), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "HG",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AMAL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AMTB",
+   "why": "2026-09-14 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "OFG",
+   "why": "11-06 손절 뒤 10거래일 쉬는 중"
+  },
+  {
+   "symbol": "APA",
+   "why": "최근 5거래일에 대량 하락일(-7.6%, 거래량 1.4배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "INSW",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LPG",
+   "why": "최근 5거래일에 대량 하락일(-6.8%, 거래량 1.6배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "SAIC",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PBI",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EOG",
+   "why": "최근 5거래일에 대량 하락일(-5.2%, 거래량 1.9배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "LTC",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "APLE",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "COP",
+   "why": "최근 5거래일에 대량 하락일(-5.2%, 거래량 1.8배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "MPC",
+   "why": "최근 5거래일에 대량 하락일(-8.1%, 거래량 1.9배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "CBL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EXEL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "ASH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LTH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HST",
+   "why": "최근 5거래일에 대량 하락일(-5.7%, 거래량 2.1배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "AES",
+   "why": "하루 변동폭 0.3%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "CNK",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "THC",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "DRH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CON",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HZO",
+   "why": "하루 변동폭 0.3%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "RPRX",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "R",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "MTCH",
+   "why": "최근 5거래일에 대량 하락일(-8.5%, 거래량 2.7배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "OKTA",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "NTRA",
+   "why": "최근 5거래일에 대량 하락일(-14.6%, 거래량 3.4배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "HURN",
+   "why": "최근 5거래일에 대량 하락일(-12.7%, 거래량 2.4배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "ECO",
+   "why": "실적 발표 3거래일 전, 발표 뒤에 다시 봄"
+  },
+  {
+   "symbol": "PAYC",
+   "why": "최근 5거래일에 대량 하락일(-6.8%, 거래량 2.8배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "ZBRA",
+   "why": "최근 5거래일에 대량 하락일(-8.8%, 거래량 3.9배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "CVI",
+   "why": "2026-11-03 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "TEAM",
+   "why": "최근 5거래일에 대량 하락일(-16.2%, 거래량 2.6배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "NSIT",
+   "why": "최근 5거래일에 대량 하락일(-13.0%, 거래량 1.6배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "GH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LIFE",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  }
+ ]
+}
