@@ -12,6 +12,8 @@ export default {
   fetch(req: Request, env: AssetsEnv, ctx: ExecutionContext): Promise<Response> {
     const { pathname } = new URL(req.url);
     if (pathname.startsWith('/api/') || pathname === '/health') return handle(req, env, ctx);
+    // the analyst desk is the site's home page; the older research app stays reachable at /app (single-page fallback)
+    if (pathname === '/') return Promise.resolve(Response.redirect(new URL('/desk.html', req.url).toString(), 302));
     return env.ASSETS.fetch(req);
   },
   // Cron Trigger (wrangler.toml [triggers]): send a new Telegram channel digest, and start the

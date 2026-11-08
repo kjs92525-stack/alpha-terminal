@@ -100,7 +100,12 @@ jobs:
         if: inputs.research == true
         run: |
           git fetch origin data --depth=1
-          if [ "${{ inputs.variant_set }}" = "ict4h-both" ]; then
+          VS="${{ inputs.variant_set }}"
+          if [ "${VS#inspect:}" != "$VS" ]; then
+            node scripts/inspect-signal.mjs --symbols "${VS#inspect:}"
+          elif [ "${{ inputs.variant_set }}" = "ict4h-aggr" ]; then
+            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 500 --set growth --aggr --out research/ict4h.json
+          elif [ "${{ inputs.variant_set }}" = "ict4h-both" ]; then
             node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 300 --set both --out research/ict4h.json
           elif [ "${{ inputs.variant_set }}" = "ict4h-growth" ]; then
             node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 400 --set growth --out research/ict4h.json
