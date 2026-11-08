@@ -58,14 +58,29 @@ export const GROWTH_VARIANTS = {
   '중소형·고변동(일 변동 3%+) + 익절 없이': { maxMcap: 10e9, minAtrPick: 0.03, ...RUN },
   '중소형·고변동 + 익절 없이 + 50일선': { maxMcap: 10e9, minAtrPick: 0.03, ...RUN, trailMa: 'sma50' },
 };
+// short-term trading (under a month): fixed full exit at 2R/3R, a hard time limit, and setups one by one
+const SHORT = (o) => ({ maxSessions: 20, timeStopSessions: 8, timeStopMinR: 0.5, partialFrac: 0, trailMa: null, ...o });
+export const SHORT_VARIANTS = {
+  'v6 (현재, 50일선까지)': {},
+  '단기 전체, 2R 전량, 20일 한도': SHORT({ exitAtR: 2 }),
+  '단기 전체, 3R 전량, 20일 한도': SHORT({ exitAtR: 3 }),
+  '단기 돌파만, 2R': SHORT({ exitAtR: 2, setups: ['breakout'] }),
+  '단기 돌파+수축, 3R': SHORT({ exitAtR: 3, setups: ['breakout', 'base'] }),
+  '단기 눌림목만, 2R': SHORT({ exitAtR: 2, setups: ['pullback'] }),
+  '단기 과매도 반등만, 1.5R, 10일': SHORT({ exitAtR: 1.5, maxSessions: 10, timeStopSessions: 5, setups: ['reversal'] }),
+  '단기 돌파만, 3R': SHORT({ exitAtR: 3, setups: ['breakout'] }),
+  '단기 돌파+수축, 2R': SHORT({ exitAtR: 2, setups: ['breakout', 'base'] }),
+};
 const half = (trades) => { const n = trades.length, w = trades.filter((t) => t.R > 0).length, R = trades.reduce((a, t) => a + t.R, 0); return { n, winRate: n ? w / n : null, expectancyR: n ? R / n : null }; };
 export function compareVariants(payload, meta, { years = 3, set = 'ict' } = {}) {
-  return Object.entries(set === 'growth' ? GROWTH_VARIANTS : VARIANTS).map(([name, v]) => {
+  return Object.entries(set === 'growth' ? GROWTH_VARIANTS : set === 'short' ? SHORT_VARIANTS : VARIANTS).map(([name, v]) => {
     const r = runBacktest(payload, meta, { years, rules: { ...DESK_RULES, ...v } }), s = r.stats;
     const split = new Date(Date.parse(r.to) - 365 * 864e5).toISOString().slice(0, 10);
     return { name, trades: s.closed, winRate: s.winRate, expectancyR: s.expectancyR, profitFactor: s.profitFactor, totalReturn: s.totalReturn, cagr: r.cagr, spyCagr: r.spyCagr, maxDrawdown: s.maxDrawdown, exposure: r.exposure, bySetup: r.bySetup,
       avgWinPct: (() => { const w = r.trades.filter((t) => t.pnlPct > 0); return w.length ? w.reduce((a, t) => a + t.pnlPct, 0) / w.length : null; })(),
       bigWins: r.trades.filter((t) => t.pnlPct >= 0.3).length,
+      avgDays: r.trades.length ? r.trades.reduce((a, t) => a + t.days, 0) / r.trades.length : null,
+      avgPnl: r.trades.length ? r.trades.reduce((a, t) => a + t.pnlPct, 0) / r.trades.length : null,
       split, inSample: half(r.trades.filter((t) => t.entryDate < split)), outOfSample: half(r.trades.filter((t) => t.entryDate >= split)) };
   });
 }
@@ -155,7 +170,7 @@ async function main() {
     const rows = compareVariants(payload, meta, { years, set: arg('variant-set', 'ict') });
     const p = (x) => (x == null ? '   -  ' : `${(x * 100).toFixed(1).padStart(5)}%`);
     for (const r of rows) {
-      console.log(`VARIANT ${r.name}\n    trades ${String(r.trades).padStart(4)}  win ${p(r.winRate)}  exp ${r.expectancyR?.toFixed(2)}R  PF ${r.profitFactor?.toFixed(2)}  CAGR ${p(r.cagr)} (SPY ${p(r.spyCagr)})  maxDD ${p(r.maxDrawdown)}  exposure ${p(r.exposure)}  평균 이익 ${p(r.avgWinPct)}  30%+ 수익 ${r.bigWins}건\n    학습(~${r.split}) ${r.inSample.n}건 승률 ${p(r.inSample.winRate)} ${r.inSample.expectancyR?.toFixed(2)}R | 검증(최근 1년) ${r.outOfSample.n}건 승률 ${p(r.outOfSample.winRate)} ${r.outOfSample.expectancyR?.toFixed(2)}R`);
+      console.log(`VARIANT ${r.name}\n    trades ${String(r.trades).padStart(4)}  win ${p(r.winRate)}  exp ${r.expectancyR?.toFixed(2)}R  PF ${r.profitFactor?.toFixed(2)}  CAGR ${p(r.cagr)} (SPY ${p(r.spyCagr)})  maxDD ${p(r.maxDrawdown)}  exposure ${p(r.exposure)}  평균 이익 ${p(r.avgWinPct)}  30%+ 수익 ${r.bigWins}건  평균 보유 ${r.avgDays?.toFixed(1)}일  거래당 ${p(r.avgPnl)}\n    학습(~${r.split}) ${r.inSample.n}건 승률 ${p(r.inSample.winRate)} ${r.inSample.expectancyR?.toFixed(2)}R | 검증(최근 1년) ${r.outOfSample.n}건 승률 ${p(r.outOfSample.winRate)} ${r.outOfSample.expectancyR?.toFixed(2)}R`);
       for (const [k, a] of Object.entries(r.bySetup)) console.log(`    ${k.padEnd(10)} ${String(a.n).padStart(4)}  win ${p(a.winRate)}  exp ${a.expectancyR.toFixed(2)}R  sum ${a.sumR}R`);
     }
     if (arg('variants-out')) { mkdirSync(dirname(arg('variants-out')), { recursive: true }); writeFileSync(arg('variants-out'), JSON.stringify({ generatedAt: new Date().toISOString(), years, variants: rows })); }

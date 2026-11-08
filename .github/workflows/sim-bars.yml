@@ -24,7 +24,7 @@ on:
         description: 'Research only: years of history to test'
         default: '3'
       variant_set:
-        description: 'Research only: ict, growth or ict4h (4-hour ICT event study)'
+        description: 'Research only: ict, growth, short or ict4h (4-hour ICT event study)'
         default: 'ict'
 permissions:
   contents: write

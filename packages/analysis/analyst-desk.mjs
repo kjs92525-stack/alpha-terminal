@@ -42,6 +42,7 @@ export const DESK_RULES = {
   trailMa: 'sma50',              // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
   maxMcap: null,                 // e.g. 10e9: only stocks below this market cap (unknown caps pass)
   minAtrPick: null,              // e.g. 0.03: only stocks whose daily range is at least this share of price
+  exitAtR: null,                 // short-term research: sell everything at entry + this many R (no trailing)
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
   minPrice: 5,
   minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
@@ -329,7 +330,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
     else if (!dil.count) reasons.push('최근 180일 증자 공시 없음');
   } else if (meta.dilutionChecked === false) warnings.push('증자 공시를 확인하지 못함');
 
-  const trail = rules.trailMa ? { ma: rules.trailMa, label: { sma50: '50일선', ema20: '20일 지수이평', ema10: '10일 지수이평' }[rules.trailMa] } : trailFor(x.atrPct), R = trigger - stop, exitAt = mss?.liquidity ?? null, target = exitAt ?? trigger + rules.partialAtR * R;
+  const trail = rules.trailMa ? { ma: rules.trailMa, label: { sma50: '50일선', ema20: '20일 지수이평', ema10: '10일 지수이평' }[rules.trailMa] } : trailFor(x.atrPct), R = trigger - stop, exitAt = mss?.liquidity ?? (rules.exitAtR ? trigger + rules.exitAtR * (trigger - stop) : null), target = exitAt ?? trigger + rules.partialAtR * R;
   const lead = {
     breakout: `20일 고점 $${r2(x.hi20)}을 거래량 ${x.relVol.toFixed(1)}배로 넘었고 52주 고점의 ${(nearHigh * 100).toFixed(0)}% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 ${(rules.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않음).`,
     base: `고점 $${r2(x.hi20)} 바로 아래에서 변동폭이 줄며 쉬고 있습니다. $${r2(trigger)}를 넘는 날 돌파 매수, ${validDays}거래일 안에 안 넘으면 주문을 거둡니다.`,
