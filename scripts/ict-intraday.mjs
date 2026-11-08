@@ -145,7 +145,7 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
     const r = (exit - entry - cost * (entry + exit)) / R;
     let lo = Infinity; for (let q = i - 60; q < i; q++) lo = Math.min(lo, bars[q].l);
     out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
-      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
+      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
   }
   return out;
 }
@@ -155,7 +155,7 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
  * risking `riskPct` of the equity at entry on each (the R of a trade is its gain in units of that risk). Equity moves when
  * a trade closes. `pick(t)` can skip trades (a regime rule). Returns final multiple, CAGR, max drawdown, trades taken.
  */
-export function portfolioSim(trades, { riskPct = 0.01, maxOpen = 5, pick = () => true, start = 1 } = {}) {
+export function portfolioSim(trades, { riskPct = 0.01, maxOpen = 5, pick = () => true, start = 1, maxGross = Infinity } = {}) {
   const ts = trades.filter((t) => t.entryT && t.kind !== 'open' && pick(t)).sort((a, b) => (a.entryT < b.entryT ? -1 : 1));
   let eq = start, peak = start, maxDD = 0, taken = 0; const open = [];
   const settle = (until) => {
@@ -165,7 +165,14 @@ export function portfolioSim(trades, { riskPct = 0.01, maxOpen = 5, pick = () =>
   for (const t of ts) {
     settle(t.entryT);
     if (open.length >= maxOpen) continue;
-    open.push({ exitT: t.exitT, R: t.R, risk: eq * riskPct }); taken++;
+    // cash limit: a position's value is its risk / stop distance; all open positions together stay under maxGross x equity
+    let risk = eq * riskPct;
+    if (Number.isFinite(maxGross) && t.stopPct > 0) {
+      const used = open.reduce((a, o) => a + o.value, 0), room = maxGross * eq - used;
+      if (room <= 0.02 * eq) continue;
+      risk = Math.min(risk, room * t.stopPct);
+    }
+    open.push({ exitT: t.exitT, R: t.R, risk, value: t.stopPct > 0 ? risk / t.stopPct : 0 }); taken++;
   }
   settle('9999');
   const years = ts.length ? (Date.parse(ts.at(-1).exitT) - Date.parse(ts[0].entryT)) / (365.25 * 864e5) : 0;
@@ -198,7 +205,7 @@ async function main() {
   for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
     const tb = Date.now();
     const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
-    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); const h = hourBars(b); if (h.length > 400) series1h.set(s, h); }
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (arg('set') !== 'growth') { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
     console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
@@ -228,6 +235,31 @@ async function main() {
       }
     }
   };
+  if (arg('set') === 'growth') {
+    // growth research: one base rule (4-hour limit), then which signals to take, how many at once, how much risk,
+    // under a real cash limit (1x = cash only, 2x = margin)
+    const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, { entry: 'limit' }));
+    for (const t of all) t.reg = regOf.get(t.t) ?? null;
+    const vol = (t) => t.volMult >= 1.5;
+    const picks = {
+      '추세 일치': (t) => t.trend,
+      '추세 일치 + 거래량 전환': (t) => t.trend || vol(t),
+      '추세 일치 + 급락·약세장 전부': (t) => t.trend || crash(t),
+      '추세 일치 + 거래량 + 급락·약세장': (t) => t.trend || vol(t) || crash(t),
+      '조정·횡보 제외 전부': (t) => t.reg !== '조정·횡보',
+      '신호 전부': () => true,
+    };
+    console.log(`GROWTH base: ${all.length} trades, ${p(all.filter((t) => t.win).length / all.length)} win, ${(all.reduce((a, t) => a + t.R, 0) / all.length).toFixed(2)}R, median stop ${(all.map((t) => t.stopPct).sort((a, b) => a - b)[all.length >> 1] * 100).toFixed(1)}%`);
+    for (const [name, pick] of Object.entries(picks)) {
+      const sub = all.filter(pick), s = summarize(sub, split);
+      console.log(`GROWTH ${name}: ${s.all.n}건 ${s.all.expectancyR?.toFixed(2)}R (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)})`);
+      for (const gross of [1, 2]) for (const maxOpen of [3, 5, 8]) {
+        const line = [0.01, 0.015, 0.02, 0.03].map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen, pick, maxGross: gross }); return `${(rp * 100).toFixed(1)}% ${ps.multiple.toFixed(2)}배/${p(ps.cagr)}/DD${p(ps.maxDD)}`; });
+        console.log(`    현금 ${gross}배, 최대 ${maxOpen}종목: ${line.join(' | ')}`);
+      }
+    }
+    return;
+  }
   runSet('ICT4H', series, set, 2);
   // the same rule on regular-session 1-hour bars (7 a day; 60 bars ≈ 9 sessions): faster structure, shorter holds
   if (series1h.size) { series1h.delete('QQQ'); runSet('ICT1H', series1h, set === ICT4H_EDGE ? ICT1H_EDGE : { '1시간 원형, 지정가': { entry: 'limit' } }, 7); }

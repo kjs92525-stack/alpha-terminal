@@ -100,7 +100,9 @@ jobs:
         if: inputs.research == true
         run: |
           git fetch origin data --depth=1
-          if [ "${{ inputs.variant_set }}" = "ict4h" ] || [ "${{ inputs.variant_set }}" = "ict4h-edge" ]; then
+          if [ "${{ inputs.variant_set }}" = "ict4h-growth" ]; then
+            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 400 --set growth --out research/ict4h.json
+          elif [ "${{ inputs.variant_set }}" = "ict4h" ] || [ "${{ inputs.variant_set }}" = "ict4h-edge" ]; then
             node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '2' }}" --size "${{ inputs.variant_set == 'ict4h-edge' && '250' || '300' }}" --set "${{ inputs.variant_set == 'ict4h-edge' && 'edge' || 'base' }}" --out research/ict4h.json
           else
             node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years "${{ inputs.years || '3' }}" --variants --variant-set "${{ inputs.variant_set || 'ict' }}" --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
