@@ -14,7 +14,7 @@ const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ?
 import { toFourHour, hourBars } from '../packages/analysis/intraday.mjs';
 export { toFourHour };
 
-function atrSeries(bars, n = 14) {
+export function atrSeries(bars, n = 14) {
   const out = new Array(bars.length).fill(NaN); let s = 0;
   for (let i = 1; i < bars.length; i++) {
     const tr = Math.max(bars[i].h - bars[i].l, Math.abs(bars[i].h - bars[i - 1].c), Math.abs(bars[i].l - bars[i - 1].c));
@@ -25,7 +25,7 @@ function atrSeries(bars, n = 14) {
 }
 
 /** daily-close trend for the higher-timeframe bias: close above its 50-day average */
-function dailyBias(bars4) {
+export function dailyBias(bars4) {
   const days = []; for (const b of bars4) { if (!days.length || days.at(-1).day !== b.day) days.push({ day: b.day, c: b.c }); else days.at(-1).c = b.c; }
   const up = new Map(); let s = 0;
   for (let i = 0; i < days.length; i++) { s += days[i].c; if (i >= 50) s -= days[i - 50].c; if (i >= 49) up.set(days[i].day, days[i].c > s / 50); }
