@@ -908,6 +908,12 @@ function sigScore(s) {
   if (reg === '상승장' || reg === '조정·횡보') return (s.trend ? 3 : 0) + (vol ? 1 : 0) + (disc ? 0.5 : 0);
   return (vol ? 2 : 0) + (disc ? 1.5 : 0) + (s.trend ? 0.5 : 0);
 }
+/* the regime playbook: in up / choppy markets only trend-aligned signals paid (3 years, +0.52R vs -0.01R in chop) */
+function skipNote(s) {
+  const reg = DATA.ict4h?.regime?.name;
+  if ((reg === '상승장' || reg === '조정·횡보') && !s.trend) return `<p class="fine" style="margin-top:8px;color:var(--fg-3)">${esc(reg)}에서는 일봉 추세 일치 신호만 받는 규칙이라 건너뜁니다.</p>`;
+  return '';
+}
 function sigTags(s) {
   const t = [];
   if (s.volMult >= 1.5) t.push(`거래량 실린 전환 ${s.volMult.toFixed(1)}배`);
@@ -1075,9 +1081,9 @@ function renderToday() {
     const entry = p.plan.entryType === 'market' ? p.plan.refClose : p.plan.trigger, tgt = p.plan.exitAt ?? p.plan.target, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
     cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip violet">ICT 일봉</span></div>
       ${levels(entry, p.plan.stop, tgt, '내일 시가')}<div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>목표에서 전량</span></div></article>`); }
-  for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = sizeFor(0.005, s.limit, s.stop);
+  for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = sizeFor(0.01, s.limit, s.stop);
     cards.push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
-      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}<div class="oc-f"><span>${n}주 · 위험 0.5%</span><span>약 5거래일 유효</span></div></article>`); }
+      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}${skipNote(s)}<div class="oc-f"><span>${n}주 · 위험 1%</span><span>약 5거래일 유효</span></div></article>`); }
   for (const o of blocked) cards.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
   $('#todo').innerHTML = `<div class="sec-h"><h2>오늘 낼 주문</h2><span class="sub">장 마감 기준 · 다음 거래일에 넣을 주문</span><span class="grow"></span>
       <label class="acct-in" for="acct">투자금 $<input id="acct" type="number" inputmode="decimal" min="100" step="100" value="${acct()}"></label></div>
