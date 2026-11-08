@@ -177,10 +177,10 @@ export const BULL_ETFS = ['SOXL', 'TQQQ'];
  */
 export function portfolioSim(trades, { riskPct = 0.01, maxOpen = 5, pick = () => true, start = 1, maxGross = Infinity } = {}) {
   const ts = trades.filter((t) => t.entryT && t.kind !== 'open' && pick(t)).sort((a, b) => (a.entryT < b.entryT ? -1 : 1));
-  let eq = start, peak = start, maxDD = 0, taken = 0; const open = [];
+  let eq = start, peak = start, maxDD = 0, taken = 0; const open = [], monthEnd = new Map();
   const settle = (until) => {
     open.sort((a, b) => (a.exitT < b.exitT ? -1 : 1));
-    while (open.length && open[0].exitT <= until) { const o = open.shift(); eq += o.risk * o.R; peak = Math.max(peak, eq); maxDD = Math.min(maxDD, eq / peak - 1); }
+    while (open.length && open[0].exitT <= until) { const o = open.shift(); eq += o.risk * o.R; peak = Math.max(peak, eq); maxDD = Math.min(maxDD, eq / peak - 1); monthEnd.set(o.exitT.slice(0, 7), eq); }
   };
   for (const t of ts) {
     settle(t.entryT);
@@ -196,7 +196,12 @@ export function portfolioSim(trades, { riskPct = 0.01, maxOpen = 5, pick = () =>
   }
   settle('9999');
   const years = ts.length ? (Date.parse(ts.at(-1).exitT) - Date.parse(ts[0].entryT)) / (365.25 * 864e5) : 0;
-  return { multiple: eq / start, cagr: years > 0 ? (eq / start) ** (1 / years) - 1 : null, maxDD, taken, years };
+  // calendar months from the first to the last trade (a month with no closed trade carries the equity over)
+  const months = []; if (ts.length) { let prev = start, d = new Date(ts[0].entryT.slice(0, 7) + '-01T00:00:00Z'); const last = ts.at(-1).exitT.slice(0, 7);
+    while (d.toISOString().slice(0, 7) <= last) { const k = d.toISOString().slice(0, 7), e = monthEnd.get(k) ?? prev; months.push(e / prev - 1); prev = e; d.setUTCMonth(d.getUTCMonth() + 1); } }
+  const sorted = [...months].sort((a, b) => a - b);
+  return { multiple: eq / start, cagr: years > 0 ? (eq / start) ** (1 / years) - 1 : null, maxDD, taken, years,
+    worstMonth: sorted[0] ?? null, medianMonth: sorted.length ? sorted[sorted.length >> 1] : null, losingMonths: months.length ? months.filter((m) => m < 0).length / months.length : null, bestMonth: sorted.at(-1) ?? null };
 }
 export function byKind(trades) {
   const g = {}; for (const t of trades) { const a = (g[t.kind] ??= { n: 0, sumR: 0, held: 0 }); a.n++; a.sumR += t.R; a.held += t.held ?? 0; }
@@ -309,11 +314,14 @@ async function main() {
       '신호 전부': () => true,
     };
     console.log(`GROWTH base: ${all.length} trades, ${p(all.filter((t) => t.win).length / all.length)} win, ${(all.reduce((a, t) => a + t.R, 0) / all.length).toFixed(2)}R, median stop ${(all.map((t) => t.stopPct).sort((a, b) => a - b)[all.length >> 1] * 100).toFixed(1)}%`);
-    for (const [name, pick] of Object.entries(picks)) {
+    const aggr = process.argv.includes('--aggr');   // aggressive grid: higher risk per trade, margin, fewer signal sets
+    const pickSet = aggr ? Object.fromEntries(Object.entries(picks).filter(([k]) => k === '추세 일치' || k === '추세 일치 + 급락·약세장 전부')) : picks;
+    const risks = aggr ? [0.02, 0.03, 0.04, 0.05, 0.07, 0.1] : [0.01, 0.015, 0.02, 0.03], opens = aggr ? [2, 3, 5] : [3, 5, 8];
+    for (const [name, pick] of Object.entries(pickSet)) {
       const sub = all.filter(pick), s = summarize(sub, split);
       console.log(`GROWTH ${name}: ${s.all.n}건 ${s.all.expectancyR?.toFixed(2)}R (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)})`);
-      for (const gross of [1, 2]) for (const maxOpen of [3, 5, 8]) {
-        const line = [0.01, 0.015, 0.02, 0.03].map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen, pick, maxGross: gross }); return `${(rp * 100).toFixed(1)}% ${ps.multiple.toFixed(2)}배/${p(ps.cagr)}/DD${p(ps.maxDD)}`; });
+      for (const gross of [1, 2]) for (const maxOpen of opens) {
+        const line = risks.map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen, pick, maxGross: gross }); return `${(rp * 100).toFixed(1)}% ${ps.multiple.toFixed(2)}배/${p(ps.cagr)}/DD${p(ps.maxDD)}${aggr ? `/월중앙${p(ps.medianMonth)}/최악월${p(ps.worstMonth)}/손실월${p(ps.losingMonths)}` : ''}`; });
         console.log(`    현금 ${gross}배, 최대 ${maxOpen}종목: ${line.join(' | ')}`);
       }
     }
