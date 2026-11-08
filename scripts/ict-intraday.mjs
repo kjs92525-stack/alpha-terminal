@@ -109,7 +109,7 @@ export const ICT4H_EDGE = {
 /** Trade every shift in one stock's 4-hour bars under variant v. Returns trades [{ t, R, win }]. */
 export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR = 1.5 } = {}) {
   const maxHold = v.maxHold ?? maxHold0;  // a quick variant can hold fewer bars
-  const rules = { ...DESK_RULES, mssRaw: true, mssVolReq: v.mssVolReq ?? null };
+  const rules = { ...DESK_RULES, mssRaw: true, mssVolReq: v.mssVolReq ?? null, mssStrictLeg: !!v.strictLeg };
   const atr = atrSeries(bars), trendOf = dailyBias(bars), bias = v.bias ? trendOf : null, out = [];
   const ctxOf = v.maxExt != null || v.noOverhead || v.maxSpread != null ? dailyContext(bars) : null, ctxAll = dailyContext(bars);
   let busyUntil = -1;
@@ -307,8 +307,10 @@ async function main() {
   if (arg('set') === 'growth') {
     // growth research: one base rule (4-hour limit), then which signals to take, how many at once, how much risk,
     // under a real cash limit (1x = cash only, 2x = margin)
-    const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, { entry: 'limit' }));
-    for (const t of all) t.reg = regOf.get(t.t) ?? null;
+    const base = [], strict = []; for (const bars of series.values()) { base.push(...tradesFor(bars, { entry: 'limit' })); strict.push(...tradesFor(bars, { entry: 'limit', strictLeg: true })); }
+    for (const t of [...base, ...strict]) t.reg = regOf.get(t.t) ?? null;
+    for (const [setName, all] of [['기존 규칙', base], ['엄격한 구조(하락 시작 고점 돌파만)', strict]]) {
+    console.log(`GROWTH ===== ${setName} =====`);
     const vol = (t) => t.volMult >= 1.5;
     const picks = {
       '추세 일치': (t) => t.trend,
@@ -331,6 +333,7 @@ async function main() {
         const line = risks.map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen, pick, maxGross: gross }); return `${(rp * 100).toFixed(1)}% ${ps.multiple.toFixed(2)}배/${p(ps.cagr)}/DD${p(ps.maxDD)}${aggr ? `/월중앙${p(ps.medianMonth)}/최악월${p(ps.worstMonth)}/손실월${p(ps.losingMonths)}` : ''}`; });
         console.log(`    현금 ${gross}배, 최대 ${maxOpen}종목: ${line.join(' | ')}`);
       }
+    }
     }
     return;
   }

@@ -70,6 +70,7 @@ export const DESK_RULES = {
   mssTf: 'D',                    // 'D': daily structure; 'W': weekly structure (rolling 5-session bars ending today)
   mssRaw: false,                 // research: no trend / relative-strength / volume filters on the structure setup
   mssVolReq: null,               // e.g. 1.5: the shift bar's volume must be this multiple of the prior 20 bars' average (on its own timeframe)
+  mssStrictLeg: false,           // research: the broken swing high must be the highest bar since it (see structureShift)
 };
 /** The ICT book: a sweep of a swing low, then a displacement close through the lower swing high (MSS), bought at the next
  * open, stop under the swept low, everything sold at buy-side liquidity (60-day high). No trend / strength / volume filters:
@@ -159,6 +160,9 @@ export function structureShift(bars, i, atr, rules = DESK_RULES) {
   if (jH < 0) return null;
   const H = bars[jH].h;
   if (!(b.c > H && bars[i - 1].c <= H)) return null;
+  // strict leg (ICT): the high broken must be the top of the leg down into the sweep. A higher bar after it (a news crash
+  // from above, e.g. RVMD 2026-11-05 from $210) means the close only retraced part of that drop, not a structure shift.
+  if (rules.mssStrictLeg) for (let j = jH + 1; j < i; j++) if (bars[j].h > H) return null;
   // the sweep: the lowest low after the swing high
   let s = -1; for (let j = jH + 1; j < i; j++) if (s < 0 || bars[j].l < bars[s].l) s = j;
   if (s < 0) return null;
