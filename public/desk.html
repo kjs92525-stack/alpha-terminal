@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>알파 데스크</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+/* Layout: a trading desk at night. Desktop = three panes (account rail · today's work · activity feed);
+   phone = one column with a bottom tab bar. Cards float on a deep navy ground; colour is spent on state. */
+:root {
+  --ground: #1b1f3d; --pane: #222749; --card: #2a3059; --card-2: #333a69; --line: rgba(196, 204, 255, .09); --line-2: rgba(196, 204, 255, .16);
+  --fg: #f3f4ff; --fg-2: #b2b7da; --muted: #7c82ad;
+  --blue: #4f7dff; --violet: #7b57ff; --coral: #ff5d6c; --cyan: #2fc6f2; --mint: #36d6a0; --amber: #ffb84d;
+  --up: #ff6473; --down: #5c90ff;            /* Korean market convention: red rises, blue falls */
+  --display: "Manrope", "IBM Plex Sans KR", system-ui, sans-serif;
+  --body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --r-lg: 22px; --r-md: 16px; --r-sm: 12px; --shadow: 0 22px 44px -24px rgba(5, 7, 28, .85);
+  --tabbar: 68px; color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { background: var(--ground); color: var(--fg) }
+body { margin: 0; font-family: var(--body); font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--ground) }
+button, input { font: inherit; color: inherit }
+a { color: var(--cyan) }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 8px }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.01em }
+.up { color: var(--up) } .down { color: var(--down) } .dim { color: var(--fg-2) } .mute { color: var(--muted) }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -.01em }
+h2 { font-size: 17px; font-weight: 700 }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+
+/* ---------- shell ---------- */
+.app { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; max-width: 1440px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px calc(var(--tabbar) + 24px) }
+.rail, .feed { display: none }
+.main { min-width: 0; display: flex; flex-direction: column; gap: 22px }
+@media (min-width: 1000px) {
+  .app { grid-template-columns: 300px minmax(0, 1fr); padding-bottom: 28px }
+  .rail { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 14px; align-self: start }
+  .tabbar { display: none !important } .topnav { display: flex !important }
+  .m-only { display: none !important }
+}
+@media (min-width: 1320px) { .app { grid-template-columns: 300px minmax(0, 1fr) 300px } .feed { display: flex; flex-direction: column; position: sticky; top: 14px; align-self: start; max-height: calc(100vh - 28px) } .m-feed { display: none !important } }
+
+/* ---------- top bar ---------- */
+.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -.02em }
+.brand i { width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, var(--blue), var(--violet)); display: grid; place-items: center; font-style: normal; font-size: 15px; box-shadow: 0 8px 18px -8px var(--blue) }
+.topnav { display: none; gap: 6px; margin-left: 18px }
+.topnav button { background: none; border: 0; padding: 8px 12px; border-radius: 12px; color: var(--fg-2); font-weight: 600; cursor: pointer }
+.topnav button[aria-current="page"] { color: var(--fg); background: var(--card) }
+.top .grow { flex: 1 }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line-2); font-size: 12.5px; color: var(--fg-2); white-space: nowrap }
+.pill b { color: var(--fg); font-weight: 600 }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted) }
+.pill.ok .dot { background: var(--mint) } .pill.warn .dot { background: var(--amber) } .pill.bad .dot { background: var(--coral) }
+.pill.ok { border-color: color-mix(in srgb, var(--mint) 45%, transparent) } .pill.warn { border-color: color-mix(in srgb, var(--amber) 45%, transparent) } .pill.bad { border-color: color-mix(in srgb, var(--coral) 45%, transparent) }
+
+/* ---------- surfaces ---------- */
+.card { background: var(--card); border-radius: var(--r-lg); padding: 18px; box-shadow: var(--shadow); min-width: 0 }
+.pane { background: var(--pane); border-radius: var(--r-lg); padding: 18px; min-width: 0 }
+.sec { display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+.sec-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.sec-h .sub { color: var(--muted); font-size: 12.5px }
+.sec-h .grow { flex: 1 }
+.label { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600 }
+.empty { padding: 26px 18px; text-align: center; color: var(--fg-2); background: var(--pane); border-radius: var(--r-lg); border: 1.5px dashed var(--line-2) }
+.empty b { display: block; color: var(--fg); font-size: 15px; margin-bottom: 4px }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--card-2); color: var(--fg-2); font-size: 11.5px; font-weight: 600; white-space: nowrap }
+.chip.blue { background: color-mix(in srgb, var(--blue) 22%, transparent); color: #a9c0ff }
+.chip.violet { background: color-mix(in srgb, var(--violet) 24%, transparent); color: #c7b6ff }
+.chip.mint { background: color-mix(in srgb, var(--mint) 18%, transparent); color: #8ff0cc }
+.chip.amber { background: color-mix(in srgb, var(--amber) 20%, transparent); color: #ffd699 }
+.chip.coral { background: color-mix(in srgb, var(--coral) 20%, transparent); color: #ffb0b8 }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 14px; border: 1.5px solid var(--blue); background: transparent; color: var(--fg); font-weight: 600; cursor: pointer }
+.btn.solid { background: var(--blue); box-shadow: 0 10px 22px -12px var(--blue) }
+.btn:hover { background: color-mix(in srgb, var(--blue) 16%, transparent) } .btn.solid:hover { background: #6a90ff }
+
+/* ---------- account rail ---------- */
+.acct .big { font-size: 30px; font-weight: 800 }
+.acct .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px }
+.spark { height: 128px; margin: 8px -6px -6px }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px }
+.stat { border: 1.5px solid var(--line-2); border-radius: var(--r-md); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+.stat .v { font-family: var(--display); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums }
+.stat .k { font-size: 11.5px; color: var(--muted) }
+.stat.blue { border-color: color-mix(in srgb, var(--blue) 55%, transparent) } .stat.violet { border-color: color-mix(in srgb, var(--violet) 55%, transparent) }
+.stat.coral { border-color: color-mix(in srgb, var(--coral) 50%, transparent) } .stat.cyan { border-color: color-mix(in srgb, var(--cyan) 50%, transparent) }
+.progress { height: 6px; border-radius: 99px; background: var(--card-2); overflow: hidden }
+.progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--violet)); border-radius: inherit }
+
+/* ---------- hero tiles ---------- */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px }
+@media (max-width: 720px) { .tiles { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) } .tiles .tile:first-child { grid-column: 1 / -1 } .tile { min-height: 112px; padding: 15px } .tile .v { font-size: 22px } .tile .glyph { font-size: 80px } }
+.tile { position: relative; overflow: hidden; border-radius: var(--r-lg); padding: 18px; min-height: 132px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; border: 0; text-align: left; cursor: pointer; color: #fff; box-shadow: 0 24px 40px -22px var(--glow) }
+.tile.blue { background: linear-gradient(150deg, #5f8bff, #3d63e6); --glow: #4f7dff }
+.tile.violet { background: linear-gradient(150deg, #8c6bff, #6440f0); --glow: #7b57ff }
+.tile.coral { background: linear-gradient(150deg, #ff7480, #f0465a); --glow: #ff5d6c }
+.tile.slate { background: linear-gradient(150deg, #3b4378, #2c3262); --glow: #10142f }
+.tile .glyph { position: absolute; right: -6px; top: -14px; font-family: var(--display); font-weight: 800; font-size: 104px; line-height: 1; opacity: .17; transform: rotate(-8deg); pointer-events: none }
+.tile .k { font-size: 12.5px; opacity: .85; font-weight: 600 }
+.tile .v { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.15 }
+.tile .s { font-size: 12.5px; opacity: .85; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
+
+/* ---------- order / signal cards ---------- */
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px }
+.oc { display: flex; flex-direction: column; gap: 12px; cursor: pointer; transition: transform .15s }
+.oc:hover { transform: translateY(-2px) }
+.oc-h { display: flex; align-items: center; gap: 12px }
+.av { width: 40px; height: 40px; flex: none; border-radius: 13px; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 12.5px; color: #fff }
+.oc-h .t { min-width: 0; flex: 1 }
+.oc-h .t b { font-family: var(--display); font-size: 16px; font-weight: 800; display: block }
+.oc-h .t span { color: var(--muted); font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.lv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+.lv div { background: var(--pane); border-radius: var(--r-sm); padding: 9px 10px; min-width: 0 }
+.lv span { display: block; font-size: 11px; color: var(--muted) }
+.lv b { font-family: var(--display); font-size: 15px; font-variant-numeric: tabular-nums }
+.lv small { display: block; font-size: 11px; font-variant-numeric: tabular-nums }
+.oc-f { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--fg-2); flex-wrap: wrap }
+.void { opacity: .72 } .void .lv { display: none }
+
+/* ---------- holdings ladder ---------- */
+.hold { display: flex; flex-direction: column; gap: 10px }
+.hr { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; background: var(--card); border-radius: var(--r-md); cursor: pointer }
+.hr:hover { background: var(--card-2) }
+.hr .t b { font-family: var(--display); font-weight: 800 } .hr .t span { color: var(--muted); font-size: 12px; margin-left: 6px }
+.hr .r { text-align: right } .hr .r b { font-family: var(--display); font-weight: 700; font-size: 15px; display: block } .hr .r small { font-size: 11.5px; color: var(--muted) }
+.ladder { position: relative; height: 6px; border-radius: 99px; margin: 9px 0 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--down) 70%, transparent), var(--card-2) 40%, color-mix(in srgb, var(--up) 70%, transparent)) }
+.ladder .e { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--fg-2); border-radius: 2px }
+.ladder .p { position: absolute; top: -5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--fg); border: 3px solid var(--ground); box-shadow: 0 0 0 1.5px var(--fg-2) }
+.ladder-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums }
+
+/* ---------- feed ---------- */
+.feed { gap: 0; padding: 0; overflow: hidden }
+.feed-h { display: flex; align-items: center; gap: 8px; padding: 16px 18px; border-bottom: 1px solid var(--line) }
+.feed-list { overflow-y: auto; padding: 6px 0 }
+.ev { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 11px; padding: 11px 18px }
+.ev .av { width: 36px; height: 36px; border-radius: 12px; font-size: 11px }
+.ev b { font-family: var(--display); font-weight: 800; font-size: 13.5px } .ev time { float: right; color: var(--muted); font-size: 11.5px }
+.ev p { margin: 2px 0 0; color: var(--fg-2); font-size: 12.5px; line-height: 1.45 }
+
+/* ---------- stock view ---------- */
+.search { display: flex; gap: 10px }
+.search input { flex: 1; min-width: 0; background: var(--card); border: 1.5px solid var(--line-2); border-radius: 14px; padding: 11px 14px; font-size: 15px; text-transform: uppercase }
+.search input::placeholder { text-transform: none; color: var(--muted) }
+.chips { display: flex; gap: 8px; flex-wrap: wrap }
+.chips button { border: 1.5px solid var(--line-2); background: none; border-radius: 999px; padding: 6px 12px; font-weight: 700; font-family: var(--display); font-size: 12.5px; cursor: pointer; color: var(--fg-2) }
+.chips button:hover, .chips button[aria-pressed="true"] { border-color: var(--blue); color: var(--fg) }
+.qhead { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap }
+.qhead h1 { font-family: var(--display); font-size: 30px; font-weight: 800 }
+.qhead .px { font-family: var(--display); font-size: 26px; font-weight: 700 }
+.chart { height: 380px; width: 100%; border-radius: var(--r-md); overflow: hidden }
+@media (max-width: 600px) { .chart { height: 300px } }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--fg-2) }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px }
+.tf { display: flex; gap: 6px; margin-left: auto }
+.tf button { border: 0; background: var(--pane); color: var(--fg-2); padding: 5px 10px; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer }
+.tf button[aria-pressed="true"] { background: var(--blue); color: #fff }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; align-items: start }
+.verdict { display: flex; gap: 12px; align-items: flex-start }
+.verdict .badge { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-weight: 800; font-family: var(--display) }
+.verdict .badge.go { background: color-mix(in srgb, var(--mint) 22%, transparent); color: var(--mint) }
+.verdict .badge.no { background: color-mix(in srgb, var(--amber) 22%, transparent); color: var(--amber) }
+.verdict p { margin: 4px 0 0; color: var(--fg-2); font-size: 13.5px }
+ul.reads { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px }
+ul.reads li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; font-size: 13.5px; color: var(--fg-2) }
+ul.reads li::before { content: attr(data-i); font-family: var(--display); font-weight: 800; font-size: 11px; color: var(--cyan); background: color-mix(in srgb, var(--cyan) 15%, transparent); border-radius: 7px; height: 22px; display: grid; place-items: center }
+details.more { color: var(--fg-2); font-size: 13px }
+details.more summary { cursor: pointer; color: var(--cyan); font-weight: 600; list-style: none }
+details.more summary::-webkit-details-marker { display: none }
+details.more[open] summary { margin-bottom: 8px }
+
+/* ---------- performance / lab ---------- */
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+@media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.bars { display: flex; flex-direction: column; gap: 12px }
+.bar-r { display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 13px }
+.bar-t { height: 10px; background: var(--pane); border-radius: 99px; position: relative; overflow: hidden }
+.bar-t i { position: absolute; top: 0; bottom: 0; border-radius: 99px }
+.tc { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; background: var(--card); border-radius: var(--r-md) }
+.tc b { font-family: var(--display); font-weight: 800 } .tc div > span { font-size: 12px; color: var(--muted) }
+.tc .r { text-align: right } .tc .r b { display: block; font-size: 15px } .tc .r small { font-size: 11.5px; color: var(--muted) }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums }
+.tbl th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11.5px; padding: 8px 10px; border-bottom: 1px solid var(--line-2); white-space: nowrap }
+.tbl td { padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap }
+.tbl td.r, .tbl th.r { text-align: right } .tbl tr.win td { background: color-mix(in srgb, var(--blue) 10%, transparent) }
+.scroll { overflow-x: auto }
+.seg { display: inline-flex; background: var(--pane); border-radius: 12px; padding: 3px; gap: 2px }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 9px; color: var(--fg-2); font-weight: 600; font-size: 12.5px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--card-2); color: var(--fg) }
+.yr { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 12.5px }
+.yr .pair { display: flex; flex-direction: column; gap: 4px }
+.yr .b { height: 9px; border-radius: 99px; min-width: 2px }
+.acct-in { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line-2); border-radius: 12px; padding: 4px 10px; font-size: 12.5px; color: var(--fg-2) }
+.acct-in input { width: 86px; background: none; border: 0; font-family: var(--display); font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; padding: 2px 0 }
+
+/* ---------- tab bar ---------- */
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr);
+  background: color-mix(in srgb, var(--pane) 94%, transparent); backdrop-filter: blur(14px); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px) }
+.tabbar button { background: none; border: 0; height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer }
+.tabbar svg { width: 22px; height: 22px }
+.tabbar button[aria-current="page"] { color: var(--fg) }
+.tabbar button[aria-current="page"] svg { color: var(--blue); filter: drop-shadow(0 4px 8px rgba(79, 125, 255, .6)) }
+.view { display: flex; flex-direction: column; gap: 26px; min-width: 0 }
+.view[hidden] { display: none !important }
+.foot { color: var(--muted); font-size: 12px; text-align: center; padding-top: 6px }
+</style>
+
+<div class="app">
+  <aside class="rail" id="rail" aria-label="계좌"></aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="brand"><i>α</i>Alpha Desk</div>
+      <nav class="topnav" id="topnav" aria-label="화면"></nav>
+      <span class="grow"></span>
+      <span class="pill" id="mkt"><span class="dot"></span><span>시장</span></span>
+      <span class="pill" id="asof"><span>데이터</span><b>-</b></span>
+    </header>
+
+    <!-- TODAY -->
+    <section class="view" id="v-today">
+      <div class="m-only" id="m-acct"></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="sec" id="todo"></div>
+      <div class="sec" id="holds"></div>
+      <div class="sec m-feed" id="m-feed"></div>
+    </section>
+
+    <!-- STOCK -->
+    <section class="view" id="v-stock" hidden>
+      <div class="sec">
+        <form class="search" id="q-form" autocomplete="off">
+          <input id="q" list="q-list" placeholder="티커 검색 (예: TEM, NVDA)" aria-label="티커">
+          <datalist id="q-list"></datalist>
+          <button class="btn solid" type="submit">보기</button>
+        </form>
+        <div class="chips" id="q-chips"></div>
+      </div>
+      <div id="q-out"></div>
+    </section>
+
+    <!-- PERFORMANCE -->
+    <section class="view" id="v-perf" hidden></section>
+
+    <!-- LAB -->
+    <section class="view" id="v-lab" hidden></section>
+
+    <p class="foot" id="foot"></p>
+  </main>
+
+  <aside class="feed pane" id="feed" aria-label="활동"></aside>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="화면"></nav>
+
+<script>
+const DeskEngine = (() => {
+// Analyst desk: every evening the desk reads the day's candidate lists, classifies each chart the way a
+// swing-trading analyst would (breakout, tight base, trend pullback, oversold reversal), writes a trade
+// plan (trigger, stop, first target, trailing average) and chooses position sizes from a fixed risk budget.
+// The picks are stored once and never edited; the paper account is replayed from them every night on real
+// daily bars, so win rate and P&L are reproducible from the stored picks plus prices.
+//
+// Fill conventions (conservative, daily bars only): orders work from the session after the pick; a bar that
+// touches both the stop and a profit level is treated as stopped first; gaps through a stop fill at the open.
+
+const DESK_RULES = {
+  version: 6,
+  startEquity: 100_000,
+  costPerSide: 0.001,            // commission + spread, each side (liquid names)
+  costSmallPerSide: 0.0025,      // small caps and sub-$10 stocks: wider spreads
+  stopSlippage: 0.002,           // a resting stop fills a little below its price
+  picksPerDay: { SELECTIVE: 5, LIMIT: 3, UNKNOWN: 3, WAIT: 1 },
+  riskPct: { SELECTIVE: 0.01, LIMIT: 0.007, UNKNOWN: 0.007, WAIT: 0.0035 }, // equity risked per trade
+  maxPositionPct: 0.15,
+  maxOpen: 12,
+  maxHeatPct: 0.06,              // all open positions together may lose at most 6% of equity to their stops
+  maxSectorOpen: 3,
+  ddHalfRisk: 0.08, ddHalt: 0.15, // account drawdown: halve new risk at -8%, stop new entries at -15%
+  ddHaltSessions: 20,            // a halt lasts this many sessions, then the desk restarts from the current equity
+  recoverGain: 0.05,             // after a restart, new risk stays halved until equity is 5% above the restart level
+  reentryCooldown: 10,           // sessions before re-buying a name that was stopped out
+  earningsBlackout: 5,           // no new entry with a report inside this many sessions
+  offeringBlackoutDays: 90,
+  distributionLookback: 5,       // a heavy-volume down day this recent means sellers, not a pullback
+  distributionVol: 1.3,          // ... volume at least this multiple of the prior 20-day average
+  distributionMove: 1.2,         // ... and a drop of at least this many daily ranges (ATR) or 3%      // a share offering (424B, non-large-cap) this recent excludes the stock
+  minQuality: 55,
+  minQualityWait: 80,            // when the market verdict is WAIT, only the strongest single setup
+  maxStopPct: 0.12,
+  minStopPct: 0.02,              // a stop closer than 2% is noise, not a plan
+  minAtrPct: 0.008,              // daily range under 0.8%: pinned price (pending takeover, etc.), not a trend trade              // skip plans whose stop is further than 12% below the trigger
+  maxChase: 0.04,                // never buy an open more than 4% above the planned price
+  partialAtR: 2, breakevenAtR: 1,
+  // v6: 7-year comparison (538 stocks, 2019-10 → 2026-11): selling nothing at +2R and holding the whole position until a
+  // close under the 50-day average lifted expectancy +0.05R → +0.12R (first six years +0.13R, last year +0.08R),
+  // CAGR 2.5% → 3.5%, max drawdown -32% → -26%, and doubled the 30%+ winners (9 → 18). Win rate falls 35% → 26%.
+  partialFrac: 0,                // share sold at +2R; 0 = sell nothing there, only start trailing (let the winner run)
+  trailMa: 'sma50',              // force one trailing average ('sma50', 'ema20', 'ema10'); null = by volatility
+  maxMcap: null,                 // e.g. 10e9: only stocks below this market cap (unknown caps pass)
+  minAtrPick: null,              // e.g. 0.03: only stocks whose daily range is at least this share of price
+  timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
+  minPrice: 5,
+  minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
+  maxAdvPct: 0.01,               // never more than 1% of a day's dollar volume
+  // which chart setups the desk trades. 3-year comparisons (538 stocks, 2023-11 → 2026-11, scripts/desk-backtest.mjs
+  // --variants): ICT structure shifts on daily bars lost in every form (10-20 trades, -0.03 to -0.94R), and the volume
+  // score that looked better on 11-05 lost in the last 12 months (-0.21R vs +0.06R without it), so both stay out of
+  // the account's rules (v5). They are still read and shown on every pick, and ICT signals run in their own book.
+  setups: ['breakout', 'base', 'pullback', 'reversal'],
+  // volume reading (accumulation vs distribution, quiet pullbacks) in the quality score
+  volumeRules: false,
+  // market structure shift (ICT-style, daily bars): sweep of a swing low, then a displacement close through the
+  // pullback's last swing high
+  mssPivot: 2,                   // a swing point needs this many bars on each side
+  mssLookback: 25,               // the pullback's swing high must be this recent
+  mssDisplacementAtr: 1.0,       // the shift bar's range, in ATRs
+  mssBody: 0.5,                  // ... and its body as a share of its range
+  mssVol: 1.2,                   // ... on at least this multiple of average volume (SIP volume only)
+  mssEntry: 'limit',             // 'limit': wait for a retrace into the gap / order block; 'market': next open
+  mssValidDays: 5,
+  mssExit: 'desk',               // 'desk': +2R half then trail; 'liquidity': sell everything at the buy-side liquidity (prior high)
+  mssMinRR: 2,                   // ... and only when that target pays at least this many R
+  mssDiscount: null,             // e.g. 0.5: the entry must sit in the lower half of the 60-day range (ICT discount)
+  mssTf: 'D',                    // 'D': daily structure; 'W': weekly structure (rolling 5-session bars ending today)
+  mssRaw: false,                 // research: no trend / relative-strength / volume filters on the structure setup
+  mssVolReq: null,               // e.g. 1.5: the shift bar's volume must be this multiple of the prior 20 bars' average (on its own timeframe)
+};
+/** The ICT book: a sweep of a swing low, then a displacement close through the lower swing high (MSS), bought at the next
+ * open, stop under the swept low, everything sold at buy-side liquidity (60-day high). No trend / strength / volume filters:
+ * in the 3-year test (538 stocks) this raw daily form had the most trades and the best result of the ICT variants
+ * (92 trades, win 37%, -0.00R; first two years -0.10R, last year +0.16R), so it runs in its own paper account. */
+const ICT_RULES = { ...DESK_RULES, setups: ['structure'], mssRaw: true, volumeRules: false, mssEntry: 'market', mssExit: 'liquidity', mssMinRR: 1.5, mssDiscount: null,
+  minQuality: 0, minQualityWait: 0, picksPerDay: { SELECTIVE: 3, LIMIT: 3, UNKNOWN: 3, WAIT: 2 } };
+const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
+
+const SETUP_LABEL = { breakout: '신고가 돌파', structure: '구조 전환(MSS)', base: '수축 후 돌파 대기', pullback: '추세 눌림목', reversal: '과매도 반등' };
+const capBucket = (mcap) => (mcap == null ? '미분류' : mcap >= 10e9 ? '대형주' : mcap >= 2e9 ? '중형주' : '소형주');
+
+// ---------- indicators ----------
+function emaSeries(cl, n) { const o = new Array(cl.length).fill(NaN), k = 2 / (n + 1); let e = NaN; for (let i = 0; i < cl.length; i++) { if (i === n - 1) { let s = 0; for (let j = 0; j < n; j++) s += cl[j]; e = s / n; } else if (i >= n) e = cl[i] * k + e * (1 - k); o[i] = e; } return o; }
+function smaSeries(cl, n) { const o = new Array(cl.length).fill(NaN); let s = 0; for (let i = 0; i < cl.length; i++) { s += cl[i]; if (i >= n) s -= cl[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
+const series = new WeakMap();
+/** Cached per-bars-array indicator series (bars arrays are not mutated). */
+function seriesFor(bars) {
+  let x = series.get(bars); if (x) return x;
+  const cl = bars.map((b) => b.c);
+  x = { cl, ema10: emaSeries(cl, 10), ema20: emaSeries(cl, 20), sma50: smaSeries(cl, 50), sma200: smaSeries(cl, 200) };
+  series.set(bars, x); return x;
+}
+function atrAt(bars, i, n) { let s = 0, k = 0; for (let j = Math.max(1, i - n + 1); j <= i; j++) { const b = bars[j], pc = bars[j - 1].c; s += Math.max(b.h - b.l, Math.abs(b.h - pc), Math.abs(b.l - pc)); k++; } return k ? s / k : NaN; }
+function rsiAt(cl, i, n = 14) { if (i < n + 1) return null; let g = 0, l = 0; const from = Math.max(1, i - 120); for (let j = from; j <= i; j++) { const d = cl[j] - cl[j - 1], up = Math.max(d, 0), dn = Math.max(-d, 0); if (j < from + n) { g += up / n; l += dn / n; } else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; } } return 100 - 100 / (1 + g / (l || 1e-9)); }
+
+function indicatorsAt(bars, i) {
+  const s = seriesFor(bars), c = bars[i].c;
+  let hi20 = 0, lo5 = Infinity, lo10 = Infinity, hi52 = 0, v20 = 0, dv20 = 0;
+  for (let j = Math.max(0, i - 20); j < i; j++) hi20 = Math.max(hi20, bars[j].h);
+  for (let j = Math.max(0, i - 4); j <= i; j++) lo5 = Math.min(lo5, bars[j].l);
+  for (let j = Math.max(0, i - 9); j <= i; j++) lo10 = Math.min(lo10, bars[j].l);
+  for (let j = Math.max(0, i - 251); j <= i; j++) hi52 = Math.max(hi52, bars[j].h);
+  const nv = Math.min(20, i + 1); for (let j = i - nv + 1; j <= i; j++) { v20 += bars[j].v; dv20 += bars[j].v * bars[j].c; }
+  const lr = []; for (let j = Math.max(1, i - 59); j <= i; j++) lr.push(Math.log(s.cl[j] / s.cl[j - 1]));
+  const m = lr.reduce((a, b) => a + b, 0) / (lr.length || 1);
+  const vol60 = lr.length > 10 ? Math.sqrt(lr.reduce((a, b) => a + (b - m) ** 2, 0) / (lr.length - 1) * 252) : null;
+  const atr14 = atrAt(bars, i, 14), atr10 = atrAt(bars, i, 10), atr50 = atrAt(bars, i, 50);
+  return {
+    c, h: bars[i].h, l: bars[i].l, o: bars[i].o, ema10: s.ema10[i], ema20: s.ema20[i], sma50: s.sma50[i], sma200: s.sma200[i],
+    atr: atr14, atrPct: atr14 / c, contraction: atr10 / atr50, rsi: rsiAt(s.cl, i), hi20, hi52, lo5, lo10,
+    relVol: v20 ? bars[i].v / (v20 / nv) : 1, adv20: dv20 / nv, vol60,
+    ret1: i >= 1 ? c / s.cl[i - 1] - 1 : 0, ret5: i >= 5 ? c / s.cl[i - 5] - 1 : 0, ret126: i >= 126 ? c / s.cl[i - 126] - 1 : null,
+    ext50: Number.isFinite(s.sma50[i]) ? c / s.sma50[i] - 1 : null, bars: i + 1,
+  };
+}
+
+/** Heavy-volume down days in the last `n` sessions: [{ i, ret, vol }] (vol = multiple of the prior 20-day average). */
+function distributionDays(bars, i, atrPct, rules = DESK_RULES) {
+  const out = [];
+  for (let k = Math.max(21, i - rules.distributionLookback + 1); k <= i; k++) {
+    let v = 0; for (let j = k - 20; j < k; j++) v += bars[j].v;
+    const avg = v / 20, ret = bars[k].c / bars[k - 1].c - 1;
+    if (avg > 0 && bars[k].v >= rules.distributionVol * avg && ret <= -Math.max(rules.distributionMove * atrPct, 0.03)) out.push({ i: k, ret, vol: bars[k].v / avg });
+  }
+  return out;
+}
+/** Rolling weekly bars: 5-session blocks ending at bar i (the last block ends today). */
+function weeklyBars(bars, i) {
+  const out = [];
+  for (let e = i; e - 4 >= 0; e -= 5) { let h = -Infinity, l = Infinity, v = 0; for (let j = e - 4; j <= e; j++) { h = Math.max(h, bars[j].h); l = Math.min(l, bars[j].l); v += bars[j].v; } out.push({ o: bars[e - 4].o, h, l, c: bars[e].c, v }); }
+  return out.reverse();
+}
+
+/** Volume character over the last n sessions: up-day volume / down-day volume, and the last 5 days' volume vs the n-day average. */
+function volumeProfile(bars, i, n = 50) {
+  let up = 0, dn = 0, all = 0, k = 0;
+  for (let j = Math.max(1, i - n + 1); j <= i; j++) { const v = bars[j].v; all += v; k++; if (bars[j].c > bars[j - 1].c) up += v; else if (bars[j].c < bars[j - 1].c) dn += v; }
+  let v5 = 0; for (let j = Math.max(0, i - 4); j <= i; j++) v5 += bars[j].v;
+  const avg = k ? all / k : 0;
+  return { udRatio: dn > 0 ? up / dn : null, dryUp: avg > 0 ? v5 / Math.min(5, i + 1) / avg : null };
+}
+
+/**
+ * Bullish market structure shift on daily bars (ICT reading): in the pullback after an advance, price sets a swing low,
+ * bounces to a lower swing high, then runs the swing low's sell stops (the sweep) and closes back above it; the shift
+ * is the first close through that lower swing high on a wide, full-bodied bar. Returns null or the levels involved.
+ */
+function structureShift(bars, i, atr, rules = DESK_RULES) {
+  const k = rules.mssPivot, b = bars[i];
+  if (i < rules.mssLookback + 2 * k + 2 || !(atr > 0)) return null;
+  const swingHigh = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].h >= bars[j].h) return false; return true; };
+  const swingLow = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].l <= bars[j].l) return false; return true; };
+  // the pullback's last swing high, confirmed before today, that today closes through for the first time
+  let jH = -1;
+  for (let j = i - 1 - k; j >= Math.max(k, i - rules.mssLookback); j--) if (swingHigh(j)) { jH = j; break; }
+  if (jH < 0) return null;
+  const H = bars[jH].h;
+  if (!(b.c > H && bars[i - 1].c <= H)) return null;
+  // the sweep: the lowest low after the swing high
+  let s = -1; for (let j = jH + 1; j < i; j++) if (s < 0 || bars[j].l < bars[s].l) s = j;
+  if (s < 0) return null;
+  // the swing low it swept: the latest swing low before the swing high
+  let jL = -1; for (let j = jH - 1; j >= Math.max(k, jH - rules.mssLookback); j--) if (swingLow(j)) { jL = j; break; }
+  if (jL < 0) return null;
+  const L = bars[jL].l, sweepLow = bars[s].l;
+  if (!(sweepLow < L)) return null;                                                          // no liquidity taken
+  let reclaimed = false; for (let t = s; t <= Math.min(s + 2, i); t++) if (bars[t].c > L) { reclaimed = true; break; }
+  if (!reclaimed) return null;                                                               // closes stayed below: a breakdown
+  if (sweepLow < L - 2.5 * atr) return null;                                                 // a collapse, not a stop run
+  // displacement
+  const range = b.h - b.l, body = b.c - b.o;
+  if (range < rules.mssDisplacementAtr * atr || body < rules.mssBody * range) return null;
+  let volMult = null;
+  { let v = 0, n = 0; for (let j = Math.max(0, i - 20); j < i; j++) { v += bars[j].v; n++; } if (n && v > 0) volMult = b.v / (v / n); }
+  if (rules.mssVolReq != null && !(volMult >= rules.mssVolReq)) return null;          // a shift nobody traded is not a shift
+  // the latest bullish fair-value gap in the leg up from the sweep, and the last down candle before it (order block)
+  let fvg = null; for (let t = i - 1; t >= s + 1; t--) if (bars[t + 1].l > bars[t - 1].h) { fvg = [bars[t - 1].h, bars[t + 1].l]; break; }
+  let ob = null; for (let t = i - 1; t >= s; t--) if (bars[t].c < bars[t].o) { ob = { lo: bars[t].l, hi: bars[t].h }; break; }
+  return { swingHigh: H, swingHighIdx: jH, swingLow: L, swingLowIdx: jL, sweepLow, sweepIdx: s, fvg, ob, volMult: volMult != null ? Math.round(volMult * 10) / 10 : null };
+}
+
+/**
+ * What an ICT / volume reader sees on the daily chart at bar i (information only; the desk's rules do not trade it):
+ * last confirmed swing high/low, a recent sweep of sell-side liquidity, the nearest unfilled bullish fair-value gap below
+ * the close, buy-side liquidity above (60-day high), where the close sits in the 60-day range, and the volume character.
+ */
+function ictRead(bars, i, rules = DESK_RULES) {
+  if (i < 62) return null;
+  const k = rules.mssPivot, c = bars[i].c;
+  const isH = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].h >= bars[j].h) return false; return true; };
+  const isL = (j) => { for (let t = j - k; t <= j + k; t++) if (t !== j && bars[t].l <= bars[j].l) return false; return true; };
+  let sh = null, sl = null;
+  for (let j = i - k; j >= Math.max(k, i - 60) && (sh == null || sl == null); j--) { if (sh == null && isH(j)) sh = j; if (sl == null && isL(j)) sl = j; }
+  // a sweep in the last 10 sessions: a low under an earlier swing low, closed back above it within 2 sessions
+  let sweep = null;
+  for (let s = i; s >= Math.max(k + 2, i - 9) && !sweep; s--) {
+    for (let j = s - 1 - k; j >= Math.max(k, s - 40); j--) {
+      if (!isL(j)) continue;
+      if (bars[s].l < bars[j].l) { for (let t = s; t <= Math.min(s + 2, i); t++) if (bars[t].c > bars[j].l) { sweep = { date: s, level: bars[j].l, low: bars[s].l }; break; } }
+      break;
+    }
+  }
+  let fvg = null;
+  for (let t = i - 1; t >= Math.max(1, i - 30) && !fvg; t--) {
+    const lo = bars[t - 1].h, hi = bars[t + 1].l;
+    if (hi > lo && hi < c) { let filled = false; for (let u = t + 2; u <= i; u++) if (bars[u].l <= lo) { filled = true; break; } if (!filled) fvg = [lo, hi]; }
+  }
+  let hi60 = 0, lo60 = Infinity; for (let j = i - 59; j <= i; j++) { hi60 = Math.max(hi60, bars[j].h); lo60 = Math.min(lo60, bars[j].l); }
+  const atr = atrAt(bars, i, 14), mss = structureShift(bars, i, atr, rules), vp = volumeProfile(bars, i);
+  return {
+    swingHigh: sh != null ? r2(bars[sh].h) : null, swingLow: sl != null ? r2(bars[sl].l) : null,
+    sweep: sweep ? { level: r2(sweep.level), low: r2(sweep.low), sessionsAgo: i - sweep.date } : null,
+    fvg: fvg ? fvg.map(r2) : null, buySideLiquidity: r2(hi60), rangePos: hi60 > lo60 ? Math.round((c - lo60) / (hi60 - lo60) * 100) / 100 : null,
+    mss: !!mss, udRatio: vp.udRatio != null ? Math.round(vp.udRatio * 100) / 100 : null, dryUp: vp.dryUp != null ? Math.round(vp.dryUp * 100) / 100 : null,
+  };
+}
+
+const r2 = (x) => Math.round(x * 100) / 100;
+/** weekday sessions after `from` up to and including `to` (both YYYY-MM-DD) */
+const sessionsBetween = (from, to) => { let n = 0; for (let t = Date.parse(from) + 864e5; t <= Date.parse(to); t += 864e5) { const w = new Date(t).getUTCDay(); if (w && w < 6) n++; } return n; };
+const nextWeekday = (date) => { const t = new Date(date + 'T00:00:00Z'); do t.setUTCDate(t.getUTCDate() + 1); while (t.getUTCDay() % 6 === 0); return t.toISOString().slice(0, 10); };
+/** Wilson 95% interval for a proportion: how wide the truth can be around an observed win rate. */
+function wilson(k, n, z = 1.96) { if (!n) return null; const p = k / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return [Math.max(0, c - h), Math.min(1, c + h)]; }
+const pctS = (x, d = 1) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function trailFor(atrPct) { return atrPct < 0.025 ? { ma: 'sma50', label: '50일선' } : atrPct < 0.045 ? { ma: 'ema20', label: '20일 지수이평' } : { ma: 'ema10', label: '10일 지수이평' }; }
+
+/**
+ * Read one chart at bar i. meta: { score (0-100 list score), spyRet126 }.
+ * Returns { setup, quality, plan, reasons[], warnings[], thesis } or { pass: reason }.
+ */
+function analyze(bars, i, meta = {}, rules = DESK_RULES) {
+  if (i < 60) return { pass: '시세 이력 부족' };
+  const x = indicatorsAt(bars, i), up = Number.isFinite(x.sma200) && x.sma50 > x.sma200 && x.c > x.sma200;
+  if (x.c < rules.minPrice) return { pass: `주가 $${rules.minPrice} 미만` };
+  if (meta.volumeReliable && rules.minAdv && x.adv20 < rules.minAdv) return { pass: `하루 거래대금 $${(x.adv20 / 1e6).toFixed(1)}M, 기준 미달` };
+  if (meta.earningsIn != null && meta.earningsIn <= rules.earningsBlackout) return { pass: `실적 발표 ${meta.earningsIn}거래일 전, 발표 뒤에 다시 봄` };
+  const dil = meta.dilution ?? null; // edge-signals dilutionSignal() over 180 days, or null when not checked
+  const recentOffer = dil?.offering ? dil.recent.find((d) => /^424B/i.test(d.form) && Date.parse(meta.asOf ?? d.date) - Date.parse(d.date) <= rules.offeringBlackoutDays * 864e5) : null;
+  if (recentOffer) return { pass: `${recentOffer.date} 증자 공시(${recentOffer.form}), 매물 부담으로 제외` };
+  if (Number.isFinite(x.sma200) && x.c < x.sma200 && x.sma50 < x.sma200 && !(rules.mssRaw && (rules.setups ?? []).includes('structure'))) return { pass: '200일선 아래 하락 추세' };
+  if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
+  if (x.atrPct < rules.minAtrPct) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님` };
+  if (rules.minAtrPick && x.atrPct < rules.minAtrPick) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%, 큰 수익을 노리기엔 움직임이 작음` };
+  if (x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
+  if (x.ext50 != null && x.ext50 > 0.25) return { pass: `50일선 대비 ${pctS(x.ext50, 0)} 과도한 이격` };
+
+  let setup = null, trigger, stop, entryType, validDays, riskMult = 1, mss = null;
+  const nearHigh = x.c / x.hi52, on = new Set(rules.setups ?? ['breakout', 'base', 'pullback', 'reversal']);
+  const volOk = (m) => !meta.volumeReliable || x.relVol >= m;
+  if (on.has('breakout') && up && x.c > x.hi20 && nearHigh >= 0.97 && x.relVol >= 1.4 && x.ret1 > 0) {
+    setup = 'breakout'; entryType = 'market'; trigger = x.c; validDays = 1;
+    stop = clamp(x.lo5 - 0.25 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
+  } else if (on.has('structure') && (rules.mssRaw || (up && volOk(rules.mssVol))) && (mss = (() => {
+    const tf = rules.mssTf === 'W' ? weeklyBars(bars, i) : bars, ti = rules.mssTf === 'W' ? tf.length - 1 : i, ta = rules.mssTf === 'W' ? atrAt(tf, ti, 14) : x.atr;
+    const m = structureShift(tf, ti, ta, rules); if (m) { m.tfAtr = ta; m.tf = tf; } return m;
+  })())) {
+    setup = 'structure'; stop = mss.sweepLow - 0.2 * (rules.mssTf === 'W' ? x.atr : x.atr);
+    if (rules.mssEntry === 'market') { entryType = 'market'; trigger = x.c; validDays = 1; }
+    else { // retrace into the gap (its top) or the order block (its top), never below the old swing high's midpoint to the close
+      const zone = mss.fvg ? mss.fvg[1] : mss.ob ? mss.ob.hi : (mss.swingHigh + x.c) / 2;
+      entryType = 'limit'; trigger = Math.min(x.c, Math.max(zone, stop + 1.2 * x.atr)); validDays = rules.mssValidDays;
+    }
+    // dealing range (60 sessions, or 26 weeks on the weekly chart): buy-side liquidity above (its high), discount below its midpoint
+    const rb = mss.tf, re = rules.mssTf === 'W' ? rb.length - 1 : i, rn = rules.mssTf === 'W' ? 26 : 60;
+    let rHi = 0, rLo = Infinity; for (let j = Math.max(0, re - rn); j < re; j++) { rHi = Math.max(rHi, rb[j].h); rLo = Math.min(rLo, rb[j].l); }
+    delete mss.tf;
+    mss.rangeHi = rHi; mss.rangeLo = rLo;
+    if (rules.mssDiscount != null && trigger > rLo + rules.mssDiscount * (rHi - rLo)) return { pass: `구조 전환이지만 진입가가 60일 범위의 ${(((trigger - rLo) / (rHi - rLo)) * 100).toFixed(0)}% 위치(프리미엄 구간)` };
+    if (rules.mssExit === 'liquidity') {
+      mss.liquidity = rHi;
+      if (rHi - trigger < rules.mssMinRR * (trigger - stop)) return { pass: `구조 전환이지만 위 유동성 $${r2(rHi)}까지 ${((rHi - trigger) / (trigger - stop)).toFixed(1)}R, 보상 부족` };
+    }
+  } else if (on.has('base') && up && x.c >= x.hi20 * 0.94 && x.c <= x.hi20 && x.contraction < 0.8 && nearHigh >= 0.85) {
+    setup = 'base'; entryType = 'buy-stop'; trigger = x.hi20 * 1.002; validDays = 10;
+    stop = clamp(x.lo10 - 0.2 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
+  } else if (on.has('pullback') && up && nearHigh >= 0.8 && x.rsi != null && x.rsi >= 36 && x.rsi <= 55 && (x.c < x.ema20 || Math.abs(x.c / x.sma50 - 1) < 0.025)) {
+    setup = 'pullback'; entryType = 'buy-stop'; trigger = x.h * 1.001; validDays = 5;
+    stop = clamp(x.lo5 - 0.3 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
+  } else if (on.has('reversal') && Number.isFinite(x.sma200) && x.c > x.sma200 && x.rsi != null && x.rsi < 32 && x.ret5 < -0.08) {
+    setup = 'reversal'; entryType = 'buy-stop'; trigger = x.h * 1.001; validDays = 3; riskMult = 0.5;
+    stop = clamp(x.l - 0.5 * x.atr, trigger - 3 * x.atr, trigger - 1.5 * x.atr);
+  }
+  if (!setup) return { pass: `정해 둔 자리(${[...on].map((k) => SETUP_LABEL[k]).join('·')}) 중 어디에도 해당하지 않음` };
+  stop = Math.min(stop, trigger * (1 - rules.minStopPct));
+  const stopPct = 1 - stop / trigger;
+  if (stopPct > rules.maxStopPct) return { pass: `손절폭 ${(stopPct * 100).toFixed(1)}% 과다` };
+
+  const reasons = [], warnings = [];
+  const rs = x.ret126 != null && meta.spyRet126 != null ? x.ret126 - meta.spyRet126 : null;
+  // buy weakness only in leaders: a pullback or base in a stock lagging the market is not a setup
+  if ((setup === 'pullback' || setup === 'base' || (setup === 'structure' && !rules.mssRaw)) && rs != null && rs < 0) return { pass: `${SETUP_LABEL[setup]}지만 6개월 수익률이 SPY보다 약함` };
+  // a pullback is quiet: sellers hitting the stock on heavy volume is a breakdown, not a buying chance
+  const dist = distributionDays(bars, i, x.atrPct, rules);
+  if (dist.length && (setup === 'pullback' || setup === 'base' || setup === 'reversal')) {
+    const w = dist.reduce((a, b) => (b.ret < a.ret ? b : a));
+    return { pass: `최근 ${rules.distributionLookback}거래일에 대량 하락일(${pctS(w.ret)}, 거래량 ${w.vol.toFixed(1)}배) — 눌림이 아니라 매도 압력` };
+  }
+  if (dist.length && setup === 'structure') reasons.push(`대량 하락(${dist.length}번)으로 손절 물량을 턴 뒤 되돌림 — 매도 흡수 확인`);
+  else if (dist.length) warnings.push(`최근 대량 하락일 ${dist.length}번 — 돌파 실패 위험`);
+  // earningsIn: number = sessions to the report, null = calendar checked and nothing within 30 sessions,
+  // undefined = this symbol's date is unknown (missing from the calendar)
+  if (meta.earningsIn === null && meta.earningsChecked) reasons.push('30거래일 안에 실적 발표 없음');
+  if (meta.earningsIn === undefined && meta.earningsChecked !== null) { warnings.push('실적 발표일을 확인하지 못함, 주문 전에 직접 확인'); }
+  else if (meta.earningsIn != null && meta.earningsIn <= 20) warnings.push(`${meta.earningsIn}거래일 뒤 실적 발표, 그 전에 +1R 보호가 안 되면 정리`);
+  let q = 0.35 * (meta.score ?? 60) + { breakout: 30, structure: 28, base: 26, pullback: 24, reversal: 14 }[setup];
+  if (rules.volumeRules) {
+    const vp = volumeProfile(bars, i);
+    if (vp.udRatio != null && vp.udRatio >= 1.3) { q += 4; reasons.push(`50일 상승일 거래량이 하락일의 ${vp.udRatio.toFixed(1)}배 — 매집`); }
+    else if (vp.udRatio != null && vp.udRatio < 0.8) { q -= 6; warnings.push(`50일 하락일 거래량이 더 많음(${vp.udRatio.toFixed(2)}) — 분산`); }
+    if ((setup === 'pullback' || setup === 'base') && vp.dryUp != null) {
+      if (vp.dryUp <= 0.85) { q += 4; reasons.push(`쉬는 동안 거래량이 평소의 ${(vp.dryUp * 100).toFixed(0)}%로 마름`); }
+      else if (vp.dryUp >= 1.2) { q -= 6; warnings.push(`쉬는 동안 거래량이 평소의 ${(vp.dryUp * 100).toFixed(0)}% — 조용한 눌림이 아님`); }
+    }
+  }
+  if (rs != null) { q += clamp(rs * 40, -10, 15); if (rs > 0.15) reasons.push(`6개월 수익률이 SPY보다 ${pctS(rs, 0)}p 강함`); else if (rs < 0) warnings.push(`6개월 수익률이 SPY보다 약함 (${pctS(rs, 0)}p)`); }
+  if (up) { q += 8; reasons.push('50일선이 200일선 위 정배열'); }
+  if (x.relVol > 1.5 && x.ret1 > 0) { q += 5; reasons.push(`상승일 거래량 평소의 ${x.relVol.toFixed(1)}배`); }
+  if (x.relVol > 1.5 && x.ret1 < 0) { q -= 4; warnings.push(`하락일 거래량 평소의 ${x.relVol.toFixed(1)}배`); }
+  if (x.rsi > 72) { q -= 8; warnings.push(`RSI ${x.rsi.toFixed(0)}로 단기 과열`); }
+  if (x.ext50 > 0.15) { q -= 6; warnings.push(`50일선 위 ${pctS(x.ext50, 0)} 떠 있음`); }
+  if (x.vol60 > 0.8) { q -= 5; warnings.push(`연 변동성 ${(x.vol60 * 100).toFixed(0)}%`); }
+  if (setup === 'base' && x.contraction < 0.65) { q += 3; reasons.push(`최근 변동폭이 50일 평균의 ${(x.contraction * 100).toFixed(0)}%로 수축`); }
+  if (dil) {
+    const reg = dil.recent.filter((d) => /^(S-|F-)/i.test(d.form));
+    if (dil.shelf || reg.some((d) => /^(S-1|F-1)/i.test(d.form))) { q -= 5; warnings.push(`증자 가능 서류 제출(${reg.map((d) => `${d.form} ${d.date}`).slice(0, 2).join(', ')})`); }
+    else if (dil.likelyDebt) warnings.push('최근 424B 공시가 있으나 대형주라 채권 발행일 가능성이 큼');
+    else if (!dil.count) reasons.push('최근 180일 증자 공시 없음');
+  } else if (meta.dilutionChecked === false) warnings.push('증자 공시를 확인하지 못함');
+
+  const trail = rules.trailMa ? { ma: rules.trailMa, label: { sma50: '50일선', ema20: '20일 지수이평', ema10: '10일 지수이평' }[rules.trailMa] } : trailFor(x.atrPct), R = trigger - stop, exitAt = mss?.liquidity ?? null, target = exitAt ?? trigger + rules.partialAtR * R;
+  const lead = {
+    breakout: `20일 고점 $${r2(x.hi20)}을 거래량 ${x.relVol.toFixed(1)}배로 넘었고 52주 고점의 ${(nearHigh * 100).toFixed(0)}% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 ${(rules.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않음).`,
+    base: `고점 $${r2(x.hi20)} 바로 아래에서 변동폭이 줄며 쉬고 있습니다. $${r2(trigger)}를 넘는 날 돌파 매수, ${validDays}거래일 안에 안 넘으면 주문을 거둡니다.`,
+    pullback: `상승 추세 속에서 ${x.c < x.ema20 ? '20일 지수이평 아래로' : '50일선까지'} 눌렸고 RSI ${x.rsi.toFixed(0)}입니다. 오늘 고점 $${r2(trigger)}를 다시 넘어 반등이 확인되면 삽니다.`,
+    structure: mss ? `상승 추세의 조정 중 스윙 저점 $${r2(mss.swingLow)} 아래 손절 물량을 $${r2(mss.sweepLow)}까지 쓸고(유동성 사냥) 되돌린 뒤, 오늘 직전 스윙 고점 $${r2(mss.swingHigh)}를 장대 양봉(거래량 ${x.relVol.toFixed(1)}배)으로 종가 돌파해 구조가 상승으로 바뀌었습니다. ${entryType === 'market' ? '다음 날 시가에 삽니다.' : `${mss.fvg ? `갭(FVG) $${r2(mss.fvg[0])}~$${r2(mss.fvg[1])}` : mss.ob ? `오더블록 $${r2(mss.ob.lo)}~$${r2(mss.ob.hi)}` : '돌파 구간'}으로 되돌릴 때 $${r2(trigger)} 지정가로 사고, ${validDays}거래일 안에 안 오면 주문을 거둡니다.`} 쓸고 간 저점 아래가 손절입니다.` : '',
+    reversal: `200일선 위 종목이 5일 ${pctS(x.ret5, 0)} 급락해 RSI ${x.rsi.toFixed(0)}입니다. 오늘 고점 $${r2(trigger)} 회복 때만 들어가고, 위험은 평소의 절반만 겁니다.`,
+  }[setup];
+  const thesis = exitAt != null
+    ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 목표는 위쪽 유동성(60일 고점) $${r2(exitAt)}(+${((exitAt - trigger) / R).toFixed(1)}R)에서 전량 정리합니다.`
+    : rules.partialFrac > 0
+      ? `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), 1차 목표 $${r2(target)}(+${rules.partialAtR}R)에서 절반 익절 후 나머지는 ${trail.label} 종가 이탈 때 정리합니다.`
+      : `${lead} 손절은 $${r2(stop)}(${pctS(-stopPct)}), +1R에 손절을 매수가로 올리고, $${r2(target)}(+${rules.partialAtR}R)를 넘으면 그때부터 ${trail.label} 종가 이탈까지 전량 보유합니다(중간 익절 없음).`;
+  return { setup, label: SETUP_LABEL[setup], quality: Math.round(clamp(q, 0, 100)), reasons, warnings, thesis,
+    plan: { entryType, trigger: r2(trigger), stop: r2(stop), target: r2(target), exitAt: exitAt != null ? r2(exitAt) : undefined, refClose: r2(x.c), validDays, riskMult, trailMa: trail.ma, trailLabel: trail.label, stopPct: r2(stopPct * 100) / 100 },
+    ict: ictRead(bars, i, rules),
+    structure: mss ? { swingHigh: r2(mss.swingHigh), swingLow: r2(mss.swingLow), sweepLow: r2(mss.sweepLow), fvg: mss.fvg?.map(r2) ?? null, ob: mss.ob ? { lo: r2(mss.ob.lo), hi: r2(mss.ob.hi) } : null } : undefined,
+    snapshot: { close: r2(x.c), rsi: x.rsi != null ? Math.round(x.rsi) : null, atrPct: Math.round(x.atrPct * 1000) / 1000, relVol: Math.round(x.relVol * 10) / 10, ext50: x.ext50 != null ? Math.round(x.ext50 * 1000) / 1000 : null, rs126: rs != null ? Math.round(rs * 1000) / 1000 : null } };
+}
+
+/**
+ * Choose the day's picks. candidates: [{ symbol, name, sector, mcap, score, source, bars, i }].
+ * busy: symbols already held or with a working order. Returns { picks, passed }.
+ */
+function pickForDay({ date, candidates, market, spyRet126, busy = new Set(), cooldown = new Map(), volumeReliable = false, earningsChecked = null }, rules = DESK_RULES) {
+  const state = market ?? 'UNKNOWN', seen = new Set(), rows = [], passed = [];
+  for (const c of candidates) {
+    if (seen.has(c.symbol)) continue; seen.add(c.symbol);
+    if (FUND_NAME.test(c.name ?? '') || ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'SOXL', 'SOXS', 'UPRO', 'SPXL', 'IWM'].includes(c.symbol)) { passed.push({ symbol: c.symbol, why: 'ETF·레버리지 상품 제외' }); continue; }
+    if (busy.has(c.symbol)) { passed.push({ symbol: c.symbol, why: '이미 보유·주문 중' }); continue; }
+    if (rules.maxMcap && c.mcap && c.mcap > rules.maxMcap) { passed.push({ symbol: c.symbol, why: `시가총액 $${(c.mcap / 1e9).toFixed(0)}B, 중소형주만 봄` }); continue; }
+    if (cooldown.has(c.symbol)) { passed.push({ symbol: c.symbol, why: `${cooldown.get(c.symbol)} 손절 뒤 ${rules.reentryCooldown}거래일 쉬는 중` }); continue; }
+    const a = analyze(c.bars, c.i, { score: c.score, spyRet126, volumeReliable, earningsIn: c.earningsIn ?? null, earningsChecked, dilution: c.dilution ?? null, dilutionChecked: c.dilutionChecked ?? null, asOf: date }, rules);
+    if (a.pass) { passed.push({ symbol: c.symbol, why: a.pass }); continue; }
+    const bar = state === 'WAIT' ? rules.minQualityWait : rules.minQuality;
+    if (a.quality < bar) { passed.push({ symbol: c.symbol, why: `${a.label} ${a.quality}점 (기준 ${bar}${state === 'WAIT' ? ', 진입 대기 시장' : ''})` }); continue; }
+    rows.push({ c, a });
+  }
+  rows.sort((x, y) => y.a.quality - x.a.quality);
+  const n = rules.picksPerDay[state] ?? 3, sectors = new Set(), picks = [];
+  for (const { c, a } of rows) {
+    if (picks.length >= n) { passed.push({ symbol: c.symbol, why: `${a.label} ${a.quality}점, 오늘 자리 부족` }); continue; }
+    const sec = c.sector && c.sector !== 'Unknown' ? c.sector : null;
+    if (sec && sectors.has(sec)) { passed.push({ symbol: c.symbol, why: `${sec} 이미 담음` }); continue; }
+    if (sec) sectors.add(sec);
+    picks.push({ symbol: c.symbol, name: c.name ?? c.symbol, sector: c.sector ?? null, cap: capBucket(c.mcap), mcap: c.mcap ?? null, source: c.source, listScore: c.score ?? null,
+      setup: a.setup, label: a.label, quality: a.quality, reasons: a.reasons, warnings: a.warnings, thesis: a.thesis, structure: a.structure, ict: a.ict, plan: { ...a.plan, riskPct: (rules.riskPct[state] ?? 0.006) * a.plan.riskMult }, snapshot: a.snapshot, earningsIn: c.earningsIn ?? null, dilution: c.dilution ?? null });
+  }
+  return { date, market: state, picks, passed };
+}
+
+/**
+ * Replay the paper account. ledgers: [{ date, live, market, picks }] sorted by date.
+ * data: { cal: ['YYYY-MM-DD'], get(symbol) -> { s, bars } | null }.
+ */
+function replayDesk(ledgers, data, rules = DESK_RULES, opts = {}) {
+  const cal = data.cal, idxOf = (date) => { let lo = 0, hi = cal.length - 1, a = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (cal[m] <= date) { a = m; lo = m + 1; } else hi = m - 1; } return a; };
+  const bar = (sym, d) => { const x = data.get(sym); if (!x || d < x.s || d - x.s >= x.bars.length) return null; const b = x.bars[d - x.s]; return b; };
+  const lastClose = (sym, d) => { const x = data.get(sym); if (!x) return null; const k = Math.min(d - x.s, x.bars.length - 1); return k >= 0 ? x.bars[k].c : null; };
+  const maAt = (sym, d, ma) => { const x = data.get(sym); if (!x || d < x.s) return NaN; return seriesFor(x.bars)[ma][d - x.s]; };
+  const byDay = new Map(); for (const l of ledgers) { const d = idxOf(l.date); if (d >= 0) (byDay.get(d) ?? byDay.set(d, []).get(d)).push(l); }
+  // opts.picker(d, { busy, cooldown }) -> { date, market, picks } lets a backtest choose picks session by session
+  // from the account's own state, in one pass. opts.start / opts.end bound the sessions replayed.
+  const first = opts.start ?? Math.min(...byDay.keys()), endIdx = opts.end ?? cal.length - 1;
+  const generated = [];
+  let cash = rules.startEquity, prevEquity = rules.startEquity;
+  const open = [], pending = [], trades = [], equity = [], outcomes = new Map(), events = [];
+  const spy = data.get('SPY'), spyStart = spy ? bar('SPY', first) : null;
+  const key = (date, sym) => `${date}:${sym}`;
+  const costRate = (p, px) => (p.cap === '소형주' || px < 10 ? rules.costSmallPerSide : rules.costPerSide);
+  const nextReport = (sym, d) => { const list = data.earnings?.(sym); if (!list) return null; const today = cal[d]; return list.find((e) => e.date >= today) ?? null; };
+  const spyOpenAt = (d) => bar('SPY', d)?.o ?? null, spyCloseAt = (d) => bar('SPY', d)?.c ?? null;
+  let peak = rules.startEquity, haltSince = null, recovering = false, restartEq = null;
+
+  const close = (pos, d, px, reason) => {
+    const cost = (v) => v * pos.costRate;
+    const proceeds = pos.shares * px; cash += proceeds - cost(proceeds);
+    pos.realized += pos.shares * (px - pos.entry) - cost(proceeds); pos.exitValue += proceeds; pos.exitShares += pos.shares; pos.shares = 0;
+    const exitPx = pos.exitValue / pos.exitShares, pnl = pos.realized - pos.entryCost;
+    const t = { symbol: pos.symbol, name: pos.name, setup: pos.setup, label: pos.label, cap: pos.cap, sector: pos.sector, live: pos.live, pickDate: pos.pickDate,
+      entryDate: cal[pos.entryIdx], exitDate: cal[d], days: d - pos.entryIdx, entry: r2(pos.entry), exit: r2(exitPx), shares: pos.initShares,
+      pnl: r2(pnl), pnlPct: pnl / (pos.initShares * pos.entry), R: pnl / (pos.initShares * pos.R), reason, partial: pos.partial, market: pos.market ?? null };
+    const so = spyOpenAt(pos.entryIdx), sc = spyCloseAt(d);
+    t.spyPct = so && sc ? sc / so - 1 : null; t.alpha = t.spyPct != null ? t.pnlPct - t.spyPct : null;
+    if (/^손절/.test(reason) || reason === '체결 당일 손절') stopped.set(pos.symbol, d);
+    trades.push(t); outcomes.set(key(pos.pickDate, pos.symbol), { status: 'closed', ...t }); events.push({ date: cal[d], symbol: pos.symbol, kind: 'exit', text: `${reason} $${r2(px)} (${pctS(t.pnlPct)})` });
+  };
+
+  /**
+   * Re-check a working order with the closes up to session k before it can fill on `fillDate`:
+   * a pullback/base order is void once sellers hit the stock on heavy volume, and no order fills
+   * within the earnings blackout. Returns the reason, or null.
+   */
+  const orderBlock = (o, k, fillDate) => {
+    if (['pullback', 'base', 'reversal'].includes(o.setup)) {
+      const xs = data.get(o.symbol), j = k - (xs?.s ?? 0);
+      if (xs && j >= 21 && j < xs.bars.length) { const dd = distributionDays(xs.bars, j, indicatorsAt(xs.bars, j).atrPct, rules); if (dd.length) { const w = dd.reduce((a, c) => (c.ret < a.ret ? c : a)); return `대량 하락일(${pctS(w.ret)}, 거래량 ${w.vol.toFixed(1)}배) 뒤라 눌림 매수 주문 취소`; } }
+    }
+    const rep = nextReport(o.symbol, k + 1 <= cal.length - 1 ? k + 1 : k);
+    if (rep && rep.date >= fillDate && sessionsBetween(fillDate, rep.date) < rules.earningsBlackout) return `실적 발표(${rep.date.slice(5)}) ${sessionsBetween(fillDate, rep.date) + 1}거래일 전이라 주문 취소`;
+    return null;
+  };
+  const stopped = new Map(); // symbol -> session of its last losing stop
+  for (let d = first; d <= endIdx; d++) {
+    // 1) manage open positions
+    for (const pos of [...open]) {
+      const b = bar(pos.symbol, d); if (!b || d <= pos.entryIdx) continue;
+      const held = d - pos.entryIdx;
+      if (b.o <= pos.stop) { close(pos, d, b.o, pos.stop >= pos.entry ? '본전 손절(갭)' : '손절(갭)'); }
+      else if (b.l <= pos.stop) { close(pos, d, Math.min(b.o, pos.stop * (1 - rules.stopSlippage)), pos.stop >= pos.entry ? '본전 손절' : '손절'); }
+      else {
+        if (pos.plan?.exitAt != null && b.h >= pos.plan.exitAt) { close(pos, d, Math.max(b.o, pos.plan.exitAt), '유동성 목표 도달'); open.splice(open.indexOf(pos), 1); continue; }
+        if (!pos.partial && b.h >= pos.target) {
+          const px = Math.max(b.o, pos.target), half = Math.floor(pos.shares * (rules.partialFrac ?? 0.5));
+          if (half > 0) { const v = half * px, c = v * pos.costRate; cash += v - c; pos.realized += half * (px - pos.entry) - c; pos.exitValue += v; pos.exitShares += half; pos.shares -= half; }
+          pos.partial = true; pos.stop = Math.max(pos.stop, pos.entry);
+          events.push({ date: cal[d], symbol: pos.symbol, kind: 'partial', text: half > 0 ? `+${rules.partialAtR}R 절반 익절 $${r2(px)}` : `+${rules.partialAtR}R 도달 $${r2(px)}, 이제 ${pos.trailLabel} 이탈까지 전량 보유` });
+        }
+        if (pos.stop < pos.entry && b.h >= pos.entry + rules.breakevenAtR * pos.R) { pos.stop = pos.entry; events.push({ date: cal[d], symbol: pos.symbol, kind: 'breakeven', text: `+1R 도달, 손절을 매수가 $${r2(pos.entry)}로` }); }
+        const ma = maAt(pos.symbol, d, pos.trailMa);
+        if (pos.partial && Number.isFinite(ma) && b.c < ma) close(pos, d, b.c, `${pos.trailLabel} 이탈`);
+        else if (!pos.partial && held >= rules.timeStopSessions && b.c < pos.entry + rules.timeStopMinR * pos.R) close(pos, d, b.c, `${rules.timeStopSessions}거래일 진전 없음`);
+        else if (held >= rules.maxSessions) close(pos, d, b.c, '최대 보유 기간');
+        else if (pos.stop < pos.entry) {
+          // an unprotected position does not sit through an earnings report: sell at the close before it
+          const e = nextReport(pos.symbol, d), tomorrow = cal[d + 1] ?? nextWeekday(cal[d]);
+          if (e && ((e.date === cal[d] && e.hour !== 'bmo') || (e.date > cal[d] && e.date < tomorrow) || (e.date === tomorrow && e.hour !== 'amc'))) close(pos, d, b.c, '실적 발표 전 정리');
+        }
+      }
+      if (pos.shares === 0) open.splice(open.indexOf(pos), 1);
+    }
+    // 2) work pending orders (created on an earlier session)
+    for (const o of [...pending]) {
+      const drop = (status, why) => { pending.splice(pending.indexOf(o), 1); outcomes.set(key(o.pickDate, o.symbol), { status, why, date: cal[d] }); };
+      if (d > o.expiry) { drop('expired', `${o.plan.validDays}거래일 안에 매수 가격에 닿지 않음`); continue; }
+      const b = bar(o.symbol, d); if (!b) continue;
+      if (b.o <= o.plan.stop) { drop('cancelled', '매수 전에 손절 가격 아래로 내려감'); continue; }
+      let fill = null;
+      if (o.plan.entryType === 'market') { if (b.o > o.plan.refClose * (1 + rules.maxChase)) { drop('cancelled', `시가가 ${pctS(b.o / o.plan.refClose - 1)} 갭 상승해 추격 안 함`); continue; } fill = b.o; }
+      else if (o.plan.entryType === 'limit') { if (b.l <= o.plan.trigger) fill = Math.min(b.o, o.plan.trigger); }
+      else if (b.h >= o.plan.trigger) { if (b.o > o.plan.trigger * (1 + rules.maxChase)) { drop('cancelled', '매수 가격 위로 크게 갭 상승해 추격 안 함'); continue; } fill = Math.max(b.o, o.plan.trigger); }
+      if (fill == null) continue;
+      const block = orderBlock(o, d - 1, cal[d]);
+      if (block) { drop('cancelled', block); continue; }
+      if (open.length >= rules.maxOpen) { drop('cancelled', `보유 종목 ${rules.maxOpen}개 한도`); continue; }
+      const dd = prevEquity / peak - 1;
+      if (haltSince != null) { drop('cancelled', `계좌 낙폭 ${pctS(dd)}로 신규 매수 중단 중 (${cal[Math.min(haltSince + rules.ddHaltSessions, cal.length - 1)]}까지)`); continue; }
+      const sec = o.sector && o.sector !== 'Unknown' ? o.sector : null;
+      if (sec && open.filter((p) => p.sector === sec).length >= rules.maxSectorOpen) { drop('cancelled', `${sec} 이미 ${rules.maxSectorOpen}종목 보유`); continue; }
+      const R = fill - o.plan.stop; if (!(R > 0)) { drop('cancelled', '체결가가 손절가 아래'); continue; }
+      const riskPct = o.plan.riskPct * (dd <= -rules.ddHalfRisk || recovering ? 0.5 : 1);
+      const heat = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, d - 1) ?? p.entry) - p.stop), 0);
+      const heatRoom = rules.maxHeatPct * prevEquity - heat;
+      const rate = costRate(o, fill);
+      let shares = Math.floor(prevEquity * riskPct / R), limit = '';
+      const caps = [[Math.floor(prevEquity * rules.maxPositionPct / fill), '종목당 비중 한도'], [Math.floor(cash / (fill * (1 + rate))), '현금 부족'], [Math.floor(Math.max(0, heatRoom) / R), `전체 위험 ${(rules.maxHeatPct * 100).toFixed(0)}% 한도`]];
+      if (data.volumeReliable) { const x = data.get(o.symbol); const i = d - 1 - x.s; if (i >= 20) caps.push([Math.floor(rules.maxAdvPct * indicatorsAt(x.bars, i).adv20 / fill), '거래대금 1% 한도']); }
+      for (const [n, why] of caps) if (n < shares) { shares = n; limit = why; }
+      if (shares < 1) { drop('cancelled', limit || '수량 0'); continue; }
+      const v = shares * fill; cash -= v + v * rate;
+      const pos = { ...o, shares, initShares: shares, entry: fill, entryIdx: d, R, stop: o.plan.stop, target: o.plan.exitAt ?? fill + rules.partialAtR * R, trailMa: o.plan.trailMa, trailLabel: o.plan.trailLabel,
+        partial: false, realized: 0, entryCost: v * rate, costRate: rate, exitValue: 0, exitShares: 0, sizedBy: limit || null, riskUsed: riskPct };
+      pos.realized = 0; open.push(pos); pending.splice(pending.indexOf(o), 1);
+      outcomes.set(key(o.pickDate, o.symbol), { status: 'open', entryDate: cal[d], entry: r2(fill), shares });
+      events.push({ date: cal[d], symbol: o.symbol, kind: 'buy', text: `${shares}주 $${r2(fill)} 매수 (위험 ${(riskPct * 100).toFixed(2)}%${limit ? `, ${limit}로 줄임` : ''})` });
+      // same-session stop after the fill (conservative)
+      if (b.l <= pos.stop) { close(pos, d, pos.stop * (1 - rules.stopSlippage), '체결 당일 손절'); open.splice(open.indexOf(pos), 1); }
+    }
+    // 3) tonight's picks become orders for the next session
+    const todays = [...(byDay.get(d) ?? [])];
+    if (opts.picker) {
+      const busy = new Set([...open.map((p) => p.symbol), ...pending.map((p) => p.symbol)]);
+      const cooldown = new Map([...stopped].filter(([, k]) => d - k < rules.reentryCooldown).map(([sym, k]) => [sym, cal[k].slice(5)]));
+      const l = opts.picker(d, { busy, cooldown, equity: prevEquity });
+      if (l) { todays.push(l); generated.push(l); }
+    }
+    for (const l of todays) for (const p of l.picks) {
+      pending.push({ ...p, pickDate: l.date, live: !!l.live, market: l.market ?? null, expiry: d + p.plan.validDays });
+      outcomes.set(key(l.date, p.symbol), { status: 'pending' });
+    }
+    // 4) mark to market
+    let mv = 0; for (const pos of open) mv += pos.shares * (lastClose(pos.symbol, d) ?? pos.entry);
+    const eq = cash + mv; prevEquity = eq; peak = Math.max(peak, eq);
+    // drawdown breaker: stop at -ddHalt, rest ddHaltSessions, then restart from here at half risk
+    if (haltSince == null && eq / peak - 1 <= -rules.ddHalt) { haltSince = d; events.push({ date: cal[d], symbol: '계좌', kind: 'halt', text: `고점 대비 ${pctS(eq / peak - 1)}, ${rules.ddHaltSessions}거래일 신규 매수 중단` }); }
+    else if (haltSince != null && d - haltSince >= rules.ddHaltSessions) { haltSince = null; peak = eq; recovering = true; restartEq = eq; events.push({ date: cal[d], symbol: '계좌', kind: 'restart', text: '중단 기간 끝, 위험 절반으로 다시 시작' }); }
+    if (recovering && eq >= restartEq * (1 + rules.recoverGain)) recovering = false;
+    const sb = spy ? bar('SPY', d) : null;
+    equity.push({ date: cal[d], equity: r2(eq), cash: r2(cash), spy: sb && spyStart ? r2(rules.startEquity * sb.c / spyStart.c) : null, open: open.length });
+  }
+  const last = endIdx;
+  const openRows = open.map((p) => { const px = lastClose(p.symbol, last); return { symbol: p.symbol, name: p.name, setup: p.setup, label: p.label, cap: p.cap, live: p.live, pickDate: p.pickDate, entryDate: cal[p.entryIdx], entry: r2(p.entry), last: r2(px), shares: p.shares, stop: r2(p.stop), target: r2(p.target), partial: p.partial, trailLabel: p.trailLabel,
+    unrealized: r2(p.shares * (px - p.entry) + p.realized), pnlPct: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.entry), R: (p.shares * (px - p.entry) + p.realized) / (p.initShares * p.R), weight: (p.shares * px) / equity.at(-1).equity, days: last - p.entryIdx, earnings: nextReport(p.symbol, last)?.date ?? null }; });
+  const pendingRows = pending.map((o) => ({ symbol: o.symbol, name: o.name, setup: o.setup, label: o.label, pickDate: o.pickDate, live: o.live, entryType: o.plan.entryType, trigger: o.plan.trigger, stop: o.plan.stop, expires: cal[Math.min(o.expiry, last)] ?? null, sessionsLeft: o.expiry - last, earnings: nextReport(o.symbol, last)?.date ?? null, blocked: orderBlock(o, last, cal[last + 1] ?? nextWeekday(cal[last])) }));
+  const lastEq = equity.at(-1)?.equity ?? rules.startEquity;
+  const heatNow = open.reduce((a, p) => a + p.shares * Math.max(0, (lastClose(p.symbol, last) ?? p.entry) - p.stop), 0);
+  const ddNow = lastEq / peak - 1;
+  const risk = { heatPct: heatNow / lastEq, heatLimit: rules.maxHeatPct, drawdown: ddNow, mode: haltSince != null ? 'halt' : ddNow <= -rules.ddHalfRisk || recovering ? 'half' : 'normal', haltUntil: haltSince != null ? cal[Math.min(haltSince + rules.ddHaltSessions, cal.length - 1)] : null,
+    cooldown: [...stopped].filter(([, d]) => last - d < rules.reentryCooldown).map(([sym, d]) => { let u = cal[d + rules.reentryCooldown]; if (!u) { u = cal[last]; for (let k = last - d; k < rules.reentryCooldown; k++) u = nextWeekday(u); } return { symbol: sym, until: u }; }) };
+  return { trades, open: openRows, pending: pendingRows, equity, events, outcomes: Object.fromEntries(outcomes), risk, stoppedAt: Object.fromEntries([...stopped].map(([k, d]) => [k, cal[d]])), generated };
+}
+
+/**
+ * Market state from SPY alone, for history before the market-brief verdicts existed: below the 200-day average →
+ * WAIT; below the 50-day → LIMIT; above a rising 200-day with the 50-day on top → SELECTIVE; otherwise LIMIT.
+ */
+function regimeFromSpy(spyBars, i) {
+  const s = seriesFor(spyBars), c = s.cl[i], m50 = s.sma50[i], m200 = s.sma200[i], m200prev = s.sma200[i - 20];
+  if (!Number.isFinite(m200)) return 'UNKNOWN';
+  if (c < m200) return 'WAIT';
+  if (c < m50) return 'LIMIT'; // like the live verdict: an index below its 50-day average means fewer, smaller entries
+  if (m50 > m200 && m200 > m200prev) return 'SELECTIVE';
+  return 'LIMIT';
+}
+
+function deskStats(trades, equity = []) {
+  const n = trades.length, wins = trades.filter((t) => t.pnl > 0), losses = trades.filter((t) => t.pnl <= 0);
+  const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+  const gw = wins.reduce((a, t) => a + t.pnl, 0), gl = -losses.reduce((a, t) => a + t.pnl, 0);
+  let pk = -Infinity, dd = 0; for (const e of equity) { pk = Math.max(pk, e.equity); dd = Math.min(dd, e.equity / pk - 1); }
+  const first = equity[0], lastE = equity.at(-1);
+  const group = (k) => { const g = {}; for (const t of trades) (g[t[k]] ??= []).push(t); return Object.fromEntries(Object.entries(g).map(([name, ts]) => [name, { n: ts.length, winRate: ts.filter((t) => t.pnl > 0).length / ts.length, avgPct: mean(ts.map((t) => t.pnlPct)), avgR: mean(ts.map((t) => t.R)), pnl: r2(ts.reduce((a, t) => a + t.pnl, 0)) }])); };
+  return {
+    closed: n, wins: wins.length, losses: losses.length, winRate: n ? wins.length / n : null,
+    avgWinPct: mean(wins.map((t) => t.pnlPct)), avgLossPct: mean(losses.map((t) => t.pnlPct)), avgPct: mean(trades.map((t) => t.pnlPct)),
+    payoff: wins.length && losses.length ? mean(wins.map((t) => t.pnlPct)) / -mean(losses.map((t) => t.pnlPct)) : null,
+    profitFactor: gl > 0 ? gw / gl : null, expectancyR: mean(trades.map((t) => t.R)), avgDays: mean(trades.map((t) => t.days)), realized: r2(gw - gl),
+    totalReturn: first && lastE ? lastE.equity / DESK_RULES.startEquity - 1 : 0, spyReturn: lastE?.spy ? lastE.spy / DESK_RULES.startEquity - 1 : null, maxDrawdown: dd,
+    bySetup: group('setup'), byCap: group('cap'), byMarket: group('market'), enough: n >= 30,
+    winRateCI: wilson(wins.length, n),
+    // the win rate that breaks even at the observed payoff: below it the system loses money
+    breakevenWinRate: wins.length && losses.length ? 1 / (1 + mean(wins.map((t) => t.pnlPct)) / -mean(losses.map((t) => t.pnlPct))) : null,
+    avgAlpha: mean(trades.filter((t) => t.alpha != null).map((t) => t.alpha)), beatSpy: n ? trades.filter((t) => t.alpha > 0).length / n : null,
+  };
+}
+
+/**
+ * Did the analyst's choices beat simply buying every candidate on the same day? For each pick day, the picks'
+ * and all candidates' returns from the next open to the close `h` sessions later. Uses only days with h
+ * sessions of future data.
+ */
+function selectionEdge(days, data, h = 10) {
+  const fwd = (sym, d) => { const x = data.get(sym); if (!x) return null; const i0 = d + 1 - x.s, i1 = d + h - x.s; if (i0 < 0 || i1 >= x.bars.length) return null; return x.bars[i1].c / x.bars[i0].o - 1; };
+  const idx = (date) => data.cal.indexOf(date), rows = [];
+  for (const day of days) {
+    const d = idx(day.date); if (d < 0 || !day.picks.length) continue;
+    const p = day.picks.map((s) => fwd(s, d)).filter((v) => v != null), c = day.candidates.map((s) => fwd(s, d)).filter((v) => v != null);
+    if (!p.length || c.length < 5) continue;
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+    rows.push({ date: day.date, picks: avg(p), all: avg(c), edge: avg(p) - avg(c), n: c.length });
+  }
+  const m = (k) => (rows.length ? rows.reduce((a, r) => a + r[k], 0) / rows.length : null);
+  return { horizon: h, days: rows.length, picks: m('picks'), all: m('all'), edge: m('edge'), beatDays: rows.length ? rows.filter((r) => r.edge > 0).length / rows.length : null, rows };
+}
+
+/**
+ * Plain verdict on whether the record is good enough to act on. Thresholds are set before seeing results:
+ * at least 30 closed trades, positive expectancy, profit factor above 1.3 and picks beating the candidate list.
+ */
+function deskVerdict(stats, sel) {
+  const n = stats.closed;
+  if (n < 30) return { stage: 'collect', label: '표본 모으는 중', text: `청산 ${n}건. 30건이 넘기 전에는 승률·손익 모두 운일 수 있어 판단하지 않습니다.`, progress: n / 30 };
+  const ok = stats.expectancyR > 0.1 && (stats.profitFactor ?? 0) > 1.3 && (sel?.edge ?? 0) > 0;
+  if (ok && n >= 60) return { stage: 'live-small', label: '소액 실전 검토 가능', text: '60건 넘게 기대값·이익 계수·선택 효과가 모두 기준을 넘었습니다. 계좌의 일부, 거래당 위험 0.5% 이하로 실전을 시작해 같은 기록과 비교하세요.', progress: 1 };
+  if (ok) return { stage: 'promising', label: '유망, 계속 검증', text: '기준은 넘었지만 60건 전까지는 모의로 계속 확인합니다.', progress: n / 60 };
+  if (stats.expectancyR < 0) return { stage: 'review', label: '규칙 재검토', text: '30건 넘게 거래당 기대값이 음수입니다. 실전에 쓰지 말고, 어느 패턴·시장에서 잃는지 표를 보고 규칙을 고칩니다. 고친 규칙은 새 버전으로 처음부터 다시 기록합니다.', progress: 1 };
+  return { stage: 'neutral', label: '아직 우위 불분명', text: '손실은 아니지만 기준(기대값 +0.1R, 이익 계수 1.3, 후보 대비 우위)에 못 미칩니다. 모의로 계속 기록합니다.', progress: n / 60 };
+}
+
+return { DESK_RULES, ICT_RULES, SETUP_LABEL, capBucket, seriesFor, indicatorsAt, distributionDays, weeklyBars, volumeProfile, structureShift, ictRead, wilson, analyze, pickForDay, replayDesk, regimeFromSpy, deskStats, selectionEdge, deskVerdict };
+})();
+</script>
+<script>
+'use strict';
+const DATA_EMBED = /*__DATA__*/null;
+const SNAPSHOT = 'https://raw.githubusercontent.com/kjs92525-stack/alpha-terminal/data';
+const ON_SITE = /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.hostname);
+const E = typeof DeskEngine !== 'undefined' ? DeskEngine : null;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pct = (x, d = 1) => (x == null || !isFinite(x) ? '-' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`);
+const pctU = (x, d = 0) => (x == null || !isFinite(x) ? '-' : `${(x * 100).toFixed(d)}%`);
+const usd = (x, d = 2) => (x == null || !isFinite(x) ? '-' : `$${Number(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`);
+const R = (x) => (x == null || !isFinite(x) ? '-' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}R`);
+const sign = (x) => (x >= 0 ? 'up' : 'down');
+const md = (d) => (d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
+const store = { get(k, d) { try { return localStorage.getItem('ad.' + k) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem('ad.' + k, v); } catch { /* private mode */ } } };
+const acct = () => Math.max(100, Number(store.get('acct', '10000')) || 10000);
+const sizeFor = (risk, entry, stop) => { if (!(entry > stop)) return 0; const a = acct(); return Math.max(0, Math.floor(Math.min(a * risk / (entry - stop), a * 0.15 / entry))); };
+const AV = ['#4f7dff', '#7b57ff', '#ff5d6c', '#2fc6f2', '#36d6a0', '#ffb84d', '#e05bd0'];
+const avatar = (sym) => { let h = 0; for (const c of sym) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `<span class="av" style="background:${AV[h % AV.length]}" aria-hidden="true">${esc(sym.slice(0, 4))}</span>`; };
+const STATE = { SELECTIVE: ['적극 매수 가능', 'ok'], LIMIT: ['신규 진입 축소', 'warn'], WAIT: ['신규 진입 대기', 'bad'], UNKNOWN: ['판정 없음', ''] };
+const SETUP = { breakout: '신고가 돌파', base: '수축 후 돌파', pullback: '추세 눌림목', reversal: '과매도 반등', structure: '구조 전환(MSS)' };
+const ST4 = { waiting: '지정가 대기', open: '보유 중', won: '목표 도달', lost: '손절', timeout: '기간 만료', expired: '미체결 만료', cancelled: '체결 전 취소' };
+
+/* ---------------- data ---------------- */
+let DATA = DATA_EMBED;
+async function snap(file) {
+  const bases = ON_SITE ? ['/api/v1/snapshot', SNAPSHOT] : [SNAPSHOT];
+  for (const b of bases) { try { const r = await fetch(`${b}/${file}`, { cache: 'no-store' }); if (r.ok) return await r.json(); } catch { /* next */ } }
+  return null;
+}
+async function loadData() {
+  if (DATA) return;
+  const [latest, brief, desk, backtest, ict4h] = await Promise.all(['latest.json', 'market-brief/latest.json', 'desk/account.json', 'desk/backtest.json', 'desk/ict4h.json'].map(snap));
+  DATA = { asOf: latest?.asOf, market: brief?.decision ? { state: brief.decision.state, label: brief.decision.label, reasons: brief.decision.reasons ?? [] } : null, desk, backtest, ict4h };
+  render();
+  const [real, watch] = await Promise.all(['sim/bars.json', 'sim/watch.json'].map(snap));
+  DATA.real = real; DATA.watch = watch;
+  if (ui.view === 'stock') renderStock();
+}
+
+/* bars for one symbol: embedded nightly files first, then the site's live daily bars */
+const barCache = new Map();
+function fromPayload(p, sym) { const x = p?.bars?.[sym]; if (!x) return null; return { cal: p.cal, s: x.s, bars: x.d.map(([o, h, l, c, v]) => ({ o, h, l, c, v })), earnings: p.earnings?.[sym] ?? null }; }
+async function barsFor(sym) {
+  if (barCache.has(sym)) return barCache.get(sym);
+  let out = fromPayload(DATA.watch, sym) || fromPayload(DATA.real, sym);
+  if (ON_SITE) {
+    try {
+      const r = await fetch(`/api/v1/bars/${encodeURIComponent(sym)}?tf=1D`);
+      if (r.ok) { const j = await r.json(); let b = j.bars ?? []; if (j.lastBarClosed === false) b = b.slice(0, -1);
+        const day = (t) => new Date(t * 1000).toISOString().slice(0, 10);
+        if (b.length > 60 && (!out || day(b.at(-1).time) >= out.cal[out.s + out.bars.length - 1])) out = { cal: b.map((x) => day(x.time)), s: 0, bars: b.map((x) => ({ o: x.open, h: x.high, l: x.low, c: x.close, v: x.volume })), earnings: out?.earnings ?? null, live: true }; }
+    } catch { /* keep the nightly copy */ }
+  }
+  if (out) barCache.set(sym, out);
+  return out;
+}
+
+/* ---------------- shared pieces ---------------- */
+const VIEWS = [['today', '오늘', '<path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>'], ['stock', '종목', '<path d="M4 19h16M6 16V9m4 7V5m4 11v-5m4 5V8"/>'], ['perf', '성과', '<path d="M4 17l5-5 4 3 7-8M15 7h5v5"/>'], ['lab', '연구', '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/>']];
+const ui = { view: 'today', sym: null, tf: '6M', perfFilter: 'all' };
+function nav() {
+  const icon = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  $('#tabbar').innerHTML = VIEWS.map(([k, n, p]) => `<button data-v="${k}" ${ui.view === k ? 'aria-current="page"' : ''}>${icon(p)}<span>${n}</span></button>`).join('');
+  $('#topnav').innerHTML = VIEWS.map(([k, n]) => `<button data-v="${k}" ${ui.view === k ? 'aria-current="page"' : ''}>${n}</button>`).join('');
+}
+function go(view, sym) {
+  ui.view = view; if (sym) ui.sym = sym;
+  const h = view === 'stock' && ui.sym ? `stock-${ui.sym.replace(/\./g, '--')}` : view;
+  try { if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h); } catch { /* sandbox */ }
+  for (const [k] of VIEWS) $('#v-' + k).hidden = k !== view;
+  nav(); render(); window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-v]'); if (v) { go(v.dataset.v); return; }
+  const s = e.target.closest('[data-sym]'); if (s) { go('stock', s.dataset.sym); }
+});
+function fromHash() { const h = location.hash.slice(1); if (h.startsWith('stock-')) return ['stock', h.slice(6).replace(/--/g, '.')]; return [VIEWS.some(([k]) => k === h) ? h : 'today', null]; }
+window.addEventListener('hashchange', () => { const [v, s] = fromHash(); if (v !== ui.view || (s && s !== ui.sym)) go(v, s); });
+
+function levels(entry, stop, target, entryLabel = '진입') {
+  return `<div class="lv"><div><span>${entryLabel}</span><b>${usd(entry)}</b></div>
+    <div><span>손절</span><b class="down">${usd(stop)}</b><small class="down">${stop >= entry ? '본전 보호' : pct(stop / entry - 1)}</small></div>
+    <div><span>목표</span><b class="up">${usd(target)}</b><small class="up">${pct(target / entry - 1)}${entry > stop ? ` · ${((target - entry) / (entry - stop)).toFixed(1)}R` : ''}</small></div></div>`;
+}
+function ladder(stop, entry, target, last) {
+  const lo = Math.min(stop, last), hi = Math.max(target, last), w = (x) => ((x - lo) / (hi - lo || 1)) * 100;
+  return `<div class="ladder" aria-hidden="true"><span class="e" style="left:${w(entry)}%"></span><span class="p" style="left:${w(last)}%"></span></div>
+    <div class="ladder-l"><span>손절 ${usd(stop)}</span><span>목표 ${usd(target)}</span></div>`;
+}
+function spark(el, points, color, base) {
+  if (!window.LightweightCharts || !el || !points.length) return null;
+  const c = LightweightCharts.createChart(el, { autoSize: true, layout: { background: { color: 'transparent' }, textColor: '#7c82ad', fontFamily: 'Manrope, sans-serif', attributionLogo: false },
+    grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(196,204,255,.06)' } }, rightPriceScale: { visible: false }, leftPriceScale: { visible: false },
+    timeScale: { visible: false, borderVisible: false }, crosshair: { vertLine: { visible: false }, horzLine: { visible: false } }, handleScroll: false, handleScale: false });
+  const s = c.addAreaSeries({ lineColor: color, topColor: color + '66', bottomColor: color + '00', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+  s.setData(points);
+  if (base) { const b = c.addLineSeries({ color: 'rgba(178,183,218,.45)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false }); b.setData(base); }
+  c.timeScale().fitContent();
+  return c;
+}
+
+/* ---------------- rail: account ---------------- */
+function accountCard() {
+  const D = DATA.desk; if (!D) return '<div class="card"><p class="dim">계좌 기록을 불러오는 중입니다.</p></div>';
+  const eq = D.equity.at(-1), S = D.stats, start = D.rules?.startEquity ?? 100000, ret = eq.equity / start - 1, spy = eq.spy / start - 1;
+  return `<div class="card acct">
+      <div class="row"><span class="label">모의 계좌</span><span class="chip ${ret >= spy ? 'mint' : 'amber'}">SPY 대비 ${pct(ret - spy)}</span></div>
+      <div class="big num">${usd(eq.equity, 0)}</div>
+      <div class="row"><span class="${sign(ret)} num">${pct(ret, 2)}</span><span class="mute">SPY ${pct(spy, 2)} · ${md(eq.date)} 종가</span></div>
+      <div class="spark"></div>
+    </div>
+    <div class="stats">
+      <div class="stat blue"><span class="v">${pctU(S.winRate)}</span><span class="k">승률 · 청산 ${S.closed}건</span></div>
+      <div class="stat violet"><span class="v ${sign(S.expectancyR ?? 0)}">${R(S.expectancyR)}</span><span class="k">거래당 기대값</span></div>
+      <div class="stat coral"><span class="v down">${pct(S.maxDrawdown)}</span><span class="k">최대 낙폭</span></div>
+      <div class="stat cyan"><span class="v">${D.open.length}<small class="mute" style="font-size:12px"> 종목</small></span><span class="k">보유 · 위험 ${pctU(D.risk?.heatPct, 1)}</span></div>
+    </div>
+    <div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+      <div class="row" style="display:flex;justify-content:space-between"><span class="label">검증 단계</span><span class="dim" style="font-size:12.5px">${esc(D.verdict?.label ?? '')}</span></div>
+      <div class="progress"><i style="width:${Math.round((D.verdict?.progress ?? 0) * 100)}%"></i></div>
+      <span class="mute" style="font-size:12px">청산 ${S.closed} / 30건이 쌓이면 승률을 판단합니다</span>
+    </div>`;
+}
+function drawAccountSpark(id) {
+  const D = DATA.desk; if (!D) return;
+  const pts = D.equity.map((e) => ({ time: e.date, value: e.equity })), base = D.equity.map((e) => ({ time: e.date, value: e.spy }));
+  const last = D.equity.at(-1), up = last.equity >= (D.rules?.startEquity ?? 100000);
+  spark($(id), pts, up ? '#ff6473' : '#5c90ff', base);
+}
+
+/* ---------------- feed ---------------- */
+function feedItems() {
+  const items = [];
+  for (const e of DATA.desk?.events ?? []) items.push({ date: e.date, sym: e.symbol, text: e.text, src: '메인' });
+  for (const e of DATA.desk?.ict?.events ?? []) items.push({ date: e.date, sym: e.symbol, text: e.text, src: 'ICT 일봉' });
+  for (const s of DATA.ict4h?.signals ?? []) {
+    if (s.status === 'waiting') items.push({ date: s.day, sym: s.symbol, text: `4시간봉 구조 전환. ${usd(s.limit)} 지정가 대기`, src: 'ICT 4H' });
+    else if (s.filledAt) items.push({ date: s.filledAt.slice(0, 10), sym: s.symbol, text: s.R != null ? `${ST4[s.status]} ${R(s.R)}` : `${usd(s.entry)} 체결`, src: 'ICT 4H' });
+  }
+  return items.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
+}
+function feedHtml(limit = 30) {
+  const it = feedItems().slice(0, limit);
+  return `<div class="feed-h"><h2>활동</h2><span class="grow" style="flex:1"></span><span class="chip">${it.length}</span></div>
+    <div class="feed-list">${it.length ? it.map((x) => `<div class="ev" data-sym="${esc(x.sym)}" style="cursor:pointer">${avatar(x.sym)}<div><time>${md(x.date)}</time><b>${esc(x.sym)}</b> <span class="chip" style="font-size:10.5px;padding:1px 7px">${x.src}</span><p>${esc(x.text)}</p></div></div>`).join('') : '<p class="mute" style="padding:18px">아직 기록이 없습니다.</p>'}</div>`;
+}
+
+/* ---------------- TODAY ---------------- */
+function renderToday() {
+  const D = DATA.desk, X = DATA.ict4h, mk = DATA.market;
+  const pend = (D?.pending ?? []), live = pend.filter((o) => !o.blocked), blocked = pend.filter((o) => o.blocked);
+  const sig = (X?.signals ?? []).filter((s) => s.status === 'waiting' || s.status === 'open');
+  const ictP = (D?.ict?.pending ?? []).filter((o) => !o.blocked);
+  const st = STATE[mk?.state] ?? STATE.UNKNOWN;
+  $('#tiles').innerHTML = `
+    <button class="tile ${mk?.state === 'SELECTIVE' ? 'blue' : mk?.state === 'WAIT' ? 'coral' : 'slate'}" data-v="lab"><span class="glyph">${mk?.state === 'WAIT' ? '!' : '↗'}</span><span class="k">시장 판정</span><span class="v">${esc(st[0])}</span><span class="s">${esc(mk?.reasons?.[0] ?? '시장 데이터를 불러오는 중')}</span></button>
+    <button class="tile blue" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">${live.length + ictP.length}</span><span class="k">오늘 낼 주문</span><span class="v num">${live.length + ictP.length}건</span><span class="s">메인 ${live.length} · ICT 일봉 ${ictP.length}${blocked.length ? ` · 취소 ${blocked.length}` : ''}</span></button>
+    <button class="tile violet" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">4H</span><span class="k">ICT 4시간봉</span><span class="v num">${sig.length}건 진행</span><span class="s">${X?.recent?.n ? `최근 소급 ${X.recent.n}건 · 승률 ${pctU(X.recent.winRate)} · ${R(X.recent.expectancyR)}` : '신호 기록을 쌓는 중'}</span></button>`;
+
+  // orders
+  const pick = new Map(); for (const l of D?.ledgers ?? []) for (const p of l.picks) pick.set(`${l.date}:${p.symbol}`, p);
+  const ipick = new Map(); for (const l of D?.ict?.ledgers ?? []) for (const p of l.picks) ipick.set(`${l.date}:${p.symbol}`, p);
+  const cards = [];
+  for (const o of live) { const p = pick.get(`${o.pickDate}:${o.symbol}`); if (!p) continue;
+    const mkt = p.plan.entryType === 'market', entry = mkt ? p.plan.refClose : p.plan.trigger, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
+    cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip blue">${esc(p.label)}</span></div>
+      ${levels(entry, p.plan.stop, p.plan.target, mkt ? '내일 시가' : '돌파 매수')}
+      <div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>${mkt ? '시가 4% 넘게 뛰면 건너뜀' : `${o.sessionsLeft > 0 ? o.sessionsLeft : 1}거래일 유효`}</span></div></article>`); }
+  for (const o of ictP) { const p = ipick.get(`${o.pickDate}:${o.symbol}`); if (!p) continue;
+    const entry = p.plan.entryType === 'market' ? p.plan.refClose : p.plan.trigger, tgt = p.plan.exitAt ?? p.plan.target, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
+    cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip violet">ICT 일봉</span></div>
+      ${levels(entry, p.plan.stop, tgt, '내일 시가')}<div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>목표에서 전량</span></div></article>`); }
+  for (const s of sig.filter((x) => x.status === 'waiting')) { const n = sizeFor(0.005, s.limit, s.stop);
+    cards.push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
+      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}<div class="oc-f"><span>${n}주 · 위험 0.5%</span><span>약 5거래일 유효</span></div></article>`); }
+  for (const o of blocked) cards.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
+  $('#todo').innerHTML = `<div class="sec-h"><h2>오늘 낼 주문</h2><span class="sub">장 마감 기준 · 다음 거래일에 넣을 주문</span><span class="grow"></span>
+      <label class="acct-in" for="acct">투자금 $<input id="acct" type="number" inputmode="decimal" min="100" step="100" value="${acct()}"></label></div>
+    ${cards.length ? `<div class="grid2">${cards.join('')}</div>` : `<div class="empty"><b>새 주문이 없습니다</b>${mk?.state === 'WAIT' ? '시장이 진입 대기 상태라 기준을 넘는 자리만 기다립니다.' : '오늘 기준을 넘는 자리가 없습니다.'}</div>`}`;
+  $('#acct').addEventListener('change', (e) => { store.set('acct', e.target.value); renderToday(); });
+
+  // holdings: main + ICT daily + ICT 4h
+  const rows = [];
+  for (const p of D?.open ?? []) rows.push({ sym: p.symbol, src: p.label, entry: p.entry, stop: p.stop, target: p.target, last: p.last, pnl: p.pnlPct, r: p.R, note: p.stop >= p.entry ? '본전 보호' : `${p.days}일째` });
+  for (const p of D?.ict?.open ?? []) rows.push({ sym: p.symbol, src: 'ICT 일봉', entry: p.entry, stop: p.stop, target: p.target, last: p.last, pnl: p.pnlPct, r: p.R, note: p.stop >= p.entry ? '본전 보호' : `${p.days}일째` });
+  for (const s of sig.filter((x) => x.status === 'open')) rows.push({ sym: s.symbol, src: 'ICT 4H', entry: s.entry, stop: s.stop, target: s.target, last: s.last, pnl: s.last / s.entry - 1, r: (s.last - s.entry) / (s.entry - s.stop), note: s.trend ? '추세 일치' : '' });
+  rows.sort((a, b) => (a.last - a.stop) / (a.entry - a.stop || 1) - (b.last - b.stop) / (b.entry - b.stop || 1));
+  $('#holds').innerHTML = `<div class="sec-h"><h2>보유 중</h2><span class="sub">손절에 가까운 순</span></div>
+    ${rows.length ? `<div class="hold">${rows.map((h) => `<div class="hr" data-sym="${esc(h.sym)}">${avatar(h.sym)}<div class="t" style="min-width:0"><b>${esc(h.sym)}</b><span>${esc(h.src)}${h.note ? ' · ' + esc(h.note) : ''}</span>${ladder(h.stop, h.entry, h.target, h.last)}</div>
+      <div class="r"><b class="${sign(h.pnl)}">${pct(h.pnl)}</b><small>${R(h.r)} · ${usd(h.last)}</small></div></div>`).join('')}</div>` : '<div class="empty"><b>보유 종목이 없습니다</b>체결되면 여기서 손절과 목표까지의 거리를 보여줍니다.</div>'}`;
+  $('#m-acct').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">${accountCard()}</div>`;
+  if (getComputedStyle($('#m-acct')).display !== 'none') drawAccountSpark('#m-acct .spark');
+  $('#m-feed').innerHTML = `<div class="pane" style="padding:0">${feedHtml(8)}</div>`;
+}
+
+/* ---------------- STOCK ---------------- */
+let chart = null;
+function stockChips() {
+  const D = DATA.desk, set = new Set();
+  for (const p of D?.open ?? []) set.add(p.symbol); for (const p of D?.ict?.open ?? []) set.add(p.symbol);
+  for (const s of DATA.ict4h?.signals ?? []) if (s.status === 'open' || s.status === 'waiting') set.add(s.symbol);
+  for (const s of DATA.watch?.symbols ?? []) set.add(s);
+  return [...set].filter((s) => ON_SITE || DATA.watch?.bars?.[s] || DATA.real?.bars?.[s]);
+}
+function smaS(cl, n) { const o = []; let s = 0; for (let i = 0; i < cl.length; i++) { s += cl[i]; if (i >= n) s -= cl[i - n]; o.push(i >= n - 1 ? s / n : null); } return o; }
+function emaS(cl, n) { const o = [], k = 2 / (n + 1); let e = null; for (let i = 0; i < cl.length; i++) { e = i === 0 ? cl[0] : cl[i] * k + e * (1 - k); o.push(i >= n - 1 ? e : null); } return o; }
+async function renderStock() {
+  const chips = stockChips();
+  $('#q-chips').innerHTML = chips.map((s) => `<button type="button" data-sym="${esc(s)}" aria-pressed="${s === ui.sym}">${esc(s)}</button>`).join('');
+  const all = new Set([...chips, ...Object.keys(DATA.real?.bars ?? {}).filter((s) => s !== 'SPY' && s !== 'QQQ')]);
+  $('#q-list').innerHTML = [...all].sort().map((s) => `<option value="${esc(s)}"></option>`).join('');
+  const sym = ui.sym ?? chips[0];
+  if (!sym) { $('#q-out').innerHTML = '<div class="empty"><b>종목을 검색하세요</b>보유 종목과 신호 종목은 위에 바로 나옵니다.</div>'; return; }
+  ui.sym = sym; $('#q').value = sym;
+  $('#q-out').innerHTML = `<div class="card"><p class="dim">${esc(sym)} 시세를 불러오는 중입니다.</p></div>`;
+  const B = await barsFor(sym);
+  if (!B) { $('#q-out').innerHTML = `<div class="empty"><b>${esc(sym)} 시세가 없습니다</b>${ON_SITE ? '티커를 확인해 주세요.' : '이 화면에는 추천·관심 종목 시세만 들어 있습니다. 배포 사이트에서는 모든 종목을 볼 수 있습니다.'}</div>`; return; }
+  const bars = B.bars, i = bars.length - 1, dates = B.cal.slice(B.s, B.s + bars.length), last = bars[i], prev = bars[i - 1];
+  const D = DATA.desk, holding = [...(D?.open ?? []), ...(D?.ict?.open ?? [])].find((p) => p.symbol === sym);
+  const sig4 = (DATA.ict4h?.signals ?? []).find((s) => s.symbol === sym && (s.status === 'open' || s.status === 'waiting'));
+  const meta = { score: 60, spyRet126: 0, volumeReliable: true };
+  const a = E && i > 260 ? E.analyze(bars, i, meta) : { pass: '시세 이력이 짧아 판단하지 않음' };
+  const ia = E && i > 260 ? E.analyze(bars, i, meta, E.ICT_RULES) : null;
+  const ict = E && i > 62 ? E.ictRead(bars, i) : null;
+  const plan = holding ? { entry: holding.entry, stop: holding.stop, target: holding.target, k: '보유 중' } : sig4 ? { entry: sig4.entry ?? sig4.limit, stop: sig4.stop, target: sig4.target, k: 'ICT 4H' }
+    : a.setup ? { entry: a.plan.entryType === 'market' ? a.plan.refClose : a.plan.trigger, stop: a.plan.stop, target: a.plan.target, k: a.label } : null;
+  const ch = last.c / prev.c - 1;
+  const reads = [];
+  if (ict) {
+    reads.push(`위쪽 유동성(60일 고점) ${usd(ict.buySideLiquidity)}. 지금 60일 범위의 ${Math.round((ict.rangePos ?? 0) * 100)}% 자리, ${(ict.rangePos ?? 0) > 0.5 ? '프리미엄' : '할인'} 구간`);
+    if (ict.sweep) reads.push(`${ict.sweep.sessionsAgo ? ict.sweep.sessionsAgo + '거래일 전' : '오늘'} 스윙 저점 ${usd(ict.sweep.level)} 아래 ${usd(ict.sweep.low)}까지 쓸고 회복`);
+    else if (ict.swingLow) reads.push(`가까운 스윙 저점 ${usd(ict.swingLow)}, 그 아래가 매도 쪽 유동성`);
+    if (ict.mss) reads.push('직전 스윙 고점을 장대 양봉 종가로 돌파: 구조 전환');
+    if (ict.fvg) reads.push(`아래 미체결 갭(FVG) ${usd(ict.fvg[0])} ~ ${usd(ict.fvg[1])}`);
+    if (ict.udRatio != null) reads.push(`50일 상승일 거래량이 하락일의 ${ict.udRatio.toFixed(2)}배(${ict.udRatio >= 1.3 ? '매집' : ict.udRatio < 0.8 ? '분산' : '중립'}), 최근 5일은 평소의 ${Math.round((ict.dryUp ?? 1) * 100)}%`);
+  }
+  $('#q-out').innerHTML = `
+    <div class="sec">
+      <div class="qhead">${avatar(sym)}<div><h1>${esc(sym)}</h1><span class="mute" style="font-size:12.5px">${md(dates[i])} 종가 · ${B.live ? '실시간 일봉' : '야간 갱신'}</span></div>
+        <span class="grow" style="flex:1"></span><div style="text-align:right"><div class="px num">${usd(last.c)}</div><span class="${sign(ch)} num">${pct(ch, 2)}</span></div></div>
+      <div class="card" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="legend"><span><i style="background:#2fc6f2"></i>20일 지수이평</span><span><i style="background:#ffb84d"></i>50일선</span><span><i style="background:#b2b7da"></i>200일선</span></div>
+          <div class="tf">${['3M', '6M', '1Y', '2Y'].map((t) => `<button type="button" data-tf="${t}" aria-pressed="${ui.tf === t}">${t}</button>`).join('')}</div></div>
+        <div class="chart" id="chart"></div>
+      </div>
+    </div>
+    <div class="cols" style="margin-top:14px">
+      <div class="card sec">
+        <div class="verdict"><span class="badge ${a.setup ? 'go' : 'no'}">${a.setup ? a.quality : '–'}</span><div><h2>${a.setup ? esc(a.label) : '지금은 매수 자리가 아님'}</h2><p>${esc(a.setup ? a.thesis : a.pass)}</p></div></div>
+        ${ia?.setup === 'structure' ? `<span class="chip violet" style="align-self:flex-start">ICT 일봉 신호: ${esc(ia.thesis.slice(0, 60))}…</span>` : ''}
+      </div>
+      ${plan ? `<div class="card sec"><div class="sec-h"><h2>매매 계획</h2><span class="chip ${holding ? 'mint' : sig4 ? 'violet' : 'blue'}">${esc(plan.k)}</span></div>
+        ${levels(plan.entry, plan.stop, plan.target)}
+        ${holding || sig4?.status === 'open' ? ladder(plan.stop, plan.entry, plan.target, last.c) : `<div class="oc-f"><span>${sizeFor(0.007, plan.entry, plan.stop)}주 · 위험 0.7% 기준</span><span>투자금 ${usd(acct(), 0)}</span></div>`}</div>` : ''}
+      <div class="card sec"><div class="sec-h"><h2>ICT · 거래량</h2><span class="sub">참고 정보</span></div>
+        ${reads.length ? `<ul class="reads">${reads.map((r, k) => `<li data-i="${k + 1}">${esc(r)}</li>`).join('')}</ul>` : '<p class="dim">시세 이력이 짧습니다.</p>'}</div>
+    </div>`;
+  drawStock(bars, dates, plan, ict);
+  $('#q-out').querySelectorAll('[data-tf]').forEach((b) => b.addEventListener('click', () => { ui.tf = b.dataset.tf; renderStock(); }));
+}
+function drawStock(bars, dates, plan, ict) {
+  if (chart) { chart.remove(); chart = null; }
+  const el = $('#chart'); if (!el || !window.LightweightCharts) { if (el) el.innerHTML = '<p class="dim" style="padding:20px">차트 라이브러리를 불러오지 못했습니다.</p>'; return; }
+  chart = LightweightCharts.createChart(el, { autoSize: true, layout: { background: { color: 'transparent' }, textColor: '#7c82ad', fontFamily: 'Manrope, sans-serif', fontSize: 11, attributionLogo: false },
+    grid: { vertLines: { color: 'rgba(196,204,255,.05)' }, horzLines: { color: 'rgba(196,204,255,.06)' } },
+    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.22 } }, timeScale: { borderVisible: false, rightOffset: 4 },
+    crosshair: { mode: 1, vertLine: { color: 'rgba(196,204,255,.3)', labelBackgroundColor: '#333a69' }, horzLine: { color: 'rgba(196,204,255,.3)', labelBackgroundColor: '#333a69' } } });
+  const cs = chart.addCandlestickSeries({ upColor: '#ff6473', downColor: '#5c90ff', borderVisible: false, wickUpColor: '#ff6473', wickDownColor: '#5c90ff' });
+  const data = bars.map((b, k) => ({ time: dates[k], open: b.o, high: b.h, low: b.l, close: b.c })).filter((x) => x.time);
+  cs.setData(data);
+  const vol = chart.addHistogramSeries({ priceScaleId: 'v', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
+  chart.priceScale('v').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+  vol.setData(bars.map((b, k) => ({ time: dates[k], value: b.v, color: b.c >= b.o ? 'rgba(255,100,115,.35)' : 'rgba(92,144,255,.35)' })));
+  const cl = bars.map((b) => b.c);
+  for (const [vals, color] of [[emaS(cl, 20), '#2fc6f2'], [smaS(cl, 50), '#ffb84d'], [smaS(cl, 200), '#b2b7da']]) {
+    const s = chart.addLineSeries({ color, lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    s.setData(vals.map((v, k) => (v == null ? null : { time: dates[k], value: v })).filter(Boolean));
+  }
+  const line = (price, color, title, style = 0) => cs.createPriceLine({ price, color, lineWidth: 1.5, lineStyle: style, axisLabelVisible: true, title });
+  if (plan) { if (Math.abs(plan.entry / plan.stop - 1) > 0.004) line(plan.entry, '#f3f4ff', '진입', 2); line(plan.stop, '#5c90ff', plan.stop >= plan.entry ? '손절(본전)' : '손절'); line(plan.target, '#ff6473', '목표'); }
+  if (ict) {
+    if (ict.fvg) { line(ict.fvg[1], 'rgba(123,87,255,.9)', 'FVG', 3); line(ict.fvg[0], 'rgba(123,87,255,.9)', '', 3); }
+    if (!plan) line(ict.buySideLiquidity, 'rgba(255,184,77,.85)', '유동성', 1);
+    const n = bars.length, marks = [];
+    if (ict.sweep) { const k = n - 1 - ict.sweep.sessionsAgo; if (dates[k]) marks.push({ time: dates[k], position: 'belowBar', color: '#36d6a0', shape: 'arrowUp', text: '스윕' }); }
+    if (ict.mss) marks.push({ time: dates[n - 1], position: 'aboveBar', color: '#7b57ff', shape: 'circle', text: 'MSS' });
+    if (marks.length) cs.setMarkers(marks);
+  }
+  const span = { '3M': 63, '6M': 126, '1Y': 252, '2Y': 504 }[ui.tf] ?? 126;
+  const from = Math.max(0, data.length - span);
+  chart.timeScale().setVisibleLogicalRange({ from, to: data.length + 3 });
+}
+$('#q-form').addEventListener('submit', (e) => { e.preventDefault(); const s = $('#q').value.trim().toUpperCase().replace(/[^A-Z.\-]/g, ''); if (s) go('stock', s); });
+
+/* ---------------- PERFORMANCE ---------------- */
+function renderPerf() {
+  const D = DATA.desk; if (!D) { $('#v-perf').innerHTML = '<div class="empty"><b>성과 기록을 불러오는 중입니다</b></div>'; return; }
+  const S = D.stats, eq = D.equity.at(-1), start = D.rules?.startEquity ?? 100000;
+  const tr = [...D.trades].sort((a, b) => (a.exitDate < b.exitDate ? 1 : -1)).filter((t) => ui.perfFilter === 'all' || (ui.perfFilter === 'win' ? t.pnlPct > 0 : t.pnlPct <= 0));
+  const setups = Object.entries(S.bySetup ?? {}).sort((a, b) => b[1].n - a[1].n);
+  const X = DATA.ict4h, I = D.ict?.stats;
+  $('#v-perf').innerHTML = `
+    <div class="sec"><div class="sec-h"><h2>메인 데스크 성과</h2><span class="sub">${md(D.equity[0]?.date)}부터 · 모의 계좌 $${(start / 1000).toFixed(0)}k</span></div>
+      <div class="kpis">
+        <div class="stat blue"><span class="v ${sign(eq.equity / start - 1)}">${pct(eq.equity / start - 1, 2)}</span><span class="k">계좌 수익률</span></div>
+        <div class="stat"><span class="v ${sign(eq.spy / start - 1)}">${pct(eq.spy / start - 1, 2)}</span><span class="k">같은 기간 SPY</span></div>
+        <div class="stat violet"><span class="v">${pctU(S.winRate)}</span><span class="k">승률 (${S.wins}승 ${S.losses}패)</span></div>
+        <div class="stat cyan"><span class="v ${sign(S.expectancyR ?? 0)}">${R(S.expectancyR)}</span><span class="k">거래당 기대값</span></div>
+        <div class="stat"><span class="v">${S.payoff != null ? S.payoff.toFixed(2) : '-'}</span><span class="k">손익비 (평균 이익 / 평균 손실)</span></div>
+        <div class="stat coral"><span class="v down">${pct(S.maxDrawdown)}</span><span class="k">최대 낙폭</span></div>
+      </div></div>
+    <div class="card sec"><div class="sec-h"><h2>계좌 곡선</h2><span class="sub"><i style="display:inline-block;width:12px;height:3px;background:#ff6473;vertical-align:middle;border-radius:2px"></i> 데스크 · <i style="display:inline-block;width:12px;height:0;border-top:2px dashed #b2b7da;vertical-align:middle"></i> SPY</span></div><div style="height:220px" id="perf-eq"></div></div>
+    <div class="cols">
+      <div class="card sec"><div class="sec-h"><h2>패턴별</h2><span class="sub">청산 기준</span></div>
+        ${setups.length ? `<div class="bars">${setups.map(([k, v]) => `<div class="bar-r"><span>${esc(SETUP[k] ?? k)} <span class="mute">${v.n}</span></span>
+          <div class="bar-t"><i style="left:0;width:${Math.round(v.winRate * 100)}%;background:linear-gradient(90deg,#4f7dff,#7b57ff)"></i></div><b class="num ${sign(v.avgR)}" style="text-align:right">${R(v.avgR)}</b></div>`).join('')}</div>` : '<p class="dim">청산된 거래가 쌓이면 나옵니다.</p>'}
+      </div>
+      <div class="card sec"><div class="sec-h"><h2>ICT 장부</h2><span class="sub">메인과 따로 기록</span></div>
+        <div class="stats">
+          <div class="stat violet"><span class="v">${I?.closed ?? 0}건</span><span class="k">일봉 장부 청산 · 승률 ${pctU(I?.winRate)}</span></div>
+          <div class="stat violet"><span class="v ${sign(I?.totalReturn ?? 0)}">${pct(I?.totalReturn ?? 0)}</span><span class="k">일봉 장부 계좌</span></div>
+          <div class="stat blue"><span class="v">${X?.stats?.n ?? 0}건</span><span class="k">4H 실시간 종료 · ${X?.stats?.n ? pctU(X.stats.winRate) : '-'}</span></div>
+          <div class="stat blue"><span class="v ${sign(X?.recent?.expectancyR ?? 0)}">${R(X?.recent?.expectancyR)}</span><span class="k">4H 최근 소급 ${X?.recent?.n ?? 0}건</span></div>
+        </div></div>
+    </div>
+    <div class="sec"><div class="sec-h"><h2>매매 일지</h2><span class="grow"></span>
+      <div class="seg" role="group" aria-label="일지 보기">${[['all', '전체'], ['win', '수익'], ['loss', '손실']].map(([k, n]) => `<button type="button" data-pf="${k}" aria-pressed="${ui.perfFilter === k}">${n}</button>`).join('')}</div></div>
+      ${tr.length ? `<div class="hold">${tr.slice(0, 40).map((t) => `<div class="tc" data-sym="${esc(t.symbol)}" style="cursor:pointer">${avatar(t.symbol)}<div style="min-width:0"><b>${esc(t.symbol)}</b> <span>${esc(t.label)} · ${md(t.entryDate)}→${md(t.exitDate)} · ${esc(t.reason)}</span></div>
+        <div class="r"><b class="num ${sign(t.pnlPct)}">${pct(t.pnlPct)}</b><small>${R(t.R)}</small></div></div>`).join('')}</div>` : '<div class="empty"><b>해당하는 거래가 없습니다</b></div>'}
+    </div>`;
+  $('#v-perf').querySelectorAll('[data-pf]').forEach((b) => b.addEventListener('click', () => { ui.perfFilter = b.dataset.pf; renderPerf(); }));
+  spark($('#perf-eq'), D.equity.map((e) => ({ time: e.date, value: e.equity })), eq.equity >= start ? '#ff6473' : '#5c90ff', D.equity.map((e) => ({ time: e.date, value: e.spy })));
+}
+
+/* ---------------- LAB ---------------- */
+const RESEARCH = [
+  { title: '메인 데스크 매도 규칙', note: '538종목 · 7년(2019-10~2026-11)', head: ['방식', '거래', '승률', '거래당', '연수익', '낙폭'], win: 1, rows: [
+    ['+2R 절반 익절 (v5)', 853, '35%', '+0.05R', '2.5%', '-32%'], ['50일선까지 전량 보유 (v6, 현재)', 567, '26%', '+0.12R', '3.5%', '-26%'], ['중소형주만', 967, '28%', '-0.11R', '-6.1%', '-51%']] },
+  { title: 'ICT 4시간봉', note: '300종목 · 2년 · 신호별', head: ['방식', '거래', '승률', '거래당', '앞 1년', '최근 1년'], win: 1, rows: [
+    ['다음 봉 시가', 429, '45%', '+0.28R', '-0.03R', '+0.72R'], ['FVG·오더블록 지정가 (현재)', 600, '40%', '+0.43R', '+0.22R', '+0.72R'], ['일봉 추세 + 지정가', 181, '45%', '+0.58R', '+0.65R', '+0.50R']] },
+  { title: 'ICT 일봉', note: '538종목 · 7년', head: ['방식', '거래', '승률', '거래당', '앞 6년', '최근 1년'], win: 0, rows: [
+    ['원형, 다음 날 시가 (일봉 장부)', 165, '33%', '+0.02R', '-0.03R', '+0.21R'], ['+ 거래량 1.5배', 30, '37%', '+0.03R', '-0.20R', '+0.80R'], ['주봉, 지정가', 34, '41%', '+0.11R', '+0.04R', '+0.42R']] },
+];
+function renderLab() {
+  const B = DATA.backtest, D = DATA.desk;
+  const yrs = B?.years ?? [], mx = Math.max(0.05, ...yrs.flatMap((y) => [Math.abs(y.desk), Math.abs(y.spy)]));
+  $('#v-lab').innerHTML = `
+    ${B ? `<div class="card sec"><div class="sec-h"><h2>메인 데스크 백테스트</h2><span class="sub">${B.from.slice(0, 7)} ~ ${B.to.slice(0, 7)} · 거래대금 상위 ${B.universe.size}종목</span></div>
+      <div class="kpis">
+        <div class="stat blue"><span class="v ${sign(B.cagr)}">${pct(B.cagr)}</span><span class="k">연수익 (SPY ${pct(B.spyCagr)})</span></div>
+        <div class="stat violet"><span class="v">${pctU(B.stats.winRate)}</span><span class="k">승률 · ${B.stats.closed}건</span></div>
+        <div class="stat coral"><span class="v down">${pct(B.stats.maxDrawdown)}</span><span class="k">최대 낙폭</span></div>
+      </div>
+      <div class="bars">${yrs.map((y) => `<div class="yr"><span class="num">${y.period}</span><div class="pair">
+        <div style="display:flex;align-items:center;gap:8px"><span class="b" style="width:${Math.abs(y.desk) / mx * 70}%;background:${y.desk >= 0 ? '#ff6473' : '#5c90ff'}"></span><span class="num ${sign(y.desk)}" style="font-size:12px">${pct(y.desk)}</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="b" style="width:${Math.abs(y.spy) / mx * 70}%;background:rgba(178,183,218,.45)"></span><span class="num mute" style="font-size:12px">SPY ${pct(y.spy)}</span></div></div></div>`).join('')}</div>
+      <details class="more"><summary>이 숫자를 읽는 법</summary>${(B.caveats ?? []).map((c) => `<p>${esc(c)}</p>`).join('')}</details></div>` : ''}
+    <div class="sec"><div class="sec-h"><h2>전략 검증 기록</h2><span class="sub">같은 데이터로 비교, 앞 기간과 최근 1년이 모두 플러스여야 채택</span></div>
+      ${RESEARCH.map((t) => `<div class="card sec"><div class="sec-h"><h2 style="font-size:15px">${t.title}</h2><span class="sub">${t.note}</span></div>
+        <div class="scroll"><table class="tbl"><thead><tr>${t.head.map((h, k) => `<th class="${k ? 'r' : ''}">${h}</th>`).join('')}</tr></thead>
+        <tbody>${t.rows.map((r, k) => `<tr class="${k === t.win ? 'win' : ''}">${r.map((c, j) => `<td class="${j ? 'r num' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`).join('')}
+    </div>
+    ${D?.rules ? `<div class="card sec"><div class="sec-h"><h2>데스크가 사고파는 규칙</h2><span class="chip">v${D.rules.version}</span></div>
+      <ul class="reads">
+        <li data-i="1">후보: 매일 랭킹 목록. ETF·레버리지 상품 제외, 증자 공시 90일·실적 발표 5거래일 안은 사지 않음</li>
+        <li data-i="2">자리: 신고가 돌파, 수축 후 돌파, 추세 눌림목, 과매도 반등. 최근 대량 하락일이 있으면 눌림으로 보지 않음</li>
+        <li data-i="3">크기: 손절까지 잃는 돈이 계좌의 ${(D.rules.riskPct.SELECTIVE * 100).toFixed(1)}%(시장 대기 때 ${(D.rules.riskPct.WAIT * 100).toFixed(2)}%), 한 종목 ${D.rules.maxPositionPct * 100}% 이하, 전체 위험 ${D.rules.maxHeatPct * 100}% 이하</li>
+        <li data-i="4">매도: +1R에 손절을 본전으로, 중간 익절 없이 50일선 종가 이탈까지 보유. ${D.rules.timeStopSessions}거래일 동안 +0.5R 못 넘으면 정리</li>
+        <li data-i="5">계좌 낙폭 -${D.rules.ddHalfRisk * 100}%면 위험 절반, -${D.rules.ddHalt * 100}%면 ${D.rules.ddHaltSessions}거래일 매수 중단</li>
+      </ul></div>` : ''}
+    ${ON_SITE ? '<a class="btn" href="/simulator.html" style="align-self:flex-start">추천 복기 · 가상 시나리오 도구 열기</a>' : ''}`;
+}
+
+/* ---------------- frame ---------------- */
+function render() {
+  if (!DATA) return;
+  const mk = DATA.market, st = STATE[mk?.state] ?? STATE.UNKNOWN;
+  $('#mkt').className = `pill ${st[1]}`; $('#mkt').innerHTML = `<span class="dot"></span><b>${esc(st[0])}</b>`;
+  $('#asof').innerHTML = `<span>종가</span><b class="num">${md(DATA.desk?.asOf ?? DATA.asOf)}</b>`;
+  $('#rail').innerHTML = accountCard(); drawAccountSpark('#rail .spark');
+  $('#feed').innerHTML = feedHtml();
+  if (ui.view === 'today') renderToday(); else if (ui.view === 'stock') renderStock(); else if (ui.view === 'perf') renderPerf(); else renderLab();
+  $('#foot').textContent = `모의 매매 기록입니다. 투자 판단과 책임은 본인에게 있습니다. 데스크 ${DATA.desk?.model ?? ''} · 갱신 ${(DATA.desk?.generatedAt ?? '').slice(0, 16).replace('T', ' ')} UTC`;
+}
+(function boot() {
+  const [v, s] = fromHash(); ui.view = v; ui.sym = s;
+  for (const [k] of VIEWS) $('#v-' + k).hidden = k !== v;
+  nav();
+  if (DATA) render(); else { $('#tiles').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>데이터를 불러오는 중입니다</b>장 마감 기준 기록을 가져옵니다.</div>'; loadData().catch(() => { $('#tiles').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>데이터를 불러오지 못했습니다</b>네트워크를 확인하고 새로고침해 주세요.</div>'; }); }
+})();
+</script>
+
+</body>
+</html>

@@ -80,7 +80,11 @@ async function main() {
       docs.push({ asOf: l.asOf, mid: l.recommendations.mid.map((s) => by('mid').get(s)).filter(Boolean), short: l.recommendations.short.map((s) => by('short').get(s)).filter(Boolean) });
     }
   }
-  const symbols = [...new Set(['SPY', 'QQQ', ...readWatchlist(arg('watchlist', 'config/watchlist.txt')), ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? []), ...(d.setups ?? []), ...(d.pullback ?? [])].map((x) => x.symbol))])];
+  // stocks the ICT books hold or signal, so the app can chart them too
+  const ictSyms = [];
+  try { for (const s of JSON.parse(readFileSync(join(dataDir, 'desk/ict4h.json'), 'utf8')).signals ?? []) if (s.status === 'open' || s.status === 'waiting' || s.R != null) ictSyms.push(s.symbol); } catch { /* not yet published */ }
+  try { for (const f of readdirSync(join(dataDir, 'desk/ict-ledger'))) for (const p of JSON.parse(readFileSync(join(dataDir, 'desk/ict-ledger', f), 'utf8')).picks ?? []) ictSyms.push(p.symbol); } catch { /* none */ }
+  const symbols = [...new Set(['SPY', 'QQQ', ...readWatchlist(arg('watchlist', 'config/watchlist.txt')), ...docs.flatMap((d) => [...(d.mid ?? []), ...(d.short ?? []), ...(d.setups ?? []), ...(d.pullback ?? [])].map((x) => x.symbol)), ...ictSyms])];
   const first = docs[0]?.asOf ?? new Date().toISOString().slice(0, 10);
   const start = new Date(Date.parse(first) - HISTORY_DAYS * 864e5).toISOString().slice(0, 10);
   // The free plan serves consolidated (SIP) bars only up to 15 minutes ago. Asking for "today" makes Alpaca
