@@ -95,7 +95,7 @@ export const ICT4H_EDGE = {
 /** Trade every shift in one stock's 4-hour bars under variant v. Returns trades [{ t, R, win }]. */
 export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } = {}) {
   const rules = { ...DESK_RULES, mssRaw: true, mssVolReq: v.mssVolReq ?? null };
-  const atr = atrSeries(bars), bias = v.bias ? dailyBias(bars) : null, out = [];
+  const atr = atrSeries(bars), trendOf = dailyBias(bars), bias = v.bias ? trendOf : null, out = [];
   const ctxOf = v.maxExt != null || v.noOverhead || v.maxSpread != null ? dailyContext(bars) : null;
   let busyUntil = -1;
   for (let i = 62; i < bars.length - 2; i++) {
@@ -123,19 +123,49 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
       if (v.maxSpread != null && cx.spread != null && Math.abs(cx.spread) > v.maxSpread) continue;
     }
     const trail = v.ratchet || v.ratchetToo; let stopNow = stop;
-    let exit = null, j = k;
-    if (bars[k].l <= stop) exit = Math.min(bars[k].o, stop);               // stopped on the entry bar (conservative)
+    let exit = null, j = k, kind = null, xi = k;
+    if (bars[k].l <= stop) { exit = Math.min(bars[k].o, stop); kind = 'stop'; }  // stopped on the entry bar (conservative)
     for (j = k + (exit == null ? 1 : 0); exit == null && j < Math.min(bars.length, k + maxHold); j++) {
       const b = bars[j];
       if (b.o <= stopNow) exit = b.o; else if (b.l <= stopNow) exit = stopNow; else if (b.o >= target) exit = b.o; else if (b.h >= target) exit = target;
+      if (exit != null) { xi = j; kind = exit >= target ? 'target' : stopNow > stop ? 'trail' : 'stop'; }
       // step trail, decided on this bar's close for the next bar: every full R gained lifts the stop by 1R (+1R → break-even)
       if (exit == null && trail) { const steps = Math.floor((b.c - entry) / R); if (steps >= 1) stopNow = Math.max(stopNow, entry + (steps - 1) * R); }
     }
-    if (exit == null) { j = Math.min(bars.length - 1, k + maxHold - 1); exit = bars[j].c; }
+    if (exit == null) { j = Math.min(bars.length - 1, k + maxHold - 1); exit = bars[j].c; xi = j; kind = j >= bars.length - 1 ? 'open' : 'timeout'; }
     const r = (exit - entry - cost * (entry + exit)) / R;
-    out.push({ t: bars[i].day, R: r, win: r > 0 }); busyUntil = j;
+    let lo = Infinity; for (let q = i - 60; q < i; q++) lo = Math.min(lo, bars[q].l);
+    out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
+      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
   }
   return out;
+}
+
+/**
+ * The signals as one account: take them in entry order, at most `maxOpen` at a time (one per stock is already enforced),
+ * risking `riskPct` of the equity at entry on each (the R of a trade is its gain in units of that risk). Equity moves when
+ * a trade closes. `pick(t)` can skip trades (a regime rule). Returns final multiple, CAGR, max drawdown, trades taken.
+ */
+export function portfolioSim(trades, { riskPct = 0.01, maxOpen = 5, pick = () => true, start = 1 } = {}) {
+  const ts = trades.filter((t) => t.entryT && t.kind !== 'open' && pick(t)).sort((a, b) => (a.entryT < b.entryT ? -1 : 1));
+  let eq = start, peak = start, maxDD = 0, taken = 0; const open = [];
+  const settle = (until) => {
+    open.sort((a, b) => (a.exitT < b.exitT ? -1 : 1));
+    while (open.length && open[0].exitT <= until) { const o = open.shift(); eq += o.risk * o.R; peak = Math.max(peak, eq); maxDD = Math.min(maxDD, eq / peak - 1); }
+  };
+  for (const t of ts) {
+    settle(t.entryT);
+    if (open.length >= maxOpen) continue;
+    open.push({ exitT: t.exitT, R: t.R, risk: eq * riskPct }); taken++;
+  }
+  settle('9999');
+  const years = ts.length ? (Date.parse(ts.at(-1).exitT) - Date.parse(ts[0].entryT)) / (365.25 * 864e5) : 0;
+  return { multiple: eq / start, cagr: years > 0 ? (eq / start) ** (1 / years) - 1 : null, maxDD, taken, years };
+}
+export function byKind(trades) {
+  const g = {}; for (const t of trades) { const a = (g[t.kind] ??= { n: 0, sumR: 0, held: 0 }); a.n++; a.sumR += t.R; a.held += t.held ?? 0; }
+  for (const a of Object.values(g)) { a.avgR = a.sumR / a.n; a.avgHeld = a.held / a.n; }
+  return g;
 }
 
 export function summarize(trades, split) {
@@ -178,6 +208,13 @@ async function main() {
     const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, v));
     for (const t of all) t.reg = regOf.get(t.t) ?? null;
     const s = summarize(all, split); rows.push({ name, ...s });
+    const kinds = byKind(all), crash = (t) => t.reg === '급락 조정' || t.reg === '약세장';
+    const regimeRule = (t) => crash(t) || (t.reg === '상승장' && t.trend);   // the regime playbook: trend in up-markets, everything after a crash
+    console.log(`    청산: ${Object.entries(kinds).map(([k, a]) => `${{ target: '목표', stop: '손절', trail: '추적 손절', timeout: '60봉 만기', open: '보유 중' }[k] ?? k} ${a.n}건 ${a.avgR.toFixed(2)}R(평균 ${(a.avgHeld / 2).toFixed(1)}일)`).join(' | ')}`);
+    for (const [label, pick] of [['전부', () => true], ['국면 규칙', regimeRule]]) {
+      const line = [0.005, 0.01, 0.02].map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen: 5, pick }); return `위험 ${(rp * 100).toFixed(1)}%: ${ps.multiple.toFixed(2)}배(연 ${p(ps.cagr)}, 낙폭 ${p(ps.maxDD)}, ${ps.taken}건)`; });
+      console.log(`    계좌(${label}, 최대 5종목): ${line.join(' | ')}`);
+    }
     console.log(`ICT4H ${name}\n    ${s.all.n}건 승률 ${p(s.all.winRate)} 거래당 ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)}\n    앞(~${split}) ${s.first.n}건 ${p(s.first.winRate)} ${s.first.expectancyR?.toFixed(2)}R | 최근 1년 ${s.last.n}건 ${p(s.last.winRate)} ${s.last.expectancyR?.toFixed(2)}R\n    평균 이익 ${s.avgWinR?.toFixed(2)}R / 평균 손실 ${s.avgLossR?.toFixed(2)}R\n    시장 국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 승률 ${p(a.winRate)} ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
   }
   const out = arg('out'); if (out) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), years, stocks: series.size, split, variants: rows })); }
