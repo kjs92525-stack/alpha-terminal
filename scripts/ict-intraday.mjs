@@ -41,14 +41,18 @@ export function dailyBias(bars4) {
 export function dailyContext(bars4) {
   const days = [];
   for (const b of bars4) { const x = days.at(-1); if (!x || x.day !== b.day) days.push({ day: b.day, h: b.h, l: b.l, c: b.c }); else { x.h = Math.max(x.h, b.h); x.l = Math.min(x.l, b.l); x.c = b.c; } }
-  const out = new Map(); let e20 = null, s50 = 0, s200 = 0, atr = null;
+  const out = new Map(); let e20 = null, s50 = 0, s200 = 0, atr = null; const m50 = [];
   for (let i = 0; i < days.length; i++) {
     const d = days[i], c = d.c;
     e20 = e20 == null ? c : c * 2 / 21 + e20 * 19 / 21;
     s50 += c; if (i >= 50) s50 -= days[i - 50].c; s200 += c; if (i >= 200) s200 -= days[i - 200].c;
     const tr = i ? Math.max(d.h - d.l, Math.abs(d.h - days[i - 1].c), Math.abs(d.l - days[i - 1].c)) : d.h - d.l;
     atr = atr == null ? tr : (atr * 13 + tr) / 14;
-    if (i + 1 < days.length && i >= 19) out.set(days[i + 1].day, { ema20: e20, sma50: i >= 49 ? s50 / 50 : null, sma200: i >= 199 ? s200 / 200 : null, atr });
+    m50.push(i >= 49 ? s50 / 50 : null);
+    // staircase: the two latest daily swing lows (2 bars each side, confirmed) rise
+    let lows = []; for (let j = i - 2; j >= Math.max(2, i - 80) && lows.length < 2; j--) { const l = days[j].l; if (l < days[j - 1].l && l < days[j - 2].l && l <= days[j + 1].l && l <= days[j + 2].l) lows.push(l); }
+    if (i + 1 < days.length && i >= 19) out.set(days[i + 1].day, { ema20: e20, sma50: i >= 49 ? s50 / 50 : null, sma200: i >= 199 ? s200 / 200 : null, atr,
+      sma50prev: i >= 69 ? m50[i - 20] : null, higherLows: lows.length === 2 ? lows[0] > lows[1] : null });
   }
   return out;
 }
@@ -60,7 +64,8 @@ export function dailyContext(bars4) {
 export function contextRead(ctx, close, entry, target) {
   if (!ctx || !(ctx.atr > 0)) return null;
   const walls = [ctx.sma50, ctx.sma200].filter((m) => m != null && m > entry * 1.005 && m < target);
-  return { ext: (close - ctx.ema20) / ctx.atr, overhead: walls.length ? Math.min(...walls) : null, spread: ctx.sma50 ? ctx.ema20 / ctx.sma50 - 1 : null,
+  const stacked = ctx.sma200 != null && ctx.ema20 > ctx.sma50 && ctx.sma50 > ctx.sma200 && ctx.sma50prev != null && ctx.sma50 > ctx.sma50prev;
+  return { stacked, stair: stacked && ctx.higherLows === true, ext: (close - ctx.ema20) / ctx.atr, overhead: walls.length ? Math.min(...walls) : null, spread: ctx.sma50 ? ctx.ema20 / ctx.sma50 - 1 : null,
     ema20: ctx.ema20, sma50: ctx.sma50, sma200: ctx.sma200 };
 }
 
@@ -106,7 +111,7 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
   const maxHold = v.maxHold ?? maxHold0;  // a quick variant can hold fewer bars
   const rules = { ...DESK_RULES, mssRaw: true, mssVolReq: v.mssVolReq ?? null };
   const atr = atrSeries(bars), trendOf = dailyBias(bars), bias = v.bias ? trendOf : null, out = [];
-  const ctxOf = v.maxExt != null || v.noOverhead || v.maxSpread != null ? dailyContext(bars) : null;
+  const ctxOf = v.maxExt != null || v.noOverhead || v.maxSpread != null ? dailyContext(bars) : null, ctxAll = dailyContext(bars);
   let busyUntil = -1;
   for (let i = 62; i < bars.length - 2; i++) {
     if (i <= busyUntil || !(atr[i] > 0)) continue;
@@ -147,7 +152,7 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
     const r = (exit - entry - cost * (entry + exit)) / R;
     let lo = Infinity; for (let q = i - 60; q < i; q++) lo = Math.min(lo, bars[q].l);
     out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryPx: entry, exitPx: exit, stopPx: stop, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
-      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
+      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, ...(() => { const cx = contextRead(ctxAll.get(bars[i].day), bars[i].c, entry, hi); return { stacked: !!cx?.stacked, stair: !!cx?.stair }; })(), disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
   }
   return out;
 }
@@ -307,6 +312,8 @@ async function main() {
     const vol = (t) => t.volMult >= 1.5;
     const picks = {
       '추세 일치': (t) => t.trend,
+      '정배열(20>50>200, 50일선 상승)': (t) => t.stacked,
+      '계단(정배열 + 일봉 저점 상승)': (t) => t.stair,
       '추세 일치 + 거래량 전환': (t) => t.trend || vol(t),
       '추세 일치 + 급락·약세장 전부': (t) => t.trend || crash(t),
       '추세 일치 + 거래량 + 급락·약세장': (t) => t.trend || vol(t) || crash(t),
@@ -315,7 +322,7 @@ async function main() {
     };
     console.log(`GROWTH base: ${all.length} trades, ${p(all.filter((t) => t.win).length / all.length)} win, ${(all.reduce((a, t) => a + t.R, 0) / all.length).toFixed(2)}R, median stop ${(all.map((t) => t.stopPct).sort((a, b) => a - b)[all.length >> 1] * 100).toFixed(1)}%`);
     const aggr = process.argv.includes('--aggr');   // aggressive grid: higher risk per trade, margin, fewer signal sets
-    const pickSet = aggr ? Object.fromEntries(Object.entries(picks).filter(([k]) => k === '추세 일치' || k === '추세 일치 + 급락·약세장 전부')) : picks;
+    const pickSet = aggr ? Object.fromEntries(Object.entries(picks).filter(([k]) => ['추세 일치', '정배열(20>50>200, 50일선 상승)', '계단(정배열 + 일봉 저점 상승)', '추세 일치 + 급락·약세장 전부'].includes(k))) : picks;
     const risks = aggr ? [0.02, 0.03, 0.04, 0.05, 0.07, 0.1] : [0.01, 0.015, 0.02, 0.03], opens = aggr ? [2, 3, 5] : [3, 5, 8];
     for (const [name, pick] of Object.entries(pickSet)) {
       const sub = all.filter(pick), s = summarize(sub, split);
