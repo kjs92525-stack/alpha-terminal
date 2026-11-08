@@ -901,9 +901,22 @@ const avatar = (sym) => { let h = 0; for (const c of sym) h = (h * 31 + c.charCo
 const STATE = { SELECTIVE: ['적극 매수 가능', 'ok'], LIMIT: ['신규 진입 축소', 'warn'], WAIT: ['신규 진입 대기', 'bad'], UNKNOWN: ['판정 없음', ''] };
 const SETUP = { breakout: '신고가 돌파', base: '수축 후 돌파', pullback: '추세 눌림목', reversal: '과매도 반등', structure: '구조 전환(MSS)' };
 /* the daily chart under a 4-hour signal: the 4-hour structure alone does not see a stretched or blocked daily chart */
+const crashRegime = () => ['급락 조정', '약세장'].includes(DATA.ict4h?.regime?.name);
+/* rank 4-hour signals by what paid in the current regime (3-year backtest, 2026-11-08) */
+function sigScore(s) {
+  const reg = DATA.ict4h?.regime?.name, vol = s.volMult >= 1.5, disc = s.rangePos != null && s.rangePos <= 0.5;
+  if (reg === '상승장' || reg === '조정·횡보') return (s.trend ? 3 : 0) + (vol ? 1 : 0) + (disc ? 0.5 : 0);
+  return (vol ? 2 : 0) + (disc ? 1.5 : 0) + (s.trend ? 0.5 : 0);
+}
+function sigTags(s) {
+  const t = [];
+  if (s.volMult >= 1.5) t.push(`거래량 실린 전환 ${s.volMult.toFixed(1)}배`);
+  if (s.rangePos != null && s.rangePos <= 0.5) t.push(`할인 구간 (60봉 범위 ${Math.round(s.rangePos * 100)}%)`);
+  return t.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${t.map((x) => `<span class="chip mint">${esc(x)}</span>`).join('')}</div>` : '';
+}
 function dailyWarn(s) {
   const w = [], d = s.daily;
-  if (!s.trend) w.push('일봉 50일선 아래 (역추세)');
+  if (!s.trend && !crashRegime()) w.push('일봉 50일선 아래 (역추세)');
   if (d?.ext > 2) w.push(`일봉 과열: 20일선 위 ${d.ext.toFixed(1)}ATR`);
   if (d?.overhead) w.push(`목표 전 일봉 이평 저항 ${usd(d.overhead)}`);
   if (d?.spread != null && Math.abs(d.spread) > 0.15) w.push(`20·50일선 ${pct(d.spread, 0)} 벌어짐`);
@@ -1047,7 +1060,7 @@ function renderToday() {
   $('#tiles').innerHTML = `
     <button class="tile ${mk?.state === 'SELECTIVE' ? 'blue' : mk?.state === 'WAIT' ? 'coral' : 'slate'}" data-v="lab"><span class="glyph">${mk?.state === 'WAIT' ? '!' : '↗'}</span><span class="k">시장 판정</span><span class="v">${esc(st[0])}</span><span class="s">${esc(mk?.reasons?.[0] ?? '시장 데이터를 불러오는 중')}</span></button>
     <button class="tile blue" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">${live.length + ictP.length}</span><span class="k">오늘 낼 주문</span><span class="v num">${live.length + ictP.length}건</span><span class="s">메인 ${live.length} · ICT 일봉 ${ictP.length}${blocked.length ? ` · 취소 ${blocked.length}` : ''}</span></button>
-    <button class="tile violet" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">4H</span><span class="k">ICT 4시간봉</span><span class="v num">${sig.length}건 진행</span><span class="s">${X?.recent?.n ? `최근 소급 ${X.recent.n}건 · 승률 ${pctU(X.recent.winRate)} · ${R(X.recent.expectancyR)}` : '신호 기록을 쌓는 중'}</span></button>`;
+    <button class="tile violet" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">4H</span><span class="k">ICT 4시간봉 · ${esc(X?.regime?.name ?? '국면 미정')}</span><span class="v num">${sig.length}건 진행</span><span class="s">${X?.regime?.playbook ? esc(X.regime.playbook) : X?.recent?.n ? `최근 소급 ${X.recent.n}건 · 승률 ${pctU(X.recent.winRate)} · ${R(X.recent.expectancyR)}` : '신호 기록을 쌓는 중'}</span></button>`;
 
   // orders
   const pick = new Map(); for (const l of D?.ledgers ?? []) for (const p of l.picks) pick.set(`${l.date}:${p.symbol}`, p);
@@ -1062,9 +1075,9 @@ function renderToday() {
     const entry = p.plan.entryType === 'market' ? p.plan.refClose : p.plan.trigger, tgt = p.plan.exitAt ?? p.plan.target, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
     cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip violet">ICT 일봉</span></div>
       ${levels(entry, p.plan.stop, tgt, '내일 시가')}<div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>목표에서 전량</span></div></article>`); }
-  for (const s of sig.filter((x) => x.status === 'waiting')) { const n = sizeFor(0.005, s.limit, s.stop);
+  for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = sizeFor(0.005, s.limit, s.stop);
     cards.push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
-      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${dailyWarn(s)}<div class="oc-f"><span>${n}주 · 위험 0.5%</span><span>약 5거래일 유효</span></div></article>`); }
+      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}<div class="oc-f"><span>${n}주 · 위험 0.5%</span><span>약 5거래일 유효</span></div></article>`); }
   for (const o of blocked) cards.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
   $('#todo').innerHTML = `<div class="sec-h"><h2>오늘 낼 주문</h2><span class="sub">장 마감 기준 · 다음 거래일에 넣을 주문</span><span class="grow"></span>
       <label class="acct-in" for="acct">투자금 $<input id="acct" type="number" inputmode="decimal" min="100" step="100" value="${acct()}"></label></div>
