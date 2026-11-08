@@ -384,3 +384,16 @@ export function analyzeBars(bars, { lastBarClosed = false, vwapAnchor = 'session
     regime: trendRegime(closes),
   };
 }
+
+/** daily bars → calendar-month bars (time = the month's first trading day) */
+export function resampleMonthly(bars) {
+  const out = [];
+  let cur = null, curKey = null;
+  for (const b of bars) {
+    const key = new Date(b.time * 1000).toISOString().slice(0, 7);
+    if (key !== curKey) { if (cur) out.push(cur); cur = { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume }; curKey = key; }
+    else { cur.high = Math.max(cur.high, b.high); cur.low = Math.min(cur.low, b.low); cur.close = b.close; cur.volume += b.volume; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}

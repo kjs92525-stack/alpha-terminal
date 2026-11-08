@@ -10,7 +10,8 @@
 
 import { parseFilings, summarizeFacts, searchTickers, padCik } from '../../../packages/analysis/sec.mjs';
 import { parseStooqCsv, parseYahooChart, isDailyBarClosed } from '../../../packages/analysis/market.mjs';
-import { resampleWeekly } from '../../../packages/analysis/indicators.mjs';
+import { resampleWeekly, resampleMonthly } from '../../../packages/analysis/indicators.mjs';
+import { regularSession, fourHourBars } from '../../../packages/analysis/intraday.mjs';
 import { scoreStock, rankUniverse } from '../../../packages/analysis/scoring.mjs';
 import type { Bar, Filing, Fundamentals } from '../../../packages/analysis/types';
 import { handleTvWebhook, listTvAlerts, TvError, type TvEnv, type WaitCtx, type AnalyzeLike } from './tradingview.ts';
@@ -42,8 +43,10 @@ class HttpError extends Error {
   }
 }
 
-type Timeframe = '5m' | '1H' | '1D' | '1W';
-const TIMEFRAMES: Timeframe[] = ['5m', '1H', '1D', '1W'];
+type Timeframe = '5m' | '15m' | '1H' | '4H' | '1D' | '1W' | '1M';
+const TIMEFRAMES: Timeframe[] = ['5m', '15m', '1H', '4H', '1D', '1W', '1M'];
+type IntradayTf = '5m' | '15m' | '1H' | '4H';
+const isIntraday = (tf: Timeframe): tf is IntradayTf => tf === '5m' || tf === '15m' || tf === '1H' || tf === '4H';
 
 // ---------- helpers ----------
 
@@ -232,15 +235,24 @@ async function alpacaDaily(env: Env, symbol: string): Promise<{ bars: Bar[]; url
   return { bars, url: 'https://data.alpaca.markets/v2/stocks/bars', fetchedAt: new Date().toISOString() };
 }
 
-async function alpacaIntraday(env: Env, symbol: string, tf: '5m' | '1H'): Promise<BarsResult> {
-  const [timeframe, days, step] = tf === '5m' ? ['5Min', 7, 300] : ['1Hour', 90, 3600];
+// regular-session bars only; 4-hour bars are built from hourly ones (09:30-13:00 and 13:00-16:00 New York)
+const INTRADAY: Record<IntradayTf, { alpaca: string; days: number; step: number; yahoo: [string, string] }> = {
+  '5m': { alpaca: '5Min', days: 7, step: 300, yahoo: ['5m', '5d'] },
+  '15m': { alpaca: '15Min', days: 30, step: 900, yahoo: ['15m', '1mo'] },
+  '1H': { alpaca: '1Hour', days: 90, step: 3600, yahoo: ['60m', '3mo'] },
+  '4H': { alpaca: '1Hour', days: 365, step: 4 * 3600, yahoo: ['60m', '1y'] },
+};
+const shapeIntraday = (tf: IntradayTf, bars: Bar[]): Bar[] => (tf === '4H' ? (fourHourBars(bars) as Bar[]) : tf === '1H' ? bars : (regularSession(bars) as Bar[]));
+
+async function alpacaIntraday(env: Env, symbol: string, tf: IntradayTf): Promise<BarsResult> {
+  const { alpaca: timeframe, days, step } = INTRADAY[tf];
   const end = new Date(Math.floor((Date.now() - 16 * 60000) / 60000) * 60000).toISOString();
   const start = new Date(Date.now() - days * 86400000).toISOString();
   const url = `https://data.alpaca.markets/v2/stocks/bars?symbols=${encodeURIComponent(symbol)}&timeframe=${timeframe}&start=${start}&end=${end}&limit=10000&adjustment=all&feed=sip&sort=asc`;
   const res = await cachedFetch(url, { headers: { 'APCA-API-KEY-ID': env.ALPACA_KEY_ID!, 'APCA-API-SECRET-KEY': env.ALPACA_SECRET_KEY!, Accept: 'application/json' } }, BARS_TTL_INTRADAY);
   if (!res.ok) throw new HttpError(502, `Alpaca intraday HTTP ${res.status}`);
   const json = (await res.json()) as { bars?: Record<string, Array<{ t: string; o: number; h: number; l: number; c: number; v: number }>> };
-  const bars: Bar[] = (json.bars?.[symbol] ?? []).map((b) => ({ time: Date.parse(b.t) / 1000, open: b.o, high: b.h, low: b.l, close: b.c, volume: b.v }));
+  const bars: Bar[] = shapeIntraday(tf, (json.bars?.[symbol] ?? []).map((b) => ({ time: Date.parse(b.t) / 1000, open: b.o, high: b.h, low: b.l, close: b.c, volume: b.v })));
   if (!bars.length) throw new HttpError(404, 'Alpaca returned no intraday bars');
   const lastT = bars[bars.length - 1].time;
   return { symbol, timeframe: tf, bars, source: 'Alpaca (SIP, 15분 지연)', sourceUrl: 'https://data.alpaca.markets/v2/stocks/bars', fetchedAt: res.headers.get('X-Fetched-At') || new Date().toISOString(), lastBarClosed: Date.now() / 1000 >= lastT + step, delayNote: '무료 플랜: 최근 15분 제외' };
@@ -249,19 +261,20 @@ async function alpacaIntraday(env: Env, symbol: string, tf: '5m' | '1H'): Promis
 async function getBars(env: Env, symbol: string, tf: Timeframe): Promise<BarsResult> {
   const list = providers(env);
   const errors: string[] = [];
-  if ((tf === '5m' || tf === '1H') && hasAlpaca(env)) {
+  if (isIntraday(tf) && hasAlpaca(env)) {
     try {
       return await alpacaIntraday(env, symbol, tf);
     } catch (e) {
       errors.push(`alpaca: ${(e as Error).message}`);
     }
   }
-  if (tf === '5m' || tf === '1H') {
+  if (isIntraday(tf)) {
     if (!list.includes('yahoo')) throw new HttpError(501, 'Intraday bars need the yahoo provider (PRICE_PROVIDERS)');
-    const [interval, range, sec] = tf === '5m' ? ['5m', '5d', 300] : ['60m', '3mo', 3600];
+    const { yahoo: [interval, range], step: sec } = INTRADAY[tf];
     const r = await yahooChart(symbol, interval, range, false, BARS_TTL_INTRADAY);
-    const lastT = r.bars[r.bars.length - 1].time;
-    return { symbol, timeframe: tf, bars: r.bars, source: 'Yahoo Finance chart (비공식)', sourceUrl: r.url, fetchedAt: r.fetchedAt, lastBarClosed: Date.now() / 1000 >= lastT + Number(sec), delayNote: '지연 시세 가능 (보통 15분 이상), 비공식 엔드포인트' };
+    const bars = shapeIntraday(tf, r.bars); if (!bars.length) throw new HttpError(404, 'Yahoo returned no intraday bars');
+    const lastT = bars[bars.length - 1].time;
+    return { symbol, timeframe: tf, bars, source: 'Yahoo Finance chart (비공식)', sourceUrl: r.url, fetchedAt: r.fetchedAt, lastBarClosed: Date.now() / 1000 >= lastT + Number(sec), delayNote: '지연 시세 가능 (보통 15분 이상), 비공식 엔드포인트' };
   }
   for (const p of list) {
     try {
@@ -269,7 +282,7 @@ async function getBars(env: Env, symbol: string, tf: Timeframe): Promise<BarsRes
       let source: string;
       if (p === 'alpaca') { r = await alpacaDaily(env, symbol); source = 'Alpaca (SIP, 수정주가)'; }
       else if (p === 'stooq') { r = await stooqDaily(symbol); source = 'Stooq EOD'; }
-      else if (p === 'yahoo') { r = await yahooChart(symbol, '1d', tf === '1W' ? '10y' : '5y', true, BARS_TTL_DAILY); source = 'Yahoo Finance chart (비공식)'; }
+      else if (p === 'yahoo') { r = await yahooChart(symbol, '1d', tf === '1D' ? '5y' : '10y', true, BARS_TTL_DAILY); source = 'Yahoo Finance chart (비공식)'; }
       else continue;
       let bars = r.bars;
       let lastBarClosed = isDailyBarClosed(bars[bars.length - 1].time);
@@ -278,6 +291,10 @@ async function getBars(env: Env, symbol: string, tf: Timeframe): Promise<BarsRes
         const lastWeekEnd = bars[bars.length - 1].time + 5 * 86400;
         lastBarClosed = lastBarClosed && Date.now() / 1000 >= lastWeekEnd;
         bars = bars.slice(-520);
+      } else if (tf === '1M') {
+        bars = resampleMonthly(bars) as Bar[];
+        const d = new Date(bars[bars.length - 1].time * 1000), monthEnd = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) / 1000;
+        lastBarClosed = lastBarClosed && Date.now() / 1000 >= monthEnd;
       } else {
         bars = bars.slice(-1260);
       }
@@ -451,7 +468,7 @@ export async function handle(req: Request, env: Env, ctx?: WaitCtx): Promise<Res
     if ((r = m(/^\/api\/v1\/bars\/([^/]+)$/))) {
       const tf = (url.searchParams.get('tf') || '1D') as Timeframe;
       if (!TIMEFRAMES.includes(tf)) throw new HttpError(400, `tf must be one of ${TIMEFRAMES.join(', ')}`);
-      return json(await getBars(env, normSymbol(r[1]), tf), 200, cors, tf === '1D' || tf === '1W' ? 300 : 30);
+      return json(await getBars(env, normSymbol(r[1]), tf), 200, cors, isIntraday(tf) ? 30 : 300);
     }
     if ((r = m(/^\/api\/v1\/analyze\/([^/]+)$/))) {
       return json(await analyze(env, normSymbol(r[1])), 200, cors, 300);
