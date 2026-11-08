@@ -16,4 +16,5 @@ export function volumeProfile(bars: Bar[], binCount?: number, valueAreaPct?: num
 export function supportResistance(bars: Bar[], opts?: { left?: number; right?: number; tolerance?: number; maxLevels?: number }): Level[];
 export function trendRegime(closes: number[]): Regime;
 export function resampleWeekly(bars: Bar[]): Bar[];
+export function resampleMonthly(bars: Bar[]): Bar[];
 export function analyzeBars(bars: Bar[], opts?: { lastBarClosed?: boolean; vwapAnchor?: 'session' | 'none' }): Analysis;
