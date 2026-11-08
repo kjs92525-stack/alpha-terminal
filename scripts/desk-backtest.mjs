@@ -69,6 +69,10 @@ export const SHORT_VARIANTS = {
   '단기 눌림목만, 2R': SHORT({ exitAtR: 2, setups: ['pullback'] }),
   '단기 과매도 반등만, 1.5R, 10일': SHORT({ exitAtR: 1.5, maxSessions: 10, timeStopSessions: 5, setups: ['reversal'] }),
   '단기 돌파만, 3R': SHORT({ exitAtR: 3, setups: ['breakout'] }),
+  '단기 갭 돌파만, 2R': SHORT({ exitAtR: 2, setups: ['gap'] }),
+  '단기 갭 돌파만, 3R': SHORT({ exitAtR: 3, setups: ['gap'] }),
+  '단기 갭+돌파, 2R': SHORT({ exitAtR: 2, setups: ['gap', 'breakout'] }),
+  '단기 갭+돌파+수축, 3R': SHORT({ exitAtR: 3, setups: ['gap', 'breakout', 'base'] }),
   '단기 돌파+수축, 2R': SHORT({ exitAtR: 2, setups: ['breakout', 'base'] }),
 };
 const half = (trades) => { const n = trades.length, w = trades.filter((t) => t.R > 0).length, R = trades.reduce((a, t) => a + t.R, 0); return { n, winRate: n ? w / n : null, expectancyR: n ? R / n : null }; };

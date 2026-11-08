@@ -43,6 +43,7 @@ export const DESK_RULES = {
   maxMcap: null,                 // e.g. 10e9: only stocks below this market cap (unknown caps pass)
   minAtrPick: null,              // e.g. 0.03: only stocks whose daily range is at least this share of price
   exitAtR: null,                 // short-term research: sell everything at entry + this many R (no trailing)
+  gapMin: 0.05, gapVol: 2.5,     // gap setup: opens 5%+ above the prior close on 2.5x+ average volume
   timeStopSessions: 25, timeStopMinR: 0.5, maxSessions: 120,
   minPrice: 5,
   minAdv: 10_000_000,            // applied only when bars carry consolidated (SIP) volume
@@ -78,7 +79,7 @@ export const ICT_RULES = { ...DESK_RULES, setups: ['structure'], mssRaw: true, v
   minQuality: 0, minQualityWait: 0, picksPerDay: { SELECTIVE: 3, LIMIT: 3, UNKNOWN: 3, WAIT: 2 } };
 const FUND_NAME = /\b(ETF|ETN|Fund|Trust|ProShares|Direxion|iShares|SPDR|Invesco QQQ|Leveraged|Ultra(Pro|Short)?|[23]x)\b/i;
 
-export const SETUP_LABEL = { breakout: '신고가 돌파', structure: '구조 전환(MSS)', base: '수축 후 돌파 대기', pullback: '추세 눌림목', reversal: '과매도 반등' };
+export const SETUP_LABEL = { gap: '갭 상승 돌파', breakout: '신고가 돌파', structure: '구조 전환(MSS)', base: '수축 후 돌파 대기', pullback: '추세 눌림목', reversal: '과매도 반등' };
 export const capBucket = (mcap) => (mcap == null ? '미분류' : mcap >= 10e9 ? '대형주' : mcap >= 2e9 ? '중형주' : '소형주');
 
 // ---------- indicators ----------
@@ -244,13 +245,20 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (x.vol60 != null && x.vol60 > 1.2) return { pass: '변동성 과다' };
   if (x.atrPct < rules.minAtrPct) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님` };
   if (rules.minAtrPick && x.atrPct < rules.minAtrPick) return { pass: `하루 변동폭 ${(x.atrPct * 100).toFixed(1)}%, 큰 수익을 노리기엔 움직임이 작음` };
-  if (x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
-  if (x.ext50 != null && x.ext50 > 0.25) return { pass: `50일선 대비 ${pctS(x.ext50, 0)} 과도한 이격` };
+  // gap-and-go (earnings or news): a big gap up on heavy volume that holds into the close. Short-term traders buy it
+  // when the gap day's high breaks; the gap day's low is the stop. Overbought readings are the point here, not a flaw.
+  const gapPct = i >= 1 ? bars[i].o / bars[i - 1].c - 1 : 0, closeLoc = x.h > x.l ? (x.c - x.l) / (x.h - x.l) : 0;
+  const gapOn = (rules.setups ?? []).includes('gap') && Number.isFinite(x.sma50) && x.c > x.sma50 && gapPct >= rules.gapMin && x.ret1 >= rules.gapMin * 0.8 && x.relVol >= rules.gapVol && closeLoc >= 0.5;
+  if (!gapOn && x.rsi != null && x.rsi > 78) return { pass: `RSI ${x.rsi.toFixed(0)} 과열` };
+  if (!gapOn && x.ext50 != null && x.ext50 > 0.25) return { pass: `50일선 대비 ${pctS(x.ext50, 0)} 과도한 이격` };
 
   let setup = null, trigger, stop, entryType, validDays, riskMult = 1, mss = null;
   const nearHigh = x.c / x.hi52, on = new Set(rules.setups ?? ['breakout', 'base', 'pullback', 'reversal']);
   const volOk = (m) => !meta.volumeReliable || x.relVol >= m;
-  if (on.has('breakout') && up && x.c > x.hi20 && nearHigh >= 0.97 && x.relVol >= 1.4 && x.ret1 > 0) {
+  if (gapOn) {
+    setup = 'gap'; entryType = 'buy-stop'; trigger = x.h * 1.001; validDays = 3;
+    stop = x.l - 0.1 * x.atr;
+  } else if (on.has('breakout') && up && x.c > x.hi20 && nearHigh >= 0.97 && x.relVol >= 1.4 && x.ret1 > 0) {
     setup = 'breakout'; entryType = 'market'; trigger = x.c; validDays = 1;
     stop = clamp(x.lo5 - 0.25 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
   } else if (on.has('structure') && (rules.mssRaw || (up && volOk(rules.mssVol))) && (mss = (() => {
@@ -305,7 +313,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   if (meta.earningsIn === null && meta.earningsChecked) reasons.push('30거래일 안에 실적 발표 없음');
   if (meta.earningsIn === undefined && meta.earningsChecked !== null) { warnings.push('실적 발표일을 확인하지 못함, 주문 전에 직접 확인'); }
   else if (meta.earningsIn != null && meta.earningsIn <= 20) warnings.push(`${meta.earningsIn}거래일 뒤 실적 발표, 그 전에 +1R 보호가 안 되면 정리`);
-  let q = 0.35 * (meta.score ?? 60) + { breakout: 30, structure: 28, base: 26, pullback: 24, reversal: 14 }[setup];
+  let q = 0.35 * (meta.score ?? 60) + { gap: 32, breakout: 30, structure: 28, base: 26, pullback: 24, reversal: 14 }[setup];
   if (rules.volumeRules) {
     const vp = volumeProfile(bars, i);
     if (vp.udRatio != null && vp.udRatio >= 1.3) { q += 4; reasons.push(`50일 상승일 거래량이 하락일의 ${vp.udRatio.toFixed(1)}배 — 매집`); }
@@ -332,6 +340,7 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
 
   const trail = rules.trailMa ? { ma: rules.trailMa, label: { sma50: '50일선', ema20: '20일 지수이평', ema10: '10일 지수이평' }[rules.trailMa] } : trailFor(x.atrPct), R = trigger - stop, exitAt = mss?.liquidity ?? (rules.exitAtR ? trigger + rules.exitAtR * (trigger - stop) : null), target = exitAt ?? trigger + rules.partialAtR * R;
   const lead = {
+    gap: `${pctS(gapPct, 1)} 갭 상승으로 시작해 거래량 ${x.relVol.toFixed(1)}배로 고가 근처에서 마감했습니다. 갭 당일 고가 $${r2(x.h)}를 넘으면 사고, 갭 당일 저가 $${r2(x.l)}가 깨지면 갭이 실패한 것이라 손절합니다.`,
     breakout: `20일 고점 $${r2(x.hi20)}을 거래량 ${x.relVol.toFixed(1)}배로 넘었고 52주 고점의 ${(nearHigh * 100).toFixed(0)}% 자리입니다. 돌파 다음 날 시가에 삽니다(시가가 ${(rules.maxChase * 100).toFixed(0)}% 넘게 뛰면 추격하지 않음).`,
     base: `고점 $${r2(x.hi20)} 바로 아래에서 변동폭이 줄며 쉬고 있습니다. $${r2(trigger)}를 넘는 날 돌파 매수, ${validDays}거래일 안에 안 넘으면 주문을 거둡니다.`,
     pullback: `상승 추세 속에서 ${x.c < x.ema20 ? '20일 지수이평 아래로' : '50일선까지'} 눌렸고 RSI ${x.rsi.toFixed(0)}입니다. 오늘 고점 $${r2(trigger)}를 다시 넘어 반등이 확인되면 삽니다.`,
