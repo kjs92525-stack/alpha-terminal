@@ -60,7 +60,7 @@ export function liveStats(signals, since) {
 async function main() {
   const latest = JSON.parse(readFileSync(arg('universe', 'data-branch/latest.json'), 'utf8'));
   const extra = (arg('extra', '') || '').split(',').filter(Boolean);
-  const meta = chooseUniverse(latest, Number(arg('size', '300')), extra), symbols = [...meta.keys()];
+  const meta = chooseUniverse(latest, Number(arg('size', '400')), extra), symbols = [...meta.keys()];
   const prevPath = arg('prev'), prev = prevPath && existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, 'utf8')) : null;
   const { fetchDailyBars } = await import('../packages/pipeline/alpaca.mjs');
   const start = new Date(Date.now() - 110 * 864e5).toISOString().slice(0, 10), now = new Date().toISOString();

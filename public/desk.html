@@ -918,7 +918,11 @@ function sigScore(s) {
 }
 /* the account rule (3 years, 400 stocks, cash only): trend-aligned signals only. Adding the crash-regime signals raised the
    per-trade result but doubled the account's drawdown (-15% → -31%), so they are shown for reference, not traded */
+/* after a crash the 4-hour bullish shift is the one counter-trend trade that paid (3 years: 91 trades in crash / bear
+   regimes, 58% won, about +1.0R each) but it piles losses into the same weeks, so it is optional and sized at 0.5% */
+const CRASH_RISK = 0.005;
 function skipNote(s) {
+  if (!s.trend && crashRegime()) return `<p class="fine" style="margin-top:8px;color:var(--fg-3)">급락장 반등 신호(선택). 3년간 급락·약세장에서 91건, 승률 58%, 건당 약 +1.0R. 같은 시기에 손실이 몰려 계좌 낙폭을 키우므로 위험 0.5%로만.</p>`;
   if (!s.trend) return `<p class="fine" style="margin-top:8px;color:var(--fg-3)">일봉 추세 일치가 아니라 계좌 규칙상 건너뜁니다(참고용).</p>`;
   return '';
 }
@@ -1089,9 +1093,9 @@ function renderToday() {
     const entry = p.plan.entryType === 'market' ? p.plan.refClose : p.plan.trigger, tgt = p.plan.exitAt ?? p.plan.target, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
     cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip violet">ICT 일봉</span></div>
       ${levels(entry, p.plan.stop, tgt, '내일 시가')}<div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>목표에서 전량</span></div></article>`); }
-  for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = s.trend ? sizeFor(ICT4_RISK, s.limit, s.stop, ICT4_CAP) : 0;
+  for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = s.trend ? sizeFor(ICT4_RISK, s.limit, s.stop, ICT4_CAP) : crashRegime() ? sizeFor(CRASH_RISK, s.limit, s.stop, 0.25) : 0;
     cards.push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
-      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}${skipNote(s)}<div class="oc-f"><span>${n ? `${n}주 · 위험 2% · ${usd(n * s.limit, 0)}` : '주문 안 냄'}</span><span>약 5거래일 유효</span></div></article>`); }
+      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}${skipNote(s)}<div class="oc-f"><span>${n ? `${n}주 · 위험 ${s.trend ? '2' : '0.5'}% · ${usd(n * s.limit, 0)}` : '주문 안 냄'}</span><span>약 5거래일 유효</span></div></article>`); }
   for (const o of blocked) cards.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
   $('#todo').innerHTML = `<div class="sec-h"><h2>오늘 낼 주문</h2><span class="sub">장 마감 기준 · 다음 거래일에 넣을 주문</span><span class="grow"></span>
       <label class="acct-in" for="acct">투자금 $<input id="acct" type="number" inputmode="decimal" min="100" step="100" value="${acct()}"></label></div>
