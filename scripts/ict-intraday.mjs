@@ -8,7 +8,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { structureShift, DESK_RULES } from '../packages/analysis/analyst-desk.mjs';
-import { chooseUniverse } from './desk-backtest.mjs';
+import { chooseUniverse, regimeSeries } from './desk-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
 const ET = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
@@ -65,6 +65,17 @@ export const ICT4H_VARIANTS = {
   '4시간 + 일봉 추세, 지정가': { entry: 'limit', bias: true },
   '4시간 + 일봉 추세, 목표 2R 고정': { entry: 'market', bias: true, fixedR: 2 },
 };
+// edge research on the one rule that passed (limit entry): exits, discount entries and volume, each split by market regime
+export const ICT4H_EDGE = {
+  'A 지정가, 유동성 목표 (현재)': { entry: 'limit' },
+  'B 지정가 + 일봉 추세': { entry: 'limit', bias: true },
+  'C 지정가, 목표 3R 고정': { entry: 'limit', fixedR: 3 },
+  'D 지정가, 목표 없이 계단식 추적(+1R마다 손절 1R씩 올림)': { entry: 'limit', ratchet: true },
+  'E 지정가, 유동성 목표 + 계단식 추적': { entry: 'limit', ratchetToo: true },
+  'F 지정가, 할인 구간(60봉 범위 아래쪽 절반)만': { entry: 'limit', discount: 0.5 },
+  'G 지정가 + 구조 전환 봉 거래량 1.5배': { entry: 'limit', mssVolReq: 1.5 },
+  'H 지정가 + 일봉 추세 + 계단식 추적': { entry: 'limit', bias: true, ratchet: true },
+};
 
 /** Trade every shift in one stock's 4-hour bars under variant v. Returns trades [{ t, R, win }]. */
 export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } = {}) {
@@ -86,13 +97,17 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
       if (entry == null || k < 0) continue;
     } else entry = bars[k].o;
     const R = entry - stop; if (!(R > 0) || R / entry > 0.15) continue;
-    const target = v.fixedR ? entry + v.fixedR * R : hi;
-    if ((target - entry) / R < (v.fixedR ? 0 : minRR)) continue;
+    if (v.discount != null) { let lo = Infinity; for (let j = i - 60; j < i; j++) lo = Math.min(lo, bars[j].l); if (entry > lo + v.discount * (hi - lo)) continue; }
+    const target = v.ratchet ? Infinity : v.fixedR ? entry + v.fixedR * R : hi;
+    if (!v.ratchet && (target - entry) / R < (v.fixedR ? 0 : minRR)) continue;
+    const trail = v.ratchet || v.ratchetToo; let stopNow = stop;
     let exit = null, j = k;
     if (bars[k].l <= stop) exit = Math.min(bars[k].o, stop);               // stopped on the entry bar (conservative)
     for (j = k + (exit == null ? 1 : 0); exit == null && j < Math.min(bars.length, k + maxHold); j++) {
       const b = bars[j];
-      if (b.o <= stop) exit = b.o; else if (b.l <= stop) exit = stop; else if (b.o >= target) exit = b.o; else if (b.h >= target) exit = target;
+      if (b.o <= stopNow) exit = b.o; else if (b.l <= stopNow) exit = stopNow; else if (b.o >= target) exit = b.o; else if (b.h >= target) exit = target;
+      // step trail, decided on this bar's close for the next bar: every full R gained lifts the stop by 1R (+1R → break-even)
+      if (exit == null && trail) { const steps = Math.floor((b.c - entry) / R); if (steps >= 1) stopNow = Math.max(stopNow, entry + (steps - 1) * R); }
     }
     if (exit == null) { j = Math.min(bars.length - 1, k + maxHold - 1); exit = bars[j].c; }
     const r = (exit - entry - cost * (entry + exit)) / R;
@@ -104,13 +119,17 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
 export function summarize(trades, split) {
   const s = (ts) => { const n = ts.length, w = ts.filter((t) => t.win).length, sum = ts.reduce((a, t) => a + t.R, 0), gw = ts.filter((t) => t.R > 0).reduce((a, t) => a + t.R, 0), gl = -ts.filter((t) => t.R < 0).reduce((a, t) => a + t.R, 0);
     return { n, winRate: n ? w / n : null, expectancyR: n ? sum / n : null, profitFactor: gl > 0 ? gw / gl : null }; };
-  return { all: s(trades), first: s(trades.filter((t) => t.t < split)), last: s(trades.filter((t) => t.t >= split)) };
+  const byRegime = {}; for (const t of trades) (byRegime[t.reg ?? '-'] ??= []).push(t);
+  return { all: s(trades), first: s(trades.filter((t) => t.t < split)), last: s(trades.filter((t) => t.t >= split)),
+    byRegime: Object.fromEntries(Object.entries(byRegime).map(([k, ts]) => [k, s(ts)])),
+    avgWinR: (() => { const w = trades.filter((t) => t.R > 0); return w.length ? w.reduce((a, t) => a + t.R, 0) / w.length : null; })(),
+    avgLossR: (() => { const l = trades.filter((t) => t.R <= 0); return l.length ? l.reduce((a, t) => a + t.R, 0) / l.length : null; })() };
 }
 
 async function main() {
   const years = Number(arg('years', '2')), size = Number(arg('size', '300'));
   const latest = JSON.parse(readFileSync(arg('universe', 'data-branch/latest.json'), 'utf8'));
-  const symbols = [...chooseUniverse(latest, size).keys()];
+  const symbols = ['QQQ', ...chooseUniverse(latest, size).keys()];
   const { fetchDailyBars } = await import('../packages/pipeline/alpaca.mjs');
   const start = new Date(Date.now() - (years + 0.3) * 365 * 864e5).toISOString().slice(0, 10);
   const t0 = Date.now();
@@ -123,12 +142,21 @@ async function main() {
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
   const split = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+  // market regime per day from QQQ's daily closes (known at the previous close, no look-ahead)
+  const regOf = new Map(), q = series.get('QQQ'); series.delete('QQQ');
+  if (q) {
+    const days = []; for (const b of q) { if (!days.length || days.at(-1).day !== b.day) days.push({ day: b.day, c: b.c }); else days.at(-1).c = b.c; }
+    const rs = regimeSeries(days); for (let i = 1; i < days.length; i++) regOf.set(days[i].day, rs[i - 1]);
+    console.log(`ict4h: regimes ${JSON.stringify(Object.fromEntries([...regOf.values()].reduce((m, r) => m.set(r, (m.get(r) ?? 0) + 1), new Map())))}`);
+  }
+  const set = arg('set', 'base') === 'edge' ? ICT4H_EDGE : ICT4H_VARIANTS;
   const p = (x) => (x == null ? '   -  ' : `${(x * 100).toFixed(1).padStart(5)}%`);
   const rows = [];
-  for (const [name, v] of Object.entries(ICT4H_VARIANTS)) {
+  for (const [name, v] of Object.entries(set)) {
     const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, v));
+    for (const t of all) t.reg = regOf.get(t.t) ?? null;
     const s = summarize(all, split); rows.push({ name, ...s });
-    console.log(`ICT4H ${name}\n    ${s.all.n}건 승률 ${p(s.all.winRate)} 거래당 ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)}\n    앞(~${split}) ${s.first.n}건 ${p(s.first.winRate)} ${s.first.expectancyR?.toFixed(2)}R | 최근 1년 ${s.last.n}건 ${p(s.last.winRate)} ${s.last.expectancyR?.toFixed(2)}R`);
+    console.log(`ICT4H ${name}\n    ${s.all.n}건 승률 ${p(s.all.winRate)} 거래당 ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)}\n    앞(~${split}) ${s.first.n}건 ${p(s.first.winRate)} ${s.first.expectancyR?.toFixed(2)}R | 최근 1년 ${s.last.n}건 ${p(s.last.winRate)} ${s.last.expectancyR?.toFixed(2)}R\n    평균 이익 ${s.avgWinR?.toFixed(2)}R / 평균 손실 ${s.avgLossR?.toFixed(2)}R\n    시장 국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 승률 ${p(a.winRate)} ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
   }
   const out = arg('out'); if (out) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), years, stocks: series.size, split, variants: rows })); }
 }

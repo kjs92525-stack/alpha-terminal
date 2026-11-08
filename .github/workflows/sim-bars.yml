@@ -24,7 +24,7 @@ on:
         description: 'Research only: years of history to test'
         default: '3'
       variant_set:
-        description: 'Research only: ict, growth, short or ict4h (4-hour ICT event study)'
+        description: 'Research only: ict, growth, short, edge, ict4h or ict4h-edge (4-hour ICT event study)'
         default: 'ict'
 permissions:
   contents: write
@@ -100,8 +100,8 @@ jobs:
         if: inputs.research == true
         run: |
           git fetch origin data --depth=1
-          if [ "${{ inputs.variant_set }}" = "ict4h" ]; then
-            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '2' }}" --size 300 --out research/ict4h.json
+          if [ "${{ inputs.variant_set }}" = "ict4h" ] || [ "${{ inputs.variant_set }}" = "ict4h-edge" ]; then
+            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '2' }}" --size "${{ inputs.variant_set == 'ict4h-edge' && '250' || '300' }}" --set "${{ inputs.variant_set == 'ict4h-edge' && 'edge' || 'base' }}" --out research/ict4h.json
           else
             node scripts/desk-backtest.mjs --universe data-branch/latest.json --out research/backtest.json --years "${{ inputs.years || '3' }}" --variants --variant-set "${{ inputs.variant_set || 'ict' }}" --variants-out research/variants.json --extra "$(grep -v '^#' config/watchlist.txt | sed 's/#.*//' | tr -s ' \n' ',' )"
           fi

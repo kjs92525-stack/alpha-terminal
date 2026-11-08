@@ -261,6 +261,8 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   } else if (on.has('breakout') && up && x.c > x.hi20 && nearHigh >= 0.97 && x.relVol >= 1.4 && x.ret1 > 0) {
     setup = 'breakout'; entryType = 'market'; trigger = x.c; validDays = 1;
     stop = clamp(x.lo5 - 0.25 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
+    // research: wait for the breakout to come back and retest the old high (a limit there) instead of paying the next open
+    if (rules.breakoutEntry === 'retest') { entryType = 'limit'; validDays = 3; trigger = Math.min(x.c, x.hi20 * 1.002); }
   } else if (on.has('structure') && (rules.mssRaw || (up && volOk(rules.mssVol))) && (mss = (() => {
     const tf = rules.mssTf === 'W' ? weeklyBars(bars, i) : bars, ti = rules.mssTf === 'W' ? tf.length - 1 : i, ta = rules.mssTf === 'W' ? atrAt(tf, ti, 14) : x.atr;
     const m = structureShift(tf, ti, ta, rules); if (m) { m.tfAtr = ta; m.tf = tf; } return m;
@@ -287,11 +289,17 @@ export function analyze(bars, i, meta = {}, rules = DESK_RULES) {
   } else if (on.has('pullback') && up && nearHigh >= 0.8 && x.rsi != null && x.rsi >= 36 && x.rsi <= 55 && (x.c < x.ema20 || Math.abs(x.c / x.sma50 - 1) < 0.025)) {
     setup = 'pullback'; entryType = 'buy-stop'; trigger = x.h * 1.001; validDays = 5;
     stop = clamp(x.lo5 - 0.3 * x.atr, trigger - 2.5 * x.atr, trigger - 1.2 * x.atr);
-  } else if (on.has('reversal') && Number.isFinite(x.sma200) && x.c > x.sma200 && x.rsi != null && x.rsi < 32 && x.ret5 < -0.08) {
+  } else if (on.has('reversal') && Number.isFinite(x.sma200) && x.c > x.sma200 && x.rsi != null && x.rsi < (rules.revRsi ?? 32) && x.ret5 < (rules.revRet5 ?? -0.08)) {
     setup = 'reversal'; entryType = 'buy-stop'; trigger = x.h * 1.001; validDays = 3; riskMult = 0.5;
     stop = clamp(x.l - 0.5 * x.atr, trigger - 3 * x.atr, trigger - 1.5 * x.atr);
   }
   if (!setup) return { pass: `정해 둔 자리(${[...on].map((k) => SETUP_LABEL[k]).join('·')}) 중 어디에도 해당하지 않음` };
+  // research: a short-term trader's stop sits just under the signal bar (3 bars for a base), not 1.2-2.5 ATRs away,
+  // so the same move pays more R. minStopPct below still keeps it out of the noise.
+  if (rules.stopMode === 'tight' && setup !== 'structure') {
+    const ref = setup === 'base' ? Math.min(bars[i].l, bars[i - 1].l, bars[i - 2].l) : x.l;
+    stop = Math.max(stop, ref - 0.1 * x.atr);
+  }
   stop = Math.min(stop, trigger * (1 - rules.minStopPct));
   const stopPct = 1 - stop / trigger;
   if (stopPct > rules.maxStopPct) return { pass: `손절폭 ${(stopPct * 100).toFixed(1)}% 과다` };

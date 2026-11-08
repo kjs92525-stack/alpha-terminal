@@ -75,9 +75,62 @@ export const SHORT_VARIANTS = {
   '단기 갭+돌파+수축, 3R': SHORT({ exitAtR: 3, setups: ['gap', 'breakout', 'base'] }),
   '단기 돌파+수축, 2R': SHORT({ exitAtR: 2, setups: ['breakout', 'base'] }),
 };
+// edge research (3 years is enough for short-term trading): where the R leaks (stop width, break-even stops, time
+// stops, the entry price) and which setups pay in which market. Every row is also split by market regime.
+const TIGHT = { stopMode: 'tight' }, TRAIL = { exitAtR: null, partialAtR: 1, partialFrac: 0, trailMa: 'ema10' };
+const NO_BE = { breakevenAtR: 99 }, NO_TS = { timeStopSessions: 99 };
+const LOOSE_REV = { revRsi: 35, revRet5: -0.06 };
+export const EDGE_VARIANTS = {
+  'A 기준: 돌파만 3R (지난 최고)': SHORT({ exitAtR: 3, setups: ['breakout'] }),
+  'B 본전 손절 없앰': SHORT({ exitAtR: 3, setups: ['breakout'], ...NO_BE }),
+  'C 시간 손절 없앰': SHORT({ exitAtR: 3, setups: ['breakout'], ...NO_TS }),
+  'D 손절을 신호 봉 저가 바로 아래로(타이트)': SHORT({ exitAtR: 3, setups: ['breakout'], ...TIGHT }),
+  'E 타이트 + 본전·시간 손절 없앰': SHORT({ exitAtR: 3, setups: ['breakout'], ...TIGHT, ...NO_BE, ...NO_TS }),
+  'F 타이트 + 1R 뒤 10일 지수이평 추적': SHORT({ setups: ['breakout'], ...TIGHT, ...TRAIL }),
+  'G 돌파 재시험 지정가 진입, 3R': SHORT({ exitAtR: 3, setups: ['breakout'], breakoutEntry: 'retest' }),
+  'H 재시험 + 타이트 + 추적': SHORT({ setups: ['breakout'], breakoutEntry: 'retest', ...TIGHT, ...TRAIL }),
+  'I 돌파+수축, 타이트 + 추적': SHORT({ setups: ['breakout', 'base'], ...TIGHT, ...TRAIL }),
+  'J 과매도 반등(완화), 타이트 + 추적, 10일': SHORT({ setups: ['reversal'], ...LOOSE_REV, ...TIGHT, ...TRAIL, maxSessions: 10, timeStopSessions: 5 }),
+  'K 상승장에서만: 돌파+수축, 타이트 + 추적': SHORT({ setups: ['breakout', 'base'], ...TIGHT, ...TRAIL, regimeOnly: ['상승장'] }),
+  'L 국면 적응형(상승장 돌파, 급락장 반등)': SHORT({ setups: ['breakout', 'base'], ...TIGHT, ...TRAIL, ...LOOSE_REV,
+    regimeSetups: { '상승장': ['breakout', 'base'], '조정·횡보': ['base'], '급락 조정': ['reversal'], '약세장': ['reversal'] } }),
+};
+
+/**
+ * Market regime per session from the Nasdaq 100 (QQQ) close, known at that session's close:
+ * '급락 조정' 20-session return of -7% or worse (like 2026-11: -12.7%), '약세장' under the 200-day average,
+ * '조정·횡보' under the 50-day average, '상승장' otherwise.
+ */
+export function regimeSeries(bars) {
+  const out = new Array(bars.length).fill(null); let s50 = 0, s200 = 0;
+  for (let i = 0; i < bars.length; i++) {
+    const c = bars[i].c; s50 += c; s200 += c; if (i >= 50) s50 -= bars[i - 50].c; if (i >= 200) s200 -= bars[i - 200].c;
+    if (i < 199) continue;
+    const r20 = c / bars[i - 20].c - 1;
+    out[i] = r20 <= -0.07 ? '급락 조정' : c < s200 / 200 ? '약세장' : c < s50 / 50 ? '조정·횡보' : '상승장';
+  }
+  return out;
+}
+/** runs of one regime (gaps up to `gap` sessions merged): [{ from, to, sessions, ret }] */
+export function regimeEpisodes(cal, idx, regimes, bars, name = '급락 조정', gap = 5) {
+  const eps = [];
+  for (let k = 0; k < regimes.length; k++) {
+    if (regimes[k] !== name) continue;
+    const last = eps.at(-1);
+    if (last && k - last.k1 <= gap) last.k1 = k; else eps.push({ k0: k, k1: k });
+  }
+  return eps.map((e) => ({ from: cal[idx(e.k0)], to: cal[idx(e.k1)], sessions: e.k1 - e.k0 + 1, ret20: bars[e.k1].c / bars[Math.max(0, e.k0 - 20)].c - 1 }));
+}
+const group = (trades, key) => {
+  const g = {};
+  for (const t of trades) { const k = key(t) ?? '-'; const a = (g[k] ??= { n: 0, wins: 0, sumR: 0 }); a.n++; if (t.R > 0) a.wins++; a.sumR += t.R; }
+  for (const a of Object.values(g)) { a.winRate = a.wins / a.n; a.expectancyR = a.sumR / a.n; a.sumR = Math.round(a.sumR * 10) / 10; }
+  return g;
+};
+const reasonKey = (t) => (/본전/.test(t.reason) ? '본전 손절' : /손절/.test(t.reason) ? '손절' : /진전 없음/.test(t.reason) ? '시간 손절' : /목표|익절/.test(t.reason) ? '목표 도달' : /이탈/.test(t.reason) ? '추적 이평 이탈' : /최대 보유/.test(t.reason) ? '20일 만기' : /실적/.test(t.reason) ? '실적 전 정리' : t.reason);
 const half = (trades) => { const n = trades.length, w = trades.filter((t) => t.R > 0).length, R = trades.reduce((a, t) => a + t.R, 0); return { n, winRate: n ? w / n : null, expectancyR: n ? R / n : null }; };
 export function compareVariants(payload, meta, { years = 3, set = 'ict' } = {}) {
-  return Object.entries(set === 'growth' ? GROWTH_VARIANTS : set === 'short' ? SHORT_VARIANTS : VARIANTS).map(([name, v]) => {
+  return Object.entries(set === 'growth' ? GROWTH_VARIANTS : set === 'short' ? SHORT_VARIANTS : set === 'edge' ? EDGE_VARIANTS : VARIANTS).map(([name, v]) => {
     const r = runBacktest(payload, meta, { years, rules: { ...DESK_RULES, ...v } }), s = r.stats;
     const split = new Date(Date.parse(r.to) - 365 * 864e5).toISOString().slice(0, 10);
     return { name, trades: s.closed, winRate: s.winRate, expectancyR: s.expectancyR, profitFactor: s.profitFactor, totalReturn: s.totalReturn, cagr: r.cagr, spyCagr: r.spyCagr, maxDrawdown: s.maxDrawdown, exposure: r.exposure, bySetup: r.bySetup,
@@ -85,13 +138,17 @@ export function compareVariants(payload, meta, { years = 3, set = 'ict' } = {}) 
       bigWins: r.trades.filter((t) => t.pnlPct >= 0.3).length,
       avgDays: r.trades.length ? r.trades.reduce((a, t) => a + t.days, 0) / r.trades.length : null,
       avgPnl: r.trades.length ? r.trades.reduce((a, t) => a + t.pnlPct, 0) / r.trades.length : null,
-      split, inSample: half(r.trades.filter((t) => t.entryDate < split)), outOfSample: half(r.trades.filter((t) => t.entryDate >= split)) };
+      split, inSample: half(r.trades.filter((t) => t.entryDate < split)), outOfSample: half(r.trades.filter((t) => t.entryDate >= split)),
+      avgWinR: (() => { const w = r.trades.filter((t) => t.R > 0); return w.length ? w.reduce((a, t) => a + t.R, 0) / w.length : null; })(),
+      avgLossR: (() => { const l = r.trades.filter((t) => t.R <= 0); return l.length ? l.reduce((a, t) => a + t.R, 0) / l.length : null; })(),
+      byReason: group(r.trades, reasonKey), byRegime: group(r.trades, (t) => t.regime), episodes: r.episodes };
   });
 }
 
 export function runBacktest(payload, meta, { years = 3, rules = DESK_RULES } = {}) {
   const data = barsAccess(payload), cal = data.cal, spy = data.get('SPY');
   if (!spy) throw new Error('SPY bars missing');
+  const qqq = data.get('QQQ') ?? spy, qReg = regimeSeries(qqq.bars), regimeAt = (d) => qReg[d - qqq.s] ?? null;
   const startIdx = Math.max(260, cal.length - Math.round(years * 252)); // first ~260 sessions only warm up indicators
   const symbols = [...meta.keys()].filter((s) => data.get(s));
   const earningsIn = (sym, d) => {
@@ -102,6 +159,9 @@ export function runBacktest(payload, meta, { years = 3, rules = DESK_RULES } = {
     return n <= 30 ? n : null;
   };
   const picker = (d, { busy, cooldown }) => {
+    const reg = regimeAt(d);
+    if (rules.regimeOnly && !rules.regimeOnly.includes(reg)) return null;
+    const dayRules = rules.regimeSetups ? { ...rules, setups: rules.regimeSetups[reg] ?? rules.setups } : rules;
     const si = d - spy.s, market = regimeFromSpy(spy.bars, si), spyRet126 = si >= 126 ? spy.bars[si].c / spy.bars[si - 126].c - 1 : null;
     const candidates = [];
     for (const sym of symbols) {
@@ -111,7 +171,7 @@ export function runBacktest(payload, meta, { years = 3, rules = DESK_RULES } = {
       const m = meta.get(sym);
       candidates.push({ symbol: sym, name: m.name, sector: m.sector, mcap: m.mcap, score: NEUTRAL_SCORE, source: '유동성 상위 유니버스', bars: x.bars, i, earningsIn: earningsIn(sym, d) });
     }
-    const res = pickForDay({ date: cal[d], candidates, market, spyRet126, busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked }, rules);
+    const res = pickForDay({ date: cal[d], candidates, market, spyRet126, busy, cooldown, volumeReliable: data.volumeReliable, earningsChecked: data.earningsChecked }, dayRules);
     return { date: cal[d], market, picks: res.picks };
   };
   const r = replayDesk([], data, rules, { picker, start: startIdx, end: cal.length - 1 });
@@ -132,7 +192,8 @@ export function runBacktest(payload, meta, { years = 3, rules = DESK_RULES } = {
     bySetup: bySetup(r.trades),
     stats, cagr: cagr(stats.totalReturn), spyCagr: stats.spyReturn != null ? cagr(stats.spyReturn) : null, exposure,
     years: periods(4), months: periods(7), equity: weekly,
-    trades: r.trades.map((t) => ({ symbol: t.symbol, setup: t.setup, cap: t.cap, market: t.market, entryDate: t.entryDate, exitDate: t.exitDate, days: t.days, pnlPct: Math.round(t.pnlPct * 10000) / 10000, R: Math.round(t.R * 100) / 100, alpha: t.alpha != null ? Math.round(t.alpha * 10000) / 10000 : null, reason: t.reason })),
+    episodes: regimeEpisodes(cal, (k) => k + qqq.s, qReg.map((x, k) => (k + qqq.s >= startIdx ? x : null)), qqq.bars),
+    trades: r.trades.map((t) => ({ symbol: t.symbol, setup: t.setup, cap: t.cap, market: t.market, regime: regimeAt(cal.indexOf(t.pickDate)), entryDate: t.entryDate, exitDate: t.exitDate, days: t.days, pnlPct: Math.round(t.pnlPct * 10000) / 10000, R: Math.round(t.R * 100) / 100, alpha: t.alpha != null ? Math.round(t.alpha * 10000) / 10000 : null, reason: t.reason })),
     caveats: [
       '유니버스는 지금 상장된 종목에서 골랐습니다. 그 사이 상장폐지·급락으로 사라진 종목이 빠져 있어 결과가 실제보다 좋게 나옵니다(생존 편향).',
       `그 당시의 랭킹 점수가 없어 모든 후보에 같은 점수(${NEUTRAL_SCORE})를 줬습니다. 실제 데스크는 랭킹 상위만 보므로 후보 구성이 다릅니다.`,
@@ -176,7 +237,13 @@ async function main() {
     for (const r of rows) {
       console.log(`VARIANT ${r.name}\n    trades ${String(r.trades).padStart(4)}  win ${p(r.winRate)}  exp ${r.expectancyR?.toFixed(2)}R  PF ${r.profitFactor?.toFixed(2)}  CAGR ${p(r.cagr)} (SPY ${p(r.spyCagr)})  maxDD ${p(r.maxDrawdown)}  exposure ${p(r.exposure)}  평균 이익 ${p(r.avgWinPct)}  30%+ 수익 ${r.bigWins}건  평균 보유 ${r.avgDays?.toFixed(1)}일  거래당 ${p(r.avgPnl)}\n    학습(~${r.split}) ${r.inSample.n}건 승률 ${p(r.inSample.winRate)} ${r.inSample.expectancyR?.toFixed(2)}R | 검증(최근 1년) ${r.outOfSample.n}건 승률 ${p(r.outOfSample.winRate)} ${r.outOfSample.expectancyR?.toFixed(2)}R`);
       for (const [k, a] of Object.entries(r.bySetup)) console.log(`    ${k.padEnd(10)} ${String(a.n).padStart(4)}  win ${p(a.winRate)}  exp ${a.expectancyR.toFixed(2)}R  sum ${a.sumR}R`);
+      if (r.byReason) {
+        console.log(`    평균 이익 ${r.avgWinR?.toFixed(2)}R / 평균 손실 ${r.avgLossR?.toFixed(2)}R`);
+        console.log(`    청산 이유: ${Object.entries(r.byReason).sort((a, b) => b[1].n - a[1].n).map(([k, a]) => `${k} ${a.n}건 ${a.expectancyR.toFixed(2)}R`).join(' | ')}`);
+        console.log(`    시장 국면: ${Object.entries(r.byRegime).map(([k, a]) => `${k} ${a.n}건 승률 ${p(a.winRate)} ${a.expectancyR.toFixed(2)}R`).join(' | ')}`);
+      }
     }
+    if (rows[0]?.episodes) console.log(`EPISODES 급락 조정(QQQ 20일 -7% 이하) 시기: ${rows[0].episodes.map((e) => `${e.from}~${e.to} (${e.sessions}일, QQQ ${p(e.ret20)})`).join(', ')}`);
     if (arg('variants-out')) { mkdirSync(dirname(arg('variants-out')), { recursive: true }); writeFileSync(arg('variants-out'), JSON.stringify({ generatedAt: new Date().toISOString(), years, variants: rows })); }
   }
   const res = runBacktest(payload, meta, { years });
