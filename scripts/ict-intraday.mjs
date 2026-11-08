@@ -102,7 +102,8 @@ export const ICT4H_EDGE = {
 };
 
 /** Trade every shift in one stock's 4-hour bars under variant v. Returns trades [{ t, R, win }]. */
-export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } = {}) {
+export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR = 1.5 } = {}) {
+  const maxHold = v.maxHold ?? maxHold0;  // a quick variant can hold fewer bars
   const rules = { ...DESK_RULES, mssRaw: true, mssVolReq: v.mssVolReq ?? null };
   const atr = atrSeries(bars), trendOf = dailyBias(bars), bias = v.bias ? trendOf : null, out = [];
   const ctxOf = v.maxExt != null || v.noOverhead || v.maxSpread != null ? dailyContext(bars) : null;
@@ -123,8 +124,9 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
     } else entry = bars[k].o;
     const R = entry - stop; if (!(R > 0) || R / entry > 0.15) continue;
     if (v.discount != null) { let lo = Infinity; for (let j = i - 60; j < i; j++) lo = Math.min(lo, bars[j].l); if (entry > lo + v.discount * (hi - lo)) continue; }
-    const target = v.ratchet ? Infinity : v.fixedR ? entry + v.fixedR * R : hi;
+    let target = v.ratchet ? Infinity : v.fixedR ? entry + v.fixedR * R : hi;
     if (!v.ratchet && (target - entry) / R < (v.fixedR ? 0 : minRR)) continue;
+    if (v.capR) target = Math.min(target, entry + v.capR * R);   // quick exit: take the first capR R, do not wait for the old high
     if (ctxOf) {
       const cx = contextRead(ctxOf.get(bars[i].day), bars[i].c, entry, Number.isFinite(target) ? target : hi); if (!cx) continue;
       if (v.maxExt != null && cx.ext > v.maxExt) continue;
@@ -144,11 +146,29 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold = 60, minRR = 1.5 } =
     if (exit == null) { j = Math.min(bars.length - 1, k + maxHold - 1); exit = bars[j].c; xi = j; kind = j >= bars.length - 1 ? 'open' : 'timeout'; }
     const r = (exit - entry - cost * (entry + exit)) / R;
     let lo = Infinity; for (let q = i - 60; q < i; q++) lo = Math.min(lo, bars[q].l);
-    out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
+    out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryPx: entry, exitPx: exit, stopPx: stop, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
       trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
   }
   return out;
 }
+
+/** price-inverted bars (p → 1/p): a bearish structure shift on the real chart is a bullish one here */
+export function invertBars(bars) { return bars.map((b) => ({ day: b.day, t: b.t, o: 1 / b.o, h: 1 / b.l, l: 1 / b.h, c: 1 / b.c, v: b.v })); }
+/**
+ * Short trades: the same rule on the inverted chart (sweep of a swing high, displacement close under the swing low, sell
+ * into the bearish gap / order block, stop over the swept high, cover at sell-side liquidity = the 60-bar low). R is
+ * recomputed exactly on real prices. trend = the real daily close was under its 50-day average (a downtrend). Borrow
+ * fees are not included.
+ */
+export function shortTradesFor(bars, v, opts = {}) {
+  const cost = opts.cost ?? 0.001;
+  return tradesFor(invertBars(bars), v, opts).map((t) => {
+    const E = 1 / t.entryPx, X = 1 / t.exitPx, S = 1 / t.stopPx, R = (E - X - cost * (E + X)) / (S - E);
+    return { ...t, side: 'short', R, win: R > 0, stopPct: (S - E) / E, entryPx: E, exitPx: X, stopPx: S };
+  });
+}
+export const INVERSE_ETFS = ['SOXS', 'SQQQ', 'SPXS', 'TZA', 'LABD'];
+export const BULL_ETFS = ['SOXL', 'TQQQ'];
 
 /**
  * The signals as one account: take them in entry order, at most `maxOpen` at a time (one per stock is already enforced),
@@ -197,7 +217,7 @@ export function summarize(trades, split) {
 async function main() {
   const years = Number(arg('years', '2')), size = Number(arg('size', '300'));
   const latest = JSON.parse(readFileSync(arg('universe', 'data-branch/latest.json'), 'utf8'));
-  const symbols = ['QQQ', ...chooseUniverse(latest, size).keys()];
+  const symbols = ['QQQ', ...chooseUniverse(latest, size).keys(), ...(arg('set') === 'both' ? [...INVERSE_ETFS, ...BULL_ETFS] : [])];
   const { fetchDailyBars } = await import('../packages/pipeline/alpaca.mjs');
   const start = new Date(Date.now() - (years + 0.3) * 365 * 864e5).toISOString().slice(0, 10);
   const t0 = Date.now();
@@ -205,7 +225,7 @@ async function main() {
   for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
     const tb = Date.now();
     const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
-    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (arg('set') !== 'growth') { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (!['growth', 'both'].includes(arg('set'))) { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
     console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
@@ -235,6 +255,45 @@ async function main() {
       }
     }
   };
+  if (arg('set') === 'both') {
+    // both directions: long the 4-hour shift, short its mirror image, quick exits for counter-trend trades, and the
+    // leveraged ETFs (SOXS etc.) traded long on their own charts, the way a Korean retail account can short a market
+    const etfs = new Set([...INVERSE_ETFS, ...BULL_ETFS]), tag = (arr, sym) => arr.map((t) => ({ ...t, sym, reg: regOf.get(t.t) ?? null }));
+    const G = { long: [], longQuick: [], short: [], shortQuick: [], inv: [], bull: [] };
+    for (const [sym, bars] of series) {
+      if (etfs.has(sym)) { (INVERSE_ETFS.includes(sym) ? G.inv : G.bull).push(...tag(tradesFor(bars, { entry: 'limit' }), sym)); continue; }
+      G.long.push(...tag(tradesFor(bars, { entry: 'limit' }), sym));
+      G.longQuick.push(...tag(tradesFor(bars, { entry: 'limit', capR: 2, maxHold: 20 }), sym));
+      G.short.push(...tag(shortTradesFor(bars, { entry: 'limit' }), sym));
+      G.shortQuick.push(...tag(shortTradesFor(bars, { entry: 'limit', capR: 2, maxHold: 20 }), sym));
+    }
+    const line = (label, ts) => { const s = summarize(ts, split); console.log(`BOTH ${label}: ${s.all.n}건 승률 ${p(s.all.winRate)} ${s.all.expectancyR?.toFixed(2)}R (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)}) 평균 이익 ${s.avgWinR?.toFixed(2)}R 손실 ${s.avgLossR?.toFixed(2)}R\n    국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 ${p(a.winRate)} ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`); };
+    line('롱 추세 일치', G.long.filter((t) => t.trend));
+    line('롱 역추세(원래 목표)', G.long.filter((t) => !t.trend));
+    line('롱 역추세 빠른 청산(2R·10일)', G.longQuick.filter((t) => !t.trend));
+    line('숏 하락 추세 일치', G.short.filter((t) => t.trend));
+    line('숏 역추세', G.short.filter((t) => !t.trend));
+    line('숏 하락 추세 빠른 청산(2R·10일)', G.shortQuick.filter((t) => t.trend));
+    line('인버스 ETF 롱 전부(SOXS 등)', G.inv);
+    line('인버스 ETF 롱 추세 일치', G.inv.filter((t) => t.trend));
+    line('레버리지 ETF 롱 전부(SOXL·TQQQ)', G.bull);
+    for (const sym of INVERSE_ETFS) { const ts = G.inv.filter((t) => t.sym === sym); if (ts.length) line(`  ${sym}`, ts); }
+    const crashOrBear = (t) => t.reg === '급락 조정' || t.reg === '약세장';
+    const books = {
+      '롱 추세 일치만 (현재 규칙)': G.long.filter((t) => t.trend),
+      '+ 급락·약세장 역추세 롱 빠른 청산': [...G.long.filter((t) => t.trend), ...G.longQuick.filter((t) => !t.trend && crashOrBear(t))],
+      '+ 하락 추세 숏(개별주)': [...G.long.filter((t) => t.trend), ...G.short.filter((t) => t.trend)],
+      '+ 하락 추세 숏 빠른 청산': [...G.long.filter((t) => t.trend), ...G.shortQuick.filter((t) => t.trend)],
+      '+ 인버스 ETF 추세 일치': [...G.long.filter((t) => t.trend), ...G.inv.filter((t) => t.trend)],
+      '+ 인버스 ETF 전부': [...G.long.filter((t) => t.trend), ...G.inv],
+      '+ 숏 + 역추세 빠른 롱': [...G.long.filter((t) => t.trend), ...G.short.filter((t) => t.trend), ...G.longQuick.filter((t) => !t.trend && crashOrBear(t))],
+    };
+    for (const [name, ts] of Object.entries(books)) {
+      const cells = [[0.01, 1], [0.02, 1], [0.02, 2]].map(([rp, g]) => { const ps = portfolioSim(ts, { riskPct: rp, maxOpen: 5, maxGross: g }); return `위험 ${rp * 100}%·현금 ${g}배 ${ps.multiple.toFixed(2)}배/연 ${p(ps.cagr)}/DD ${p(ps.maxDD)}`; });
+      console.log(`BOOK ${name}: ${ts.length}건 | ${cells.join(' | ')}`);
+    }
+    return;
+  }
   if (arg('set') === 'growth') {
     // growth research: one base rule (4-hour limit), then which signals to take, how many at once, how much risk,
     // under a real cash limit (1x = cash only, 2x = margin)
