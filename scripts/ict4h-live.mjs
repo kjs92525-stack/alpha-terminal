@@ -17,6 +17,9 @@ export const BACKTEST_4H = {
   volume: { n: 169, winRate: 0.432, expectancyR: 0.56, first: 0.40, last: 1.30 },
   discount: { n: 568, winRate: 0.373, expectancyR: 0.36, first: 0.17, last: 0.88 },
   // the signals as one account (2026-11-08, scripts/ict-intraday.mjs portfolioSim: entry order, max 5 open, compounding)
+  // 2026-11-08 growth run (400 stocks, cash limit = account): trend-aligned only, risk 2%, ≤2 positions → 3.16x, 46%/yr, max DD -15%
+  accountCash: { trend: { risk2: { multiple: 3.16, cagr: 0.458, maxDD: -0.153 }, risk3: { multiple: 3.28, cagr: 0.475, maxDD: -0.181 } },
+    trendMargin2x: { risk2: { multiple: 4.73, cagr: 0.665, maxDD: -0.173 } }, allSignals: { risk1: { multiple: 2.72, cagr: 0.372, maxDD: -0.243 } } },
   account: {
     trend: { label: '일봉 추세 일치 신호만', risk1: { multiple: 2.51, cagr: 0.353, maxDD: -0.110 }, risk2: { multiple: 5.55, cagr: 0.757, maxDD: -0.209 } },
     all: { label: '신호 전부', risk1: { multiple: 2.58, cagr: 0.350, maxDD: -0.313 }, risk2: { multiple: 4.41, cagr: 0.599, maxDD: -0.543 } },
@@ -32,8 +35,8 @@ export const BACKTEST_4H = {
 export const REGIME_PLAYBOOK = {
   '상승장': '일봉 50일선 위(추세 일치) 신호만. 3년 +0.72R, 계좌 낙폭이 가장 작았던 규칙',
   '조정·횡보': '전체 기대값 0 근처(-0.01R), 추세 일치 신호만 +0.19R. 추세 일치만 받거나 쉼',
-  '급락 조정': '투매 뒤 스윕→구조 전환이 가장 잘 통한 국면(+0.76R, 41건 승률 59%). 거래량 실린 전환(+0.90R)·할인 구간(+0.85R) 우선',
-  '약세장': '반등 구간 스윕이 잘 통함(+1.10R, 38건). 할인 구간 우선, 목표에서 꼭 전량 정리',
+  '급락 조정': '추세 일치 신호만, 위험 2%·최대 2종목. 역추세 반등도 건당 +0.76R이지만 섞으면 계좌 낙폭이 -15%→-31%로 커져 참고만',
+  '약세장': '추세 일치 신호만(드묾). 역추세 반등은 건당 +1.10R이지만 계좌 낙폭을 키워 참고만',
 };
 
 /** merge tonight's view of each signal into the stored list: finished signals keep their result */
