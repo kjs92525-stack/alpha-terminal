@@ -88,6 +88,8 @@ export const ICT4H_EDGE = {
   'J 지정가 + 목표 전 일봉 50·200일선 저항 없음': { entry: 'limit', noOverhead: true },
   'K 지정가 + 일봉 20·50일선 벌어짐 15% 이내': { entry: 'limit', maxSpread: 0.15 },
   'L 지정가 + 일봉 추세 + 과열 아님 + 저항 없음': { entry: 'limit', bias: true, maxExt: 2, noOverhead: true },
+  'M 지정가 + 할인 구간 + 거래량 1.5배': { entry: 'limit', discount: 0.5, mssVolReq: 1.5 },
+  'N 지정가 + 할인 구간 + 과열 아님': { entry: 'limit', discount: 0.5, maxExt: 2 },
 };
 
 /** Trade every shift in one stock's 4-hour bars under variant v. Returns trades [{ t, R, win }]. */
@@ -200,7 +202,8 @@ export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fill
     if (!(limit > stop) || (limit - stop) / limit > 0.15 || (hi - limit) / (limit - stop) < minRR) continue;
     if ((limit - stop) / limit < minRiskPct) continue; // a stop under 1% away is noise or a pinned price (pending takeover)
     const s = { t: bars[i].t, day: bars[i].day, close: bars[i].c, limit, stop, target: hi, rr: (hi - limit) / (limit - stop), trend: bias.get(bars[i].day) === true,
-      zone: m.fvg ? 'FVG' : m.ob ? '오더블록' : '돌파 구간', sweepLow: m.sweepLow, swingHigh: m.swingHigh, status: 'waiting' };
+      zone: m.fvg ? 'FVG' : m.ob ? '오더블록' : '돌파 구간', sweepLow: m.sweepLow, swingHigh: m.swingHigh, status: 'waiting', volMult: m.volMult };
+    { let lo = Infinity; for (let j = i - 60; j < i; j++) lo = Math.min(lo, bars[j].l); s.rangePos = hi > lo ? Math.round((limit - lo) / (hi - lo) * 100) / 100 : null; }
     const cx = contextRead(ctxOf.get(bars[i].day), bars[i].c, limit, hi);
     if (cx) s.daily = { ext: Math.round(cx.ext * 100) / 100, overhead: cx.overhead, spread: cx.spread != null ? Math.round(cx.spread * 1000) / 1000 : null, ema20: cx.ema20, sma50: cx.sma50, sma200: cx.sma200 };
     let k = i + 1, entry = null;
