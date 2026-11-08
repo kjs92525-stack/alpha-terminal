@@ -11,7 +11,7 @@ import { structureShift, DESK_RULES } from '../packages/analysis/analyst-desk.mj
 import { chooseUniverse, regimeSeries } from './desk-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
-import { toFourHour } from '../packages/analysis/intraday.mjs';
+import { toFourHour, hourBars } from '../packages/analysis/intraday.mjs';
 export { toFourHour };
 
 function atrSeries(bars, n = 14) {
@@ -64,6 +64,14 @@ export function contextRead(ctx, close, entry, target) {
     ema20: ctx.ema20, sma50: ctx.sma50, sma200: ctx.sma200 };
 }
 
+export const ICT1H_EDGE = {
+  'A 1시간 지정가, 유동성 목표': { entry: 'limit' },
+  'B 1시간 지정가 + 일봉 추세': { entry: 'limit', bias: true },
+  'F 1시간 지정가 + 할인 구간': { entry: 'limit', discount: 0.5 },
+  'G 1시간 지정가 + 거래량 1.5배': { entry: 'limit', mssVolReq: 1.5 },
+  'M 1시간 할인 + 거래량 1.5배': { entry: 'limit', discount: 0.5, mssVolReq: 1.5 },
+  'N 1시간 할인 + 일봉 과열 아님': { entry: 'limit', discount: 0.5, maxExt: 2 },
+};
 export const ICT4H_VARIANTS = {
   '4시간 원형, 다음 봉 시가': { entry: 'market' },
   '4시간 원형 + 거래량 1.5배': { entry: 'market', mssVolReq: 1.5 },
@@ -83,7 +91,8 @@ export const ICT4H_EDGE = {
   'F 지정가, 할인 구간(60봉 범위 아래쪽 절반)만': { entry: 'limit', discount: 0.5 },
   'G 지정가 + 구조 전환 봉 거래량 1.5배': { entry: 'limit', mssVolReq: 1.5 },
   'H 지정가 + 일봉 추세 + 계단식 추적': { entry: 'limit', bias: true, ratchet: true },
-  // the daily chart under the signal (2026-11-08: a TVTX signal whose daily averages were far apart)
+  // (1-hour variants are below as ICT1H_EDGE)
+// the daily chart under the signal (2026-11-08: a TVTX signal whose daily averages were far apart)
   'I 지정가 + 일봉 과열 아님(20일선 위 2ATR 이내)': { entry: 'limit', maxExt: 2 },
   'J 지정가 + 목표 전 일봉 50·200일선 저항 없음': { entry: 'limit', noOverhead: true },
   'K 지정가 + 일봉 20·50일선 벌어짐 15% 이내': { entry: 'limit', maxSpread: 0.15 },
@@ -185,11 +194,11 @@ async function main() {
   const { fetchDailyBars } = await import('../packages/pipeline/alpaca.mjs');
   const start = new Date(Date.now() - (years + 0.3) * 365 * 864e5).toISOString().slice(0, 10);
   const t0 = Date.now();
-  const series = new Map();
+  const series = new Map(), series1h = new Map();
   for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
     const tb = Date.now();
     const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
-    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); }
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); const h = hourBars(b); if (h.length > 400) series1h.set(s, h); }
     console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
@@ -204,19 +213,24 @@ async function main() {
   const set = arg('set', 'base') === 'edge' ? ICT4H_EDGE : ICT4H_VARIANTS;
   const p = (x) => (x == null ? '   -  ' : `${(x * 100).toFixed(1).padStart(5)}%`);
   const rows = [];
-  for (const [name, v] of Object.entries(set)) {
-    const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, v));
-    for (const t of all) t.reg = regOf.get(t.t) ?? null;
-    const s = summarize(all, split); rows.push({ name, ...s });
-    const kinds = byKind(all), crash = (t) => t.reg === '급락 조정' || t.reg === '약세장';
-    const regimeRule = (t) => crash(t) || (t.reg === '상승장' && t.trend);   // the regime playbook: trend in up-markets, everything after a crash
-    console.log(`    청산: ${Object.entries(kinds).map(([k, a]) => `${{ target: '목표', stop: '손절', trail: '추적 손절', timeout: '60봉 만기', open: '보유 중' }[k] ?? k} ${a.n}건 ${a.avgR.toFixed(2)}R(평균 ${(a.avgHeld / 2).toFixed(1)}일)`).join(' | ')}`);
-    for (const [label, pick] of [['전부', () => true], ['국면 규칙', regimeRule]]) {
-      const line = [0.005, 0.01, 0.02].map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen: 5, pick }); return `위험 ${(rp * 100).toFixed(1)}%: ${ps.multiple.toFixed(2)}배(연 ${p(ps.cagr)}, 낙폭 ${p(ps.maxDD)}, ${ps.taken}건)`; });
-      console.log(`    계좌(${label}, 최대 5종목): ${line.join(' | ')}`);
+  const crash = (t) => t.reg === '급락 조정' || t.reg === '약세장';
+  const regimeRule = (t) => crash(t) || (t.reg === '상승장' && t.trend);   // the regime playbook: trend in up-markets, everything after a crash
+  const runSet = (tag, seriesMap, variants, barsPerDay) => {
+    for (const [name, v] of Object.entries(variants)) {
+      const all = []; for (const bars of seriesMap.values()) all.push(...tradesFor(bars, v));
+      for (const t of all) t.reg = regOf.get(t.t) ?? null;
+      const s = summarize(all, split); rows.push({ tf: tag, name, ...s });
+      console.log(`${tag} ${name}\n    ${s.all.n}건 승률 ${p(s.all.winRate)} 거래당 ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)}\n    앞(~${split}) ${s.first.n}건 ${p(s.first.winRate)} ${s.first.expectancyR?.toFixed(2)}R | 최근 1년 ${s.last.n}건 ${p(s.last.winRate)} ${s.last.expectancyR?.toFixed(2)}R\n    평균 이익 ${s.avgWinR?.toFixed(2)}R / 평균 손실 ${s.avgLossR?.toFixed(2)}R\n    시장 국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 승률 ${p(a.winRate)} ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
+      console.log(`    청산: ${Object.entries(byKind(all)).map(([k, a]) => `${{ target: '목표', stop: '손절', trail: '추적 손절', timeout: '60봉 만기', open: '보유 중' }[k] ?? k} ${a.n}건 ${a.avgR.toFixed(2)}R(평균 ${(a.avgHeld / barsPerDay).toFixed(1)}일)`).join(' | ')}`);
+      for (const [label, pick] of [['전부', () => true], ['국면 규칙', regimeRule]]) {
+        const line = [0.005, 0.01, 0.02].map((rp) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen: 5, pick }); return `위험 ${(rp * 100).toFixed(1)}%: ${ps.multiple.toFixed(2)}배(연 ${p(ps.cagr)}, 낙폭 ${p(ps.maxDD)}, ${ps.taken}건)`; });
+        console.log(`    계좌(${label}, 최대 5종목): ${line.join(' | ')}`);
+      }
     }
-    console.log(`ICT4H ${name}\n    ${s.all.n}건 승률 ${p(s.all.winRate)} 거래당 ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)}\n    앞(~${split}) ${s.first.n}건 ${p(s.first.winRate)} ${s.first.expectancyR?.toFixed(2)}R | 최근 1년 ${s.last.n}건 ${p(s.last.winRate)} ${s.last.expectancyR?.toFixed(2)}R\n    평균 이익 ${s.avgWinR?.toFixed(2)}R / 평균 손실 ${s.avgLossR?.toFixed(2)}R\n    시장 국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 승률 ${p(a.winRate)} ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
-  }
+  };
+  runSet('ICT4H', series, set, 2);
+  // the same rule on regular-session 1-hour bars (7 a day; 60 bars ≈ 9 sessions): faster structure, shorter holds
+  if (series1h.size) { series1h.delete('QQQ'); runSet('ICT1H', series1h, set === ICT4H_EDGE ? ICT1H_EDGE : { '1시간 원형, 지정가': { entry: 'limit' } }, 7); }
   const out = arg('out'); if (out) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), years, stocks: series.size, split, variants: rows })); }
 }
 if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(e); process.exit(1); });
