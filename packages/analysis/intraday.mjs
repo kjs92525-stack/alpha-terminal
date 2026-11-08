@@ -34,3 +34,13 @@ export function regularSession(bars) {
 export function fourHourBars(hourly) {
   return toFourHour(hourly).map((b) => ({ time: Math.floor(Date.parse(b.t) / 1000), open: b.o, high: b.h, low: b.l, close: b.c, volume: b.v }));
 }
+/** regular-session 1-hour bars (09:30-16:00 New York; the 09:00 bar holds 09:30-10:00) in the study's { day, t, o, h, l, c, v } shape */
+export function hourBars(hourly) {
+  const out = [];
+  for (const raw of hourly) {
+    const t = new Date(raw.time * 1000).toISOString(), { day, h } = etParts(t);
+    if (h < 9 || h > 15) continue;
+    out.push({ day, t, o: raw.open, h: raw.high, l: raw.low, c: raw.close, v: raw.volume });
+  }
+  return out;
+}
