@@ -1077,29 +1077,31 @@ function renderToday() {
   const st = STATE[mk?.state] ?? STATE.UNKNOWN;
   $('#tiles').innerHTML = `
     <button class="tile ${mk?.state === 'SELECTIVE' ? 'blue' : mk?.state === 'WAIT' ? 'coral' : 'slate'}" data-v="lab"><span class="glyph">${mk?.state === 'WAIT' ? '!' : '↗'}</span><span class="k">시장 판정</span><span class="v">${esc(st[0])}</span><span class="s">${esc(mk?.reasons?.[0] ?? '시장 데이터를 불러오는 중')}</span></button>
-    <button class="tile blue" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">${live.length + ictP.length}</span><span class="k">오늘 낼 주문</span><span class="v num">${live.length + ictP.length}건</span><span class="s">메인 ${live.length} · ICT 일봉 ${ictP.length}${blocked.length ? ` · 취소 ${blocked.length}` : ''}</span></button>
+    <button class="tile blue" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">${sig.filter((x) => x.status === 'waiting' && (x.trend || crashRegime())).length}</span><span class="k">오늘 낼 주문 (4시간봉 ICT)</span><span class="v num">${sig.filter((x) => x.status === 'waiting' && (x.trend || crashRegime())).length}건</span><span class="s">추세 일치 ${sig.filter((x) => x.status === 'waiting' && x.trend).length} · 급락장 반등(선택) ${crashRegime() ? sig.filter((x) => x.status === 'waiting' && !x.trend).length : 0}</span></button>
     <button class="tile violet" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">4H</span><span class="k">ICT 4시간봉 · ${esc(X?.regime?.name ?? '국면 미정')}</span><span class="v num">${sig.length}건 진행</span><span class="s">${X?.regime?.playbook ? esc(X.regime.playbook) : X?.recent?.n ? `최근 소급 ${X.recent.n}건 · 승률 ${pctU(X.recent.winRate)} · ${R(X.recent.expectancyR)}` : '신호 기록을 쌓는 중'}</span></button>`;
 
   // orders
   const pick = new Map(); for (const l of D?.ledgers ?? []) for (const p of l.picks) pick.set(`${l.date}:${p.symbol}`, p);
   const ipick = new Map(); for (const l of D?.ict?.ledgers ?? []) for (const p of l.picks) ipick.set(`${l.date}:${p.symbol}`, p);
-  const cards = [];
+  const cards = [], skip = [], ref = [];  // 4H orders to place, 4H signals the rules skip, the old daily desk (reference only)
   for (const o of live) { const p = pick.get(`${o.pickDate}:${o.symbol}`); if (!p) continue;
     const mkt = p.plan.entryType === 'market', entry = mkt ? p.plan.refClose : p.plan.trigger, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
-    cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip blue">${esc(p.label)}</span></div>
+    ref.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip blue">${esc(p.label)}</span></div>
       ${levels(entry, p.plan.stop, p.plan.target, mkt ? '내일 시가' : '돌파 매수')}
       <div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>${mkt ? '시가 4% 넘게 뛰면 건너뜀' : `${o.sessionsLeft > 0 ? o.sessionsLeft : 1}거래일 유효`}</span></div></article>`); }
   for (const o of ictP) { const p = ipick.get(`${o.pickDate}:${o.symbol}`); if (!p) continue;
     const entry = p.plan.entryType === 'market' ? p.plan.refClose : p.plan.trigger, tgt = p.plan.exitAt ?? p.plan.target, n = sizeFor(p.plan.riskPct, entry, p.plan.stop);
-    cards.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip violet">ICT 일봉</span></div>
+    ref.push(`<article class="card oc" data-sym="${esc(p.symbol)}"><div class="oc-h">${avatar(p.symbol)}<div class="t"><b>${esc(p.symbol)}</b><span>${esc(p.name)}</span></div><span class="chip violet">ICT 일봉</span></div>
       ${levels(entry, p.plan.stop, tgt, '내일 시가')}<div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>목표에서 전량</span></div></article>`); }
   for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = s.trend ? sizeFor(ICT4_RISK, s.limit, s.stop, ICT4_CAP) : crashRegime() ? sizeFor(CRASH_RISK, s.limit, s.stop, 0.25) : 0;
-    cards.push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
+    (n ? cards : skip).push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
       ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}${skipNote(s)}<div class="oc-f"><span>${n ? `${n}주 · 위험 ${s.trend ? '2' : '0.5'}% · ${usd(n * s.limit, 0)}` : '주문 안 냄'}</span><span>약 5거래일 유효</span></div></article>`); }
-  for (const o of blocked) cards.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
+  for (const o of blocked) ref.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
   $('#todo').innerHTML = `<div class="sec-h"><h2>오늘 낼 주문</h2><span class="sub">장 마감 기준 · 다음 거래일에 넣을 주문</span><span class="grow"></span>
       <label class="acct-in" for="acct">투자금 $<input id="acct" type="number" inputmode="decimal" min="100" step="100" value="${acct()}"></label></div>
-    ${cards.length ? `<div class="grid2">${cards.join('')}</div>` : `<div class="empty"><b>새 주문이 없습니다</b>${mk?.state === 'WAIT' ? '시장이 진입 대기 상태라 기준을 넘는 자리만 기다립니다.' : '오늘 기준을 넘는 자리가 없습니다.'}</div>`}`;
+    ${cards.length ? `<div class="grid2">${cards.join('')}</div>` : `<div class="empty"><b>오늘 낼 주문이 없습니다</b>4시간봉 ICT 규칙에 맞는 신호가 없습니다. ${crashRegime() ? '급락장이라 추세 일치 신호가 드뭅니다. 기다리는 것도 규칙입니다.' : '신호가 나올 때까지 기다립니다.'}</div>`}
+    ${skip.length ? `<details style="margin-top:14px"><summary>규칙상 건너뛰는 4시간봉 신호 ${skip.length}건 (참고)</summary><div class="grid2" style="margin-top:10px;opacity:.75">${skip.join('')}</div></details>` : ''}
+    ${ref.length ? `<details style="margin-top:10px"><summary>참고: 예전 일봉 데스크 주문 ${ref.length}건 · 단타 검증에서 우위가 없어 따라 하지 마세요</summary><div class="grid2" style="margin-top:10px;opacity:.6">${ref.join('')}</div></details>` : ''}`;
   $('#acct').addEventListener('change', (e) => { store.set('acct', e.target.value); renderToday(); });
 
   // holdings: main + ICT daily + ICT 4h
