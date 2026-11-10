@@ -14704,5 +14704,4109 @@
    "improving": false
   },
   "recordedAt": "2026-11-07T01:41:11.079Z"
+ },
+ {
+  "id": "2026-11-05:ACAD",
+  "symbol": "ACAD",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 16.5,
+  "posIn52w": 0.042701092353525295,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.22846099183875612,
+   "prevYoY": 0.16402018407574692,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.576Z"
+ },
+ {
+  "id": "2026-11-06:ACMR",
+  "symbol": "ACMR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 49.75,
+  "posIn52w": 0.2156386103514636,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.36605364838757626,
+   "prevYoY": 0.360060732128596,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.577Z"
+ },
+ {
+  "id": "2026-11-05:ACT",
+  "symbol": "ACT",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 46.71,
+  "posIn52w": 0.7537361923326836,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.004491820648247824,
+   "prevYoY": 0.04072944340581852,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.577Z"
+ },
+ {
+  "id": "2026-11-04:ADPT",
+  "symbol": "ADPT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 30.26,
+  "posIn52w": 0.9720521692840033,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.10716908048056362,
+   "prevYoY": 0.21525501452130635,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.580Z"
+ },
+ {
+  "id": "2026-11-06:AEE",
+  "symbol": "AEE",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 114.02,
+  "posIn52w": 0.8485377564382366,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.06780288995924422,
+   "prevYoY": -0.058081945069788365,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.580Z"
+ },
+ {
+  "id": "2026-11-06:AEVA",
+  "symbol": "AEVA",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 12.3,
+  "posIn52w": 0.17534722222222227,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.8633696563285833,
+   "prevYoY": 0.11340954454726915,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.581Z"
+ },
+ {
+  "id": "2026-11-05:AFL",
+  "symbol": "AFL",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 125.22,
+  "posIn52w": 0.7748631817324022,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.309915611814346,
+   "prevYoY": -0.01033653846153848,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.582Z"
+ },
+ {
+  "id": "2026-11-04:AGL",
+  "symbol": "AGL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 114.02,
+  "posIn52w": 0.8485186365084422,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.058638450910980966,
+   "prevYoY": 0.07151418441241542,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.582Z"
+ },
+ {
+  "id": "2026-11-06:AHR",
+  "symbol": "AHR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 58.96,
+  "posIn52w": 0.9825033647375506,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.31770032590431874,
+   "prevYoY": 0.26578493272290205,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.582Z"
+ },
+ {
+  "id": "2026-11-06:AKAM",
+  "symbol": "AKAM",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 80.29,
+  "posIn52w": 0.03990980834272837,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.06384324360202154,
+   "prevYoY": 0.05384602115584758,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.583Z"
+ },
+ {
+  "id": "2026-11-04:ALB",
+  "symbol": "ALB",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 99.12,
+  "posIn52w": 0.07749980873689856,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.18753827908694487,
+   "prevYoY": 0.3107695384633893,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.584Z"
+ },
+ {
+  "id": "2026-11-06:ALGT",
+  "symbol": "ALGT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 97.21,
+  "posIn52w": 0.5757186446121727,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.5733247798212666,
+   "prevYoY": 0.3310897415149181,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.584Z"
+ },
+ {
+  "id": "2026-11-04:ALL",
+  "symbol": "ALL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 253.79,
+  "posIn52w": 0.7053494391716996,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.005389742103738104,
+   "prevYoY": 0.1180183971622677,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.585Z"
+ },
+ {
+  "id": "2026-11-04:ALNT",
+  "symbol": "ALNT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 86.84,
+  "posIn52w": 0.5286909209362424,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.18491743727611487,
+   "prevYoY": 0.10167791485764233,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.585Z"
+ },
+ {
+  "id": "2026-11-04:AMC",
+  "symbol": "AMC",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 3.4,
+  "posIn52w": 0.8697183098591549,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.31602830333794807,
+   "prevYoY": 0.14221331997997,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.586Z"
+ },
+ {
+  "id": "2026-11-05:AMCR",
+  "symbol": "AMCR",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 45.14,
+  "posIn52w": 0.6861263736263736,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.06684073107049615,
+   "prevYoY": 0.2589531680440771,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.586Z"
+ },
+ {
+  "id": "2026-11-06:AMN",
+  "symbol": "AMN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 37.71,
+  "posIn52w": 0.6562770562770563,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.13045945128101666,
+   "prevYoY": 0.02288449120674585,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.587Z"
+ },
+ {
+  "id": "2026-11-05:AMPL",
+  "symbol": "AMPL",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 17.32,
+  "posIn52w": 0.8853073463268365,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.24930841754643485,
+   "prevYoY": 0.2115527801128858,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.587Z"
+ },
+ {
+  "id": "2026-11-06:AORT",
+  "symbol": "AORT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 20.64,
+  "posIn52w": 0.05087658989343419,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.09173810279747419,
+   "prevYoY": 0.11316963495379384,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.588Z"
+ },
+ {
+  "id": "2026-11-06:AOSL",
+  "symbol": "AOSL",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 29.17,
+  "posIn52w": 0.325743369943745,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.025999857535027204,
+   "prevYoY": -0.03463770086806739,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.588Z"
+ },
+ {
+  "id": "2026-11-05:APA",
+  "symbol": "APA",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 44.55,
+  "posIn52w": 0.7246234446627373,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": null,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.589Z"
+ },
+ {
+  "id": "2026-11-04:APP",
+  "symbol": "APP",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 410,
+  "posIn52w": 0.3603798603798604,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.5549786661637173,
+   "prevYoY": 1.0602673001273417,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.589Z"
+ },
+ {
+  "id": "2026-11-04:ARCB",
+  "symbol": "ARCB",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 132.54,
+  "posIn52w": 0.6249147339699863,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.15490913878624646,
+   "prevYoY": 0.15874399367673075,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.590Z"
+ },
+ {
+  "id": "2026-11-04:ARQT",
+  "symbol": "ARQT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 26.2,
+  "posIn52w": 0.4453402128345695,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.4505185498745199,
+   "prevYoY": 0.5933083038869258,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.590Z"
+ },
+ {
+  "id": "2026-11-06:ATMU",
+  "symbol": "ATMU",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 54.98,
+  "posIn52w": 0.5560765924189135,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.13915568461022998,
+   "prevYoY": 0.16405733186328564,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.591Z"
+ },
+ {
+  "id": "2026-11-04:AVA",
+  "symbol": "AVA",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 40.06,
+  "posIn52w": 0.6913580246913581,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.04466501240694787,
+   "prevYoY": 0.0048661800486617945,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.592Z"
+ },
+ {
+  "id": "2026-11-04:AVNT",
+  "symbol": "AVNT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 46.35,
+  "posIn52w": 0.878342245989305,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.10502169869807809,
+   "prevYoY": 0.05828043854587417,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.592Z"
+ },
+ {
+  "id": "2026-11-04:AWR",
+  "symbol": "AWR",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 90.12,
+  "posIn52w": 0.9239176124422025,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.05373913614571246,
+   "prevYoY": 0.11175842910232658,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.592Z"
+ },
+ {
+  "id": "2026-11-06:AXON",
+  "symbol": "AXON",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 303.18,
+  "posIn52w": 0.017377845961687368,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.2784992703770257,
+   "prevYoY": 0.35278622905504253,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.593Z"
+ },
+ {
+  "id": "2026-11-04:BCO",
+  "symbol": "BCO",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 114.57,
+  "posIn52w": 0.5346136668155426,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.029662921348314608,
+   "prevYoY": 0.07058823529411762,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.594Z"
+ },
+ {
+  "id": "2026-11-04:BCRX",
+  "symbol": "BCRX",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 7.63,
+  "posIn52w": 0.28056112224448887,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.131101979359453,
+   "prevYoY": 0.33606361682981034,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.594Z"
+ },
+ {
+  "id": "2026-11-06:BILL",
+  "symbol": "BILL",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 53.81,
+  "posIn52w": 0.868217054263566,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.10604663150899196,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.594Z"
+ },
+ {
+  "id": "2026-11-04:BIO",
+  "symbol": "BIO",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 388.31,
+  "posIn52w": 0.9503448275862068,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.005206738131699806,
+   "prevYoY": -0.0009208103130755596,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.594Z"
+ },
+ {
+  "id": "2026-11-06:BJRI",
+  "symbol": "BJRI",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 57.71,
+  "posIn52w": 0.5904461687681863,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.08622564416323142,
+   "prevYoY": 0.06370675908172108,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.595Z"
+ },
+ {
+  "id": "2026-11-06:BKD",
+  "symbol": "BKD",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 9.31,
+  "posIn52w": 0.1422271223814775,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.12432532142923025,
+   "prevYoY": -0.11607318585290005,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.595Z"
+ },
+ {
+  "id": "2026-11-05:BKH",
+  "symbol": "BKH",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 86.35,
+  "posIn52w": 0.9875323453305105,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.08319776899837317,
+   "prevYoY": 0.03143507972665138,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.595Z"
+ },
+ {
+  "id": "2026-11-06:BL",
+  "symbol": "BL",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 26.97,
+  "posIn52w": 0.0650989389159736,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.08472712995681198,
+   "prevYoY": 0.09182967591919788,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.596Z"
+ },
+ {
+  "id": "2026-11-06:BLMN",
+  "symbol": "BLMN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 10.28,
+  "posIn52w": 0.6841397849462364,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.016722418829193897,
+   "prevYoY": 0.01341126893769351,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.596Z"
+ },
+ {
+  "id": "2026-11-04:BMBL",
+  "symbol": "BMBL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 5.98,
+  "posIn52w": 0.9943820224719102,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.15872409744762617,
+   "prevYoY": -0.15188797441072555,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.596Z"
+ },
+ {
+  "id": "2026-11-05:BRKR",
+  "symbol": "BRKR",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 66.54,
+  "posIn52w": 0.9335511982570807,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.01568855316676343,
+   "prevYoY": 0.051542513167795345,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.597Z"
+ },
+ {
+  "id": "2026-11-05:BROS",
+  "symbol": "BROS",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 36.01,
+  "posIn52w": 0.06951583688255732,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.2980636662385736,
+   "prevYoY": 0.32475656124267394,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.597Z"
+ },
+ {
+  "id": "2026-11-06:BTU",
+  "symbol": "BTU",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 17.03,
+  "posIn52w": 0.05319571258435893,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.08319336033988733,
+   "prevYoY": 0.12706437478934962,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.598Z"
+ },
+ {
+  "id": "2026-11-05:CAVA",
+  "symbol": "CAVA",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 62.35,
+  "posIn52w": 0.34200072228241246,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.21967711249050437,
+   "prevYoY": 0.31295903640218814,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.599Z"
+ },
+ {
+  "id": "2026-11-04:CDE",
+  "symbol": "CDE",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 16.45,
+  "posIn52w": 0.24883566200931465,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.7736648592505504,
+   "prevYoY": 1.2585914906896911,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.601Z"
+ },
+ {
+  "id": "2026-11-04:CDRE",
+  "symbol": "CDRE",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 34.18,
+  "posIn52w": 0.41951420337587486,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.3015801730940726,
+   "prevYoY": 0.31835859180568904,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.601Z"
+ },
+ {
+  "id": "2026-11-04:CDW",
+  "symbol": "CDW",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 164.61,
+  "posIn52w": 0.8970934799685784,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.17727542092236903,
+   "prevYoY": 0.09965532242412078,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.601Z"
+ },
+ {
+  "id": "2026-11-05:CF",
+  "symbol": "CF",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 119.28,
+  "posIn52w": 0.6675587251187721,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.12115732368896936,
+   "prevYoY": 0.17566137566137563,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.603Z"
+ },
+ {
+  "id": "2026-11-05:CGNX",
+  "symbol": "CGNX",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 50.34,
+  "posIn52w": 0.4145577876337073,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.1318022911460064,
+   "prevYoY": 0.1692941993552608,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.603Z"
+ },
+ {
+  "id": "2026-11-06:CGON",
+  "symbol": "CGON",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 74.74,
+  "posIn52w": 0.862076599512951,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.037214885954381716,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.603Z"
+ },
+ {
+  "id": "2026-11-05:CHRD",
+  "symbol": "CHRD",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 137.49,
+  "posIn52w": 0.7157144682622322,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.30014915237702544,
+   "prevYoY": 0.8403866304013607,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.604Z"
+ },
+ {
+  "id": "2026-11-06:CHTR",
+  "symbol": "CHTR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 121.2,
+  "posIn52w": 0.1313071895424837,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.09142773551784678,
+   "prevYoY": -0.017434258317594042,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.604Z"
+ },
+ {
+  "id": "2026-11-05:CLDX",
+  "symbol": "CLDX",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 31.24,
+  "posIn52w": 0.3967013888888888,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": null,
+   "prevYoY": -0.9698216735253772,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.605Z"
+ },
+ {
+  "id": "2026-11-06:CLMT",
+  "symbol": "CLMT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 36.06,
+  "posIn52w": 0.433415288385787,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.561038961038961,
+   "prevYoY": 0.40775375024352223,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.605Z"
+ },
+ {
+  "id": "2026-11-06:CLOV",
+  "symbol": "CLOV",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 4.83,
+  "posIn52w": 0.8104738154613467,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.5288513037350246,
+   "prevYoY": 0.5559796490934215,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.605Z"
+ },
+ {
+  "id": "2026-11-06:COMP",
+  "symbol": "COMP",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 10.79,
+  "posIn52w": 0.5827290705339485,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 1.1110509209100758,
+   "prevYoY": 1.0906972227617011,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.607Z"
+ },
+ {
+  "id": "2026-11-05:CPAY",
+  "symbol": "CPAY",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 457.97,
+  "posIn52w": 0.8965004080457013,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.17863929448689952,
+   "prevYoY": 0.21485712730143458,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.607Z"
+ },
+ {
+  "id": "2026-11-06:CPT",
+  "symbol": "CPT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 100.28,
+  "posIn52w": 0.2680577849117178,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.7064327485380117,
+   "prevYoY": 0.1891378655526017,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.608Z"
+ },
+ {
+  "id": "2026-11-05:CRK",
+  "symbol": "CRK",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 13.77,
+  "posIn52w": 0.10326052944489644,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.14557899042351707,
+   "prevYoY": -0.24875494936864984,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.608Z"
+ },
+ {
+  "id": "2026-11-04:CRL",
+  "symbol": "CRL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 353.34,
+  "posIn52w": 0.887377642598582,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.022013191992452663,
+   "prevYoY": -0.027183459528065557,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.609Z"
+ },
+ {
+  "id": "2026-11-04:CRUS",
+  "symbol": "CRUS",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 118.28,
+  "posIn52w": 0.17498672331386098,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.0026704221334854505,
+   "prevYoY": 0.12878616747529903,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.609Z"
+ },
+ {
+  "id": "2026-11-04:CVS",
+  "symbol": "CVS",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 85.25,
+  "posIn52w": 0.4186272131942761,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.0680969060128429,
+   "prevYoY": 0.09504460324132458,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.611Z"
+ },
+ {
+  "id": "2026-11-05:CW",
+  "symbol": "CW",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 482.03,
+  "posIn52w": 0.1315221158717039,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.09597662137441465,
+   "prevYoY": 0.0541105391888439,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.611Z"
+ },
+ {
+  "id": "2026-11-04:CWK",
+  "symbol": "CWK",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 14.55,
+  "posIn52w": 0.5628834355828223,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.07747803062281755,
+   "prevYoY": 0.11220258464511446,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.611Z"
+ },
+ {
+  "id": "2026-11-04:DAVE",
+  "symbol": "DAVE",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 282.65,
+  "posIn52w": 0.4262187949287674,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.3116868469066181,
+   "prevYoY": 0.29627268380427596,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.612Z"
+ },
+ {
+  "id": "2026-11-06:DBX",
+  "symbol": "DBX",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 32.58,
+  "posIn52w": 0.6587786721539669,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.004571248423707486,
+   "prevYoY": 0.009269618027808901,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.612Z"
+ },
+ {
+  "id": "2026-11-06:DCH",
+  "symbol": "DCH",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 4.6,
+  "posIn52w": 0.040247678018575726,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.932239420713479,
+   "prevYoY": 0.9239682333029553,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.612Z"
+ },
+ {
+  "id": "2026-11-04:DDOG",
+  "symbol": "DDOG",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 179.62,
+  "posIn52w": 0.4026740033917222,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.3516498033649824,
+   "prevYoY": 0.3564444336929702,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.613Z"
+ },
+ {
+  "id": "2026-11-06:DK",
+  "symbol": "DK",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 65,
+  "posIn52w": 0.6961112088685554,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.5213370280568064,
+   "prevYoY": 0.4783332127613398,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.613Z"
+ },
+ {
+  "id": "2026-11-06:DKNG",
+  "symbol": "DKNG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 18.7,
+  "posIn52w": 0.10523739598629461,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.1617490618599866,
+   "prevYoY": -0.04579945745705638,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.613Z"
+ },
+ {
+  "id": "2026-11-04:ECPG",
+  "symbol": "ECPG",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 111.98,
+  "posIn52w": 0.8153615211408558,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.2119954904171364,
+   "prevYoY": -0.18260089686098657,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.615Z"
+ },
+ {
+  "id": "2026-11-05:EE",
+  "symbol": "EE",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 37.25,
+  "posIn52w": 0.6762507188039102,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.23995765182434714,
+   "prevYoY": 0.6096570132384287,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.616Z"
+ },
+ {
+  "id": "2026-11-06:ELAN",
+  "symbol": "ELAN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 26.84,
+  "posIn52w": 0.8671328671328671,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.11257695690413372,
+   "prevYoY": 0.10233682514101528,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.617Z"
+ },
+ {
+  "id": "2026-11-05:ELF",
+  "symbol": "ELF",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 119.35,
+  "posIn52w": 0.9491320145337101,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.5142817268328992,
+   "prevYoY": 0.35516016045728627,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.617Z"
+ },
+ {
+  "id": "2026-11-04:ESAB",
+  "symbol": "ESAB",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 89.93,
+  "posIn52w": 0.3668375607123584,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.13282498334123338,
+   "prevYoY": 0.12862325422800325,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.618Z"
+ },
+ {
+  "id": "2026-11-06:ESNT",
+  "symbol": "ESNT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 65.76,
+  "posIn52w": 0.6376638855780693,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.19995831061796498,
+   "prevYoY": 0.1364372710665751,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.618Z"
+ },
+ {
+  "id": "2026-11-04:EW",
+  "symbol": "EW",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 104.71,
+  "posIn52w": 0.9785086291110384,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.10456506342154404,
+   "prevYoY": 0.13627463777574733,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.619Z"
+ },
+ {
+  "id": "2026-11-05:EXPE",
+  "symbol": "EXPE",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 259.16,
+  "posIn52w": 0.4762449914138525,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.11922030825022656,
+   "prevYoY": 0.13972530375066028,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.620Z"
+ },
+ {
+  "id": "2026-11-06:FG",
+  "symbol": "FG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 25.55,
+  "posIn52w": 0.44560943643512463,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.3323494687131051,
+   "prevYoY": 0.0417888563049853,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.620Z"
+ },
+ {
+  "id": "2026-11-06:FICO",
+  "symbol": "FICO",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 723.76,
+  "posIn52w": 0.1081896418640757,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.2739655376334704,
+   "prevYoY": 0.256840319528723,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.621Z"
+ },
+ {
+  "id": "2026-11-06:FLR",
+  "symbol": "FLR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 50.33,
+  "posIn52w": 0.5783385909568874,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.10451306413301653,
+   "prevYoY": 0.08825748051294946,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.622Z"
+ },
+ {
+  "id": "2026-11-06:FOXF",
+  "symbol": "FOXF",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 18.69,
+  "posIn52w": 0.6226415094339625,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.10081439066838493,
+   "prevYoY": -0.0446615305817577,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.623Z"
+ },
+ {
+  "id": "2026-11-06:FROG",
+  "symbol": "FROG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 108.18,
+  "posIn52w": 0.9944995975315267,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.30869860562279494,
+   "prevYoY": 0.28731331551642825,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.624Z"
+ },
+ {
+  "id": "2026-11-04:FSLY",
+  "symbol": "FSLY",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 15.98,
+  "posIn52w": 0.30092764378478665,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.20205659101394868,
+   "prevYoY": 0.2327229690200323,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.624Z"
+ },
+ {
+  "id": "2026-11-06:G",
+  "symbol": "G",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 42.55,
+  "posIn52w": 0.7489361702127658,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.07290802682967068,
+   "prevYoY": 0.0709651806654561,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.625Z"
+ },
+ {
+  "id": "2026-11-06:GEO",
+  "symbol": "GEO",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 30.14,
+  "posIn52w": 0.8533397870280736,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.11536900171615083,
+   "prevYoY": 0.14949141577663116,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.626Z"
+ },
+ {
+  "id": "2026-11-04:GNK",
+  "symbol": "GNK",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 25.95,
+  "posIn52w": 0.813020439061317,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.9000400390380621,
+   "prevYoY": 0.6853927031468143,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.627Z"
+ },
+ {
+  "id": "2026-11-04:GNL",
+  "symbol": "GNL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 6.87,
+  "posIn52w": 0.023148148148148345,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.06727376397577123,
+   "prevYoY": -0.09951563188022894,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.627Z"
+ },
+ {
+  "id": "2026-11-05:GNW",
+  "symbol": "GNW",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 8.72,
+  "posIn52w": 0.3087719298245617,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.0728682170542636,
+   "prevYoY": 0.05846325167037869,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.627Z"
+ },
+ {
+  "id": "2026-11-04:GOLF",
+  "symbol": "GOLF",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 84.61,
+  "posIn52w": 0.1892965646179013,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.012815171411280635,
+   "prevYoY": 0.1380684436400379,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.627Z"
+ },
+ {
+  "id": "2026-11-06:GPGI",
+  "symbol": "GPGI",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 15.35,
+  "posIn52w": 0.30635118306351183,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": null,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.628Z"
+ },
+ {
+  "id": "2026-11-06:GPRE",
+  "symbol": "GPRE",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 13.97,
+  "posIn52w": 0.4519555770159345,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.024576832839384277,
+   "prevYoY": -0.19283539756416546,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.628Z"
+ },
+ {
+  "id": "2026-11-05:GRAL",
+  "symbol": "GRAL",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 128.08,
+  "posIn52w": 0.6927785557111423,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.0370503398353319,
+   "prevYoY": 0.2572304749043439,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.629Z"
+ },
+ {
+  "id": "2026-11-06:GRND",
+  "symbol": "GRND",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 13.38,
+  "posIn52w": 0.4160897779501158,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.22123075859924324,
+   "prevYoY": 0.3254461715601611,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.629Z"
+ },
+ {
+  "id": "2026-11-05:GSAT",
+  "symbol": "GSAT",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 85.78,
+  "posIn52w": 0.9712628466419123,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.03984020583654957,
+   "prevYoY": -0.03538452373860723,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.629Z"
+ },
+ {
+  "id": "2026-11-05:GT",
+  "symbol": "GT",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 4.18,
+  "posIn52w": 0.013767439011317186,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.0226049515608181,
+   "prevYoY": -0.04815229563269874,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.629Z"
+ },
+ {
+  "id": "2026-11-04:GTM",
+  "symbol": "GTM",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 3.51,
+  "posIn52w": 0.11764705882352937,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.028930817610062887,
+   "prevYoY": 0.012063906097163457,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.630Z"
+ },
+ {
+  "id": "2026-11-04:GWW",
+  "symbol": "GWW",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 1447.67,
+  "posIn52w": 0.8851415741952159,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.11251878891990552,
+   "prevYoY": 0.10254721124286337,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.630Z"
+ },
+ {
+  "id": "2026-11-05:HAE",
+  "symbol": "HAE",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 118.21,
+  "posIn52w": 0.829753086419753,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.09301131937124785,
+   "prevYoY": 0.05596246351829848,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.630Z"
+ },
+ {
+  "id": "2026-11-06:HASI",
+  "symbol": "HASI",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 39.14,
+  "posIn52w": 0.7294915254237287,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.11060117984941398,
+   "prevYoY": 0.4096983135904768,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.631Z"
+ },
+ {
+  "id": "2026-11-04:HCC",
+  "symbol": "HCC",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 85.87,
+  "posIn52w": 0.4130826680401753,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.5457851601849117,
+   "prevYoY": 0.7131112552642989,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.631Z"
+ },
+ {
+  "id": "2026-11-05:HCI",
+  "symbol": "HCI",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 186.25,
+  "posIn52w": 0.6516836577077539,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.13200369771204068,
+   "prevYoY": 0.11145007209805335,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.631Z"
+ },
+ {
+  "id": "2026-11-06:HE",
+  "symbol": "HE",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 9.07,
+  "posIn52w": 0.10021668472372705,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.2758629412731941,
+   "prevYoY": 0.2589939334826741,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.631Z"
+ },
+ {
+  "id": "2026-11-06:HLIO",
+  "symbol": "HLIO",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 49.48,
+  "posIn52w": 0.05293994559531271,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.04314259763851047,
+   "prevYoY": 0.09129411764705875,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.632Z"
+ },
+ {
+  "id": "2026-11-06:HUM",
+  "symbol": "HUM",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 423.22,
+  "posIn52w": 0.8901020408163267,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.2605286532512481,
+   "prevYoY": 0.2617944917870816,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.633Z"
+ },
+ {
+  "id": "2026-11-06:INGR",
+  "symbol": "INGR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 92.78,
+  "posIn52w": 0.0870138431114041,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.013215859030836996,
+   "prevYoY": 0.009274413529732684,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.636Z"
+ },
+ {
+  "id": "2026-11-04:IPAR",
+  "symbol": "IPAR",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 136.16,
+  "posIn52w": 0.9689568231957139,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.00016527809785860104,
+   "prevYoY": 0.02126455368693403,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.637Z"
+ },
+ {
+  "id": "2026-11-05:JANX",
+  "symbol": "JANX",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 12.76,
+  "posIn52w": 0.027562446167097347,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.07110000000000005,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.638Z"
+ },
+ {
+  "id": "2026-11-05:JOBY",
+  "symbol": "JOBY",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 6.18,
+  "posIn52w": 0.13812154696132595,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 1.440373881456543,
+   "prevYoY": 2574.9333333333334,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.639Z"
+ },
+ {
+  "id": "2026-11-04:KHC",
+  "symbol": "KHC",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 24.42,
+  "posIn52w": 0.5581395348837213,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.019560686227352853,
+   "prevYoY": -0.01416876574307302,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.639Z"
+ },
+ {
+  "id": "2026-11-04:KMT",
+  "symbol": "KMT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 24.18,
+  "posIn52w": 0.08451392281387397,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.5426367641684104,
+   "prevYoY": 0.42631092832371964,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.640Z"
+ },
+ {
+  "id": "2026-11-05:KNTK",
+  "symbol": "KNTK",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 50.33,
+  "posIn52w": 0.7106684672518568,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.22723931986835333,
+   "prevYoY": 0.36252220331913265,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.640Z"
+ },
+ {
+  "id": "2026-11-06:KRMN",
+  "symbol": "KRMN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 45.9,
+  "posIn52w": 0.18598382749326145,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.6555379473999687,
+   "prevYoY": 0.5818222890257783,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.640Z"
+ },
+ {
+  "id": "2026-11-04:KVYO",
+  "symbol": "KVYO",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 20.82,
+  "posIn52w": 0.39807923169267717,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.2455191713844571,
+   "prevYoY": 0.264259664229642,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.641Z"
+ },
+ {
+  "id": "2026-11-06:LASR",
+  "symbol": "LASR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 43.21,
+  "posIn52w": 0.25738539898132423,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.1051961283749363,
+   "prevYoY": 0.3378310520774277,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.642Z"
+ },
+ {
+  "id": "2026-11-05:LB",
+  "symbol": "LB",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 65.24,
+  "posIn52w": 0.4516867971678467,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.3946213924573587,
+   "prevYoY": 0.406180969011003,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.642Z"
+ },
+ {
+  "id": "2026-11-05:LEU",
+  "symbol": "LEU",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 117.34,
+  "posIn52w": 0.12456853570606735,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.2590120160213618,
+   "prevYoY": 0.13980582524271834,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.643Z"
+ },
+ {
+  "id": "2026-11-04:LIVN",
+  "symbol": "LIVN",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 92.61,
+  "posIn52w": 0.8636472581012247,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.09893697607008178,
+   "prevYoY": 0.1079727905050436,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.644Z"
+ },
+ {
+  "id": "2026-11-05:LMAT",
+  "symbol": "LMAT",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 81.16,
+  "posIn52w": 0.07509578544061296,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.11342266487566754,
+   "prevYoY": 0.09574666832731338,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.644Z"
+ },
+ {
+  "id": "2026-11-05:LNTH",
+  "symbol": "LNTH",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 101.01,
+  "posIn52w": 0.8241633579126489,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.015361419114928054,
+   "prevYoY": 0.02680897776719693,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.645Z"
+ },
+ {
+  "id": "2026-11-04:LOPE",
+  "symbol": "LOPE",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 116.16,
+  "posIn52w": 0.017273471818926314,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.023757189575020377,
+   "prevYoY": 0.06685279536482969,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.645Z"
+ },
+ {
+  "id": "2026-11-04:LUMN",
+  "symbol": "LUMN",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 4.32,
+  "posIn52w": 0.06419589675711453,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.12050534499514087,
+   "prevYoY": -0.09282018111254853,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.646Z"
+ },
+ {
+  "id": "2026-11-06:LYFT",
+  "symbol": "LYFT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 16.76,
+  "posIn52w": 0.3287461773700307,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.08107489044294569,
+   "prevYoY": 0.16078814595043522,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.646Z"
+ },
+ {
+  "id": "2026-11-04:LZ",
+  "symbol": "LZ",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 4.85,
+  "posIn52w": 0.011475409836065474,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.026230818582442028,
+   "prevYoY": 0.0663865066048861,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.647Z"
+ },
+ {
+  "id": "2026-11-06:MAT",
+  "symbol": "MAT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 15.59,
+  "posIn52w": 0.3164682539682539,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.040736832160887415,
+   "prevYoY": 0.10481836157249136,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.647Z"
+ },
+ {
+  "id": "2026-11-05:MATX",
+  "symbol": "MATX",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 207.77,
+  "posIn52w": 0.7653859964093358,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.2651971366890127,
+   "prevYoY": 0.1672486453943407,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.647Z"
+ },
+ {
+  "id": "2026-11-06:MBC",
+  "symbol": "MBC",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 7.1,
+  "posIn52w": 0.1194605009633911,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.4834740306195451,
+   "prevYoY": 0.11533725543850037,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.648Z"
+ },
+ {
+  "id": "2026-11-06:MCD",
+  "symbol": "MCD",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 281.44,
+  "posIn52w": 0.4929231930552935,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.01130422495407668,
+   "prevYoY": 0.03741049247406103,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.648Z"
+ },
+ {
+  "id": "2026-11-04:MCK",
+  "symbol": "MCK",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 1059.37,
+  "posIn52w": 0.844437767595583,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.07568589432864758,
+   "prevYoY": 0.07720772383902186,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.648Z"
+ },
+ {
+  "id": "2026-11-05:MELI",
+  "symbol": "MELI",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 1532.68,
+  "posIn52w": 0.07293325238547987,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.45093804831961126,
+   "prevYoY": 0.4976435935198822,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.649Z"
+ },
+ {
+  "id": "2026-11-06:MET",
+  "symbol": "MET",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 101.67,
+  "posIn52w": 0.8759428978598984,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.18207476527849775,
+   "prevYoY": 0.10461361014994242,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.649Z"
+ },
+ {
+  "id": "2026-11-05:MGY",
+  "symbol": "MGY",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 22.67,
+  "posIn52w": 0.1715265866209263,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.5815163032606521,
+   "prevYoY": 0.5010596209190488,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.649Z"
+ },
+ {
+  "id": "2026-11-05:MKSI",
+  "symbol": "MKSI",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 211.59,
+  "posIn52w": 0.24730049198134305,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.43016194331983804,
+   "prevYoY": 0.2813141683778233,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.650Z"
+ },
+ {
+  "id": "2026-11-06:MNST",
+  "symbol": "MNST",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 45.64,
+  "posIn52w": 0.7152734129478315,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.16654059368087615,
+   "prevYoY": 0.20168716305043777,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.650Z"
+ },
+ {
+  "id": "2026-11-06:MP",
+  "symbol": "MP",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 37.75,
+  "posIn52w": 0.13028953229398668,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 1.7571751349130769,
+   "prevYoY": 0.8903002108271043,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.651Z"
+ },
+ {
+  "id": "2026-11-06:MRNA",
+  "symbol": "MRNA",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 269,
+  "posIn52w": 0.954355562432307,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.2923228346456692,
+   "prevYoY": 0.021126760563380254,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.652Z"
+ },
+ {
+  "id": "2026-11-05:MRVI",
+  "symbol": "MRVI",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 8.02,
+  "posIn52w": 0.7963636363636363,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.10139322603891432,
+   "prevYoY": 0.08534295419541316,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.652Z"
+ },
+ {
+  "id": "2026-11-04:MSI",
+  "symbol": "MSI",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 527.97,
+  "posIn52w": 0.8941182602350614,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.12163509471585243,
+   "prevYoY": 0.1334538878842677,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.652Z"
+ },
+ {
+  "id": "2026-11-04:MTG",
+  "symbol": "MTG",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 28.5,
+  "posIn52w": 0.5516759776536312,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.017815799412160715,
+   "prevYoY": -0.029111406925339756,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.653Z"
+ },
+ {
+  "id": "2026-11-04:MTRN",
+  "symbol": "MTRN",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 202.14,
+  "posIn52w": 0.4273894702496095,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.27536150428949124,
+   "prevYoY": 0.4222046156911259,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.653Z"
+ },
+ {
+  "id": "2026-11-06:MYGN",
+  "symbol": "MYGN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 5.74,
+  "posIn52w": 0.5612722170252572,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.014584346135148252,
+   "prevYoY": -0.10511496949788834,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.653Z"
+ },
+ {
+  "id": "2026-11-04:NAMS",
+  "symbol": "NAMS",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 19,
+  "posIn52w": 0.0452581773297676,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 54.06896551724138,
+   "prevYoY": -0.8066858187516323,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.653Z"
+ },
+ {
+  "id": "2026-11-04:NATL",
+  "symbol": "NATL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 47.91,
+  "posIn52w": 0.9548724656638322,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.01787310098302053,
+   "prevYoY": 0,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.654Z"
+ },
+ {
+  "id": "2026-11-05:NGVT",
+  "symbol": "NGVT",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 62.4,
+  "posIn52w": 0.4949902796470764,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.1583143507972664,
+   "prevYoY": -0.13968775677896472,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.654Z"
+ },
+ {
+  "id": "2026-11-06:NMIH",
+  "symbol": "NMIH",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 38.87,
+  "posIn52w": 0.3227194492254732,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.04964769223020049,
+   "prevYoY": 0.08120658997922647,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.655Z"
+ },
+ {
+  "id": "2026-11-04:NNN",
+  "symbol": "NNN",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 41.69,
+  "posIn52w": 0.4151898734177213,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.08480224540426406,
+   "prevYoY": 0.07700108464651989,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.655Z"
+ },
+ {
+  "id": "2026-11-04:NUVB",
+  "symbol": "NUVB",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 4.35,
+  "posIn52w": 0.06493506493506486,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": null,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.656Z"
+ },
+ {
+  "id": "2026-11-04:NVST",
+  "symbol": "NVST",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 25.97,
+  "posIn52w": 0.6180310560605671,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.032243618450515044,
+   "prevYoY": 0.07095733763377798,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.657Z"
+ },
+ {
+  "id": "2026-11-05:NWE",
+  "symbol": "NWE",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 84.1,
+  "posIn52w": 0.9904206580591418,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.0951229093014121,
+   "prevYoY": 0.14556203003679458,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.657Z"
+ },
+ {
+  "id": "2026-11-05:NWSA",
+  "symbol": "NWSA",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 26.57,
+  "posIn52w": 0.4768907563025209,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.0638992537313432,
+   "prevYoY": 0.10810810810810811,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.657Z"
+ },
+ {
+  "id": "2026-11-04:NYT",
+  "symbol": "NYT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 72.17,
+  "posIn52w": 0.49113475177304977,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.09662524382117543,
+   "prevYoY": 0.11165623956621706,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.658Z"
+ },
+ {
+  "id": "2026-11-04:OC",
+  "symbol": "OC",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 127.02,
+  "posIn52w": 0.5025078369905956,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.07265275707898655,
+   "prevYoY": 0.003276301419730565,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.658Z"
+ },
+ {
+  "id": "2026-11-04:OPCH",
+  "symbol": "OPCH",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 31.69,
+  "posIn52w": 0.7280468334220331,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.04077515512022156,
+   "prevYoY": 0.018582924047638283,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.659Z"
+ },
+ {
+  "id": "2026-11-04:OPLN",
+  "symbol": "OPLN",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 34.9,
+  "posIn52w": 0.5694294940796555,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.1260032102728732,
+   "prevYoY": 0.1513390076811294,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.659Z"
+ },
+ {
+  "id": "2026-11-05:ORA",
+  "symbol": "ORA",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 94.57,
+  "posIn52w": 0.14555077737347002,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.10168704225013725,
+   "prevYoY": 0.10574400259809069,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.660Z"
+ },
+ {
+  "id": "2026-11-06:OUT",
+  "symbol": "OUT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 31.26,
+  "posIn52w": 0.8234597156398105,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.0932620320855615,
+   "prevYoY": 0.13537592351151684,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.660Z"
+ },
+ {
+  "id": "2026-11-05:PACB",
+  "symbol": "PACB",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 2.36,
+  "posIn52w": 0.5454545454545453,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.055227491480450475,
+   "prevYoY": -0.019086656943117286,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.661Z"
+ },
+ {
+  "id": "2026-11-05:PAR",
+  "symbol": "PAR",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 21.81,
+  "posIn52w": 0.35302245250431774,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.15039896629552874,
+   "prevYoY": 0.18687947048147757,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.661Z"
+ },
+ {
+  "id": "2026-11-05:PAYC",
+  "symbol": "PAYC",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 236.46,
+  "posIn52w": 0.7734128376008418,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.10216906547739701,
+   "prevYoY": 0.09842845326716287,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.661Z"
+ },
+ {
+  "id": "2026-11-05:PCRX",
+  "symbol": "PCRX",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 36.46,
+  "posIn52w": 0.9885250489784496,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.01594843913634436,
+   "prevYoY": 0.06239681058426605,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.662Z"
+ },
+ {
+  "id": "2026-11-04:PCT",
+  "symbol": "PCT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 2.06,
+  "posIn52w": 0.03690476190476191,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.033333333333333326,
+   "prevYoY": 1.7680981595092025,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.662Z"
+ },
+ {
+  "id": "2026-11-06:PCTY",
+  "symbol": "PCTY",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 177.81,
+  "posIn52w": 0.9576065481230596,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.1203933927751295,
+   "prevYoY": 0.12357320904278613,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.662Z"
+ },
+ {
+  "id": "2026-11-04:PFGC",
+  "symbol": "PFGC",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 111.77,
+  "posIn52w": 0.8443595689537581,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.05519474815383085,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.663Z"
+ },
+ {
+  "id": "2026-11-05:PGNY",
+  "symbol": "PGNY",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 35.95,
+  "posIn52w": 0.9974874371859298,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.08906448462721728,
+   "prevYoY": 0.05298401196849256,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.663Z"
+ },
+ {
+  "id": "2026-11-05:PK",
+  "symbol": "PK",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 16.46,
+  "posIn52w": 0.9156746031746033,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.013114754098360604,
+   "prevYoY": 0.011904761904761862,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.664Z"
+ },
+ {
+  "id": "2026-11-06:PLMR",
+  "symbol": "PLMR",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 156.78,
+  "posIn52w": 0.9139889646218758,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.5801217204353815,
+   "prevYoY": 0.5465048792004408,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.665Z"
+ },
+ {
+  "id": "2026-11-04:PNTG",
+  "symbol": "PNTG",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 36.26,
+  "posIn52w": 0.6152659241043444,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.31964861879417916,
+   "prevYoY": 0.35755190181365926,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.665Z"
+ },
+ {
+  "id": "2026-11-04:PODD",
+  "symbol": "PODD",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 149.81,
+  "posIn52w": 0.1024597338935574,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.19229679977343528,
+   "prevYoY": 0.23509474657217688,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.666Z"
+ },
+ {
+  "id": "2026-11-05:POWI",
+  "symbol": "POWI",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 44.29,
+  "posIn52w": 0.23085827683148671,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.055138371496564975,
+   "prevYoY": 0.026646065669992725,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.666Z"
+ },
+ {
+  "id": "2026-11-05:PR",
+  "symbol": "PR",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 21.52,
+  "posIn52w": 0.6693343033830483,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.4810984448432285,
+   "prevYoY": 0.5514706127942979,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.666Z"
+ },
+ {
+  "id": "2026-11-04:PRCT",
+  "symbol": "PRCT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 22.37,
+  "posIn52w": 0.2660293774772675,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.17958164820526368,
+   "prevYoY": 0.19344042838018738,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.666Z"
+ },
+ {
+  "id": "2026-11-04:PRGO",
+  "symbol": "PRGO",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 16.95,
+  "posIn52w": 0.9913654866165043,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.05242979008914028,
+   "prevYoY": -0.031714475054435254,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.666Z"
+ },
+ {
+  "id": "2026-11-06:PRKS",
+  "symbol": "PRKS",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 43.21,
+  "posIn52w": 0.6801695713612812,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.010542130424674334,
+   "prevYoY": -0.014059223356425399,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.667Z"
+ },
+ {
+  "id": "2026-11-04:PRSU",
+  "symbol": "PRSU",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 57.24,
+  "posIn52w": 0.9481007897705906,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.043597679879844975,
+   "prevYoY": 0.14347755325801126,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.667Z"
+ },
+ {
+  "id": "2026-11-04:PSNL",
+  "symbol": "PSNL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 15.95,
+  "posIn52w": 0.7890204520990312,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.7658502932045532,
+   "prevYoY": 0.2995989071673546,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.668Z"
+ },
+ {
+  "id": "2026-11-04:QCOM",
+  "symbol": "QCOM",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 171.47,
+  "posIn52w": 0.37013462101258415,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.08419838523644751,
+   "prevYoY": -0.0402354303357777,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.669Z"
+ },
+ {
+  "id": "2026-11-04:QURE",
+  "symbol": "QURE",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 22.79,
+  "posIn52w": 0.32705356374404215,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.4039448797622265,
+   "prevYoY": 0.11003420752565574,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.669Z"
+ },
+ {
+  "id": "2026-11-04:RCUS",
+  "symbol": "RCUS",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 18.95,
+  "posIn52w": 0.106256553652569,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.6538461538461539,
+   "prevYoY": -0.74375,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.670Z"
+ },
+ {
+  "id": "2026-11-06:RDN",
+  "symbol": "RDN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 36.53,
+  "posIn52w": 0.5865102639296189,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 1.3962427146444285,
+   "prevYoY": 0.8080244273656936,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.670Z"
+ },
+ {
+  "id": "2026-11-04:RDVT",
+  "symbol": "RDVT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 72.47,
+  "posIn52w": 0.7853266331658291,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.20222674695663478,
+   "prevYoY": 0.22705979608707638,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.671Z"
+ },
+ {
+  "id": "2026-11-05:RDW",
+  "symbol": "RDW",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 8.15,
+  "posIn52w": 0.1506660542030317,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.05417085621471118,
+   "prevYoY": 0.8956282383419689,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.671Z"
+ },
+ {
+  "id": "2026-11-06:REG",
+  "symbol": "REG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 76.11,
+  "posIn52w": 0.6349292709466814,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.08124467838067972,
+   "prevYoY": 0.08576124858211154,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.671Z"
+ },
+ {
+  "id": "2026-11-04:RELY",
+  "symbol": "RELY",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 23.97,
+  "posIn52w": 0.746859296482412,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.2153666083424315,
+   "prevYoY": 0.2022668337169662,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.671Z"
+ },
+ {
+  "id": "2026-11-04:REPX",
+  "symbol": "REPX",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 40.46,
+  "posIn52w": 0.5608737552200449,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.8830064013776064,
+   "prevYoY": 0.9421739232264561,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.671Z"
+ },
+ {
+  "id": "2026-11-04:REYN",
+  "symbol": "REYN",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 24.76,
+  "posIn52w": 0.6699857752489335,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.013963480128893702,
+   "prevYoY": 0.006396588486140775,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.672Z"
+ },
+ {
+  "id": "2026-11-06:RGA",
+  "symbol": "RGA",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 266.75,
+  "posIn52w": 0.9381454505924557,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.21695680206318513,
+   "prevYoY": 0.1853902482586176,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.672Z"
+ },
+ {
+  "id": "2026-11-05:RGLD",
+  "symbol": "RGLD",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 282.66,
+  "posIn52w": 0.8392023129957744,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.8438080200580795,
+   "prevYoY": 1.149066989754059,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.672Z"
+ },
+ {
+  "id": "2026-11-04:RGR",
+  "symbol": "RGR",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 50.9,
+  "posIn52w": 0.942315615986815,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.16455516463405018,
+   "prevYoY": 0.19297159807081243,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.672Z"
+ },
+ {
+  "id": "2026-11-04:RIOT",
+  "symbol": "RIOT",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 17.66,
+  "posIn52w": 0.3273113708820404,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.006641550471899738,
+   "prevYoY": 0.13888017360838756,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.673Z"
+ },
+ {
+  "id": "2026-11-04:RLAY",
+  "symbol": "RLAY",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 20.39,
+  "posIn52w": 0.9425587467362925,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": null,
+   "prevYoY": -0.4822485207100592,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.673Z"
+ },
+ {
+  "id": "2026-11-05:RLJ",
+  "symbol": "RLJ",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 12.87,
+  "posIn52w": 0.9842294983478521,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.07402323925525311,
+   "prevYoY": 0.054764075207310414,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.673Z"
+ },
+ {
+  "id": "2026-11-04:RPD",
+  "symbol": "RPD",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 14.97,
+  "posIn52w": 0.7358351729212657,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.025490915764360467,
+   "prevYoY": -0.015453352817318966,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.674Z"
+ },
+ {
+  "id": "2026-11-04:RPRX",
+  "symbol": "RPRX",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 68.77,
+  "posIn52w": 0.9696693964209888,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.132632847030401,
+   "prevYoY": 0.16499356276947807,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.674Z"
+ },
+ {
+  "id": "2026-11-06:SBET",
+  "symbol": "SBET",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 6.13,
+  "posIn52w": 0.20566502463054184,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.24092007731404252,
+   "prevYoY": 15.532552406384134,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.675Z"
+ },
+ {
+  "id": "2026-11-04:SDGR",
+  "symbol": "SDGR",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 33.39,
+  "posIn52w": 0.9829209546748412,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.1871548486856638,
+   "prevYoY": 0.07542139191731034,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.676Z"
+ },
+ {
+  "id": "2026-11-05:SEDG",
+  "symbol": "SEDG",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 27.66,
+  "posIn52w": 0.04303571428571429,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.04145195001425728,
+   "prevYoY": 0.1963037567071717,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.676Z"
+ },
+ {
+  "id": "2026-11-06:SEI",
+  "symbol": "SEI",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 62.61,
+  "posIn52w": 0.5106605351170569,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.5777946245602398,
+   "prevYoY": 0.300188711614342,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.677Z"
+ },
+ {
+  "id": "2026-11-05:SEZL",
+  "symbol": "SEZL",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 150.84,
+  "posIn52w": 0.6931126461938307,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.4255882050755162,
+   "prevYoY": 0.5165143563453629,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.677Z"
+ },
+ {
+  "id": "2026-11-06:SG",
+  "symbol": "SG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 13.36,
+  "posIn52w": 0.9899553571428572,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.021027535920832063,
+   "prevYoY": 0.038144657646443925,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.677Z"
+ },
+ {
+  "id": "2026-11-04:SHLS",
+  "symbol": "SHLS",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 8.72,
+  "posIn52w": 0.4245216067304095,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.43816087891372857,
+   "prevYoY": 0.4739311265686885,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.678Z"
+ },
+ {
+  "id": "2026-11-06:SHOO",
+  "symbol": "SHOO",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 42.84,
+  "posIn52w": 0.641345632121541,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.15611562782294497,
+   "prevYoY": 0.192098401337913,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.678Z"
+ },
+ {
+  "id": "2026-11-05:SITM",
+  "symbol": "SITM",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 457.05,
+  "posIn52w": 0.3242100576858647,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 2.5740304187059486,
+   "prevYoY": 1.265404207557487,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.679Z"
+ },
+ {
+  "id": "2026-11-06:SKT",
+  "symbol": "SKT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 39.4,
+  "posIn52w": 0.7872711421098514,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.0861522781113988,
+   "prevYoY": 0.11154704536085402,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.679Z"
+ },
+ {
+  "id": "2026-11-06:SKWD",
+  "symbol": "SKWD",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 59.8,
+  "posIn52w": 0.7652451175767238,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.1903530740394117,
+   "prevYoY": 0.5302544833902776,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.679Z"
+ },
+ {
+  "id": "2026-11-06:SMA",
+  "symbol": "SMA",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 39.69,
+  "posIn52w": 0.9444911690496213,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.16113643140094558,
+   "prevYoY": 0.1865000374167478,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.679Z"
+ },
+ {
+  "id": "2026-11-05:SNAP",
+  "symbol": "SNAP",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 5.05,
+  "posIn52w": 0.23308270676691722,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": 0.14310221596335104,
+   "prevYoY": 0.18890425524004972,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.680Z"
+ },
+ {
+  "id": "2026-11-06:SPG",
+  "symbol": "SPG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 233.01,
+  "posIn52w": 0.95385814497272,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.1329850503037331,
+   "prevYoY": 0.19495882439304357,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.681Z"
+ },
+ {
+  "id": "2026-11-04:STAA",
+  "symbol": "STAA",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 24.55,
+  "posIn52w": 0.4419521814148386,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.11950555250601702,
+   "prevYoY": 1.1104467509025269,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.681Z"
+ },
+ {
+  "id": "2026-11-06:STWD",
+  "symbol": "STWD",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 12.05,
+  "posIn52w": 0.05169340463458126,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.11654236844366084,
+   "prevYoY": 0.15617297983492495,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.682Z"
+ },
+ {
+  "id": "2026-11-04:SWK",
+  "symbol": "SWK",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 118.1,
+  "posIn52w": 0.9276804042318015,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": -0.006496272630457933,
+   "prevYoY": 0.0039288249011457665,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.682Z"
+ },
+ {
+  "id": "2026-11-06:TDC",
+  "symbol": "TDC",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 32.32,
+  "posIn52w": 0.472100848777058,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.04086538461538458,
+   "prevYoY": 0.004901960784313708,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.684Z"
+ },
+ {
+  "id": "2026-11-06:TEAM",
+  "symbol": "TEAM",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 154.9,
+  "posIn52w": 0.5684964463905987,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.2370571978837781,
+   "prevYoY": 0.27603326918742743,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.685Z"
+ },
+ {
+  "id": "2026-11-06:TECH",
+  "symbol": "TECH",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 72.83,
+  "posIn52w": 0.9983227104998323,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.04591439688715959,
+   "prevYoY": 0.013339054277457407,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.685Z"
+ },
+ {
+  "id": "2026-11-04:TKO",
+  "symbol": "TKO",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 199.65,
+  "posIn52w": 0.5455721944906641,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.21451736472621996,
+   "prevYoY": 0.18238179453120584,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.686Z"
+ },
+ {
+  "id": "2026-11-04:TKR",
+  "symbol": "TKR",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 108.83,
+  "posIn52w": 0.4935241990456715,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.0469276639875551,
+   "prevYoY": 0.07456962672575429,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.686Z"
+ },
+ {
+  "id": "2026-11-04:TPC",
+  "symbol": "TPC",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 94.7,
+  "posIn52w": 0.8314606741573034,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.21541939859823644,
+   "prevYoY": 0.1917228235667523,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.687Z"
+ },
+ {
+  "id": "2026-11-04:TPL",
+  "symbol": "TPL",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 278.28,
+  "posIn52w": 0.0463959935610802,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.3461850949109979,
+   "prevYoY": 0.3120137781735388,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.687Z"
+ },
+ {
+  "id": "2026-11-04:TREX",
+  "symbol": "TREX",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 58.74,
+  "posIn52w": 0.9517082785808147,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.2598791650896448,
+   "prevYoY": 0.07792140814489912,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.688Z"
+ },
+ {
+  "id": "2026-11-04:TRMB",
+  "symbol": "TRMB",
+  "filed": "2026-11-04",
+  "recordedAsOf": "2026-11-09",
+  "close": 54.68,
+  "posIn52w": 0.18520547945205473,
+  "story": {
+   "known": true,
+   "filed": "2026-11-04",
+   "revYoY": 0.07279183311140702,
+   "prevYoY": 0.10996916752312447,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.688Z"
+ },
+ {
+  "id": "2026-11-06:TXG",
+  "symbol": "TXG",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 65.05,
+  "posIn52w": 0.5768239381373977,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.01117434665306516,
+   "prevYoY": -0.12649501468989288,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.689Z"
+ },
+ {
+  "id": "2026-11-06:TXRH",
+  "symbol": "TXRH",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 190.52,
+  "posIn52w": 0.6032755605024647,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.09519459850091416,
+   "prevYoY": 0.11105555753961172,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.689Z"
+ },
+ {
+  "id": "2026-11-06:UI",
+  "symbol": "UI",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 685.68,
+  "posIn52w": 0.3108864748876818,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.3985905722887051,
+   "prevYoY": 0.23469739920332167,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.690Z"
+ },
+ {
+  "id": "2026-11-06:UTZ",
+  "symbol": "UTZ",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 14.24,
+  "posIn52w": 0.9843546284224252,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.02276336686077285,
+   "prevYoY": 0.013863589262535614,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.692Z"
+ },
+ {
+  "id": "2026-11-06:VSAT",
+  "symbol": "VSAT",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 74.37,
+  "posIn52w": 0.707982328610843,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.034274029203439804,
+   "prevYoY": -0.012391401250497425,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.694Z"
+ },
+ {
+  "id": "2026-11-05:VSTM",
+  "symbol": "VSTM",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-09",
+  "close": 8.7,
+  "posIn52w": 0.7130004194120113,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": null,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.694Z"
+ },
+ {
+  "id": "2026-11-06:WLDN",
+  "symbol": "WLDN",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 68.91,
+  "posIn52w": 0.09802622863955487,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.178680922606947,
+   "prevYoY": 0.331780738212863,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.696Z"
+ },
+ {
+  "id": "2026-11-06:WULF",
+  "symbol": "WULF",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 12.38,
+  "posIn52w": 0.14117068371864247,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": 0.507177033492823,
+   "prevYoY": -0.060227558988999896,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-10T04:26:32.697Z"
+ },
+ {
+  "id": "2026-11-06:YELP",
+  "symbol": "YELP",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 19.58,
+  "posIn52w": 0.13439767779390407,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.013612985921635623,
+   "prevYoY": 0.013836617223821124,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.698Z"
+ },
+ {
+  "id": "2026-11-06:ZD",
+  "symbol": "ZD",
+  "filed": "2026-11-06",
+  "recordedAsOf": "2026-11-09",
+  "close": 50.56,
+  "posIn52w": 0.7391513564255682,
+  "story": {
+   "known": true,
+   "filed": "2026-11-06",
+   "revYoY": -0.2045167729323556,
+   "prevYoY": -0.18588678881005316,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-10T04:26:32.699Z"
  }
 ]
