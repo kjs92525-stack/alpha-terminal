@@ -21400,5 +21400,95 @@
    "improving": true
   },
   "recordedAt": "2026-11-11T02:00:46.444Z"
+ },
+ {
+  "id": "2026-11-09:AMPY",
+  "symbol": "AMPY",
+  "filed": "2026-11-09",
+  "recordedAsOf": "2026-11-11",
+  "close": 3.85,
+  "posIn52w": 0.19452054794520549,
+  "story": {
+   "known": true,
+   "filed": "2026-11-09",
+   "revYoY": -0.22528465570215073,
+   "prevYoY": -0.22929740641593888,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-12T02:54:10.308Z"
+ },
+ {
+  "id": "2026-11-09:FHTX",
+  "symbol": "FHTX",
+  "filed": "2026-11-09",
+  "recordedAsOf": "2026-11-11",
+  "close": 2.09,
+  "posIn52w": 0.05154639175257729,
+  "story": {
+   "known": true,
+   "filed": "2026-11-09",
+   "revYoY": 9.246902980497977,
+   "prevYoY": 1.1267698822283974,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-12T02:54:10.371Z"
+ },
+ {
+  "id": "2026-11-10:LAND",
+  "symbol": "LAND",
+  "filed": "2026-11-10",
+  "recordedAsOf": "2026-11-11",
+  "close": 7.36,
+  "posIn52w": 0.09380530973451331,
+  "story": {
+   "known": true,
+   "filed": "2026-11-10",
+   "revYoY": -0.8347576745755089,
+   "prevYoY": -0.9729158194387962,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-12T02:54:10.409Z"
+ },
+ {
+  "id": "2026-11-10:OVID",
+  "symbol": "OVID",
+  "filed": "2026-11-10",
+  "recordedAsOf": "2026-11-11",
+  "close": 2.78,
+  "posIn52w": 0.8311688311688311,
+  "story": {
+   "known": true,
+   "filed": "2026-11-10",
+   "revYoY": -0.9848484848484849,
+   "prevYoY": -0.8831313775510204,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-12T02:54:10.438Z"
+ },
+ {
+  "id": "2026-11-05:SKIN",
+  "symbol": "SKIN",
+  "filed": "2026-11-05",
+  "recordedAsOf": "2026-11-11",
+  "close": 16.67,
+  "posIn52w": 0.2997427101200687,
+  "story": {
+   "known": true,
+   "filed": "2026-11-05",
+   "revYoY": -0.021003467553605493,
+   "prevYoY": -0.07768554874851319,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-12T02:54:10.468Z"
  }
 ]
