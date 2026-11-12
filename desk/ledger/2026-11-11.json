@@ -1,0 +1,365 @@
+{
+ "date": "2026-11-11",
+ "rulesVersion": 6,
+ "live": true,
+ "createdAt": "2026-11-12T03:00:43.320Z",
+ "market": "LIMIT",
+ "picks": [
+  {
+   "symbol": "MPC",
+   "name": "Marathon Petroleum Corporation",
+   "sector": "Energy",
+   "cap": "대형주",
+   "mcap": 113125528800,
+   "source": "중장기 랭킹",
+   "listScore": 77.9,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 74,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +60%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 43입니다. 오늘 고점 $403.39를 다시 넘어 반등이 확인되면 삽니다. 손절은 $361.44(-10.4%), +1R에 손절을 매수가로 올리고, $487.29(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 478.37,
+    "swingLow": 367.72,
+    "sweep": {
+     "level": 419.28,
+     "low": 414.06,
+     "sessionsAgo": 6
+    },
+    "fvg": null,
+    "buySideLiquidity": 493.98,
+    "rangePos": 0.38,
+    "mss": false,
+    "udRatio": 1.31,
+    "dryUp": 0.97
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 403.39,
+    "stop": 361.44,
+    "target": 487.29,
+    "refClose": 402.84,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.10400000000000001,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 402.84,
+    "rsi": 43,
+    "atrPct": 0.052,
+    "relVol": 0.8,
+    "ext50": -0.047,
+    "rs126": 0.599
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "ATRC",
+   "name": "AtriCure, Inc.",
+   "sector": "Health Care",
+   "cap": "중형주",
+   "mcap": 2926551100,
+   "source": "눌림목 셋업",
+   "listScore": 65,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 70,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +113%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 48입니다. 오늘 고점 $57.74를 다시 넘어 반등이 확인되면 삽니다. 손절은 $53.87(-6.7%), +1R에 손절을 매수가로 올리고, $65.47(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 66.02,
+    "swingLow": 58,
+    "sweep": null,
+    "fvg": [
+     53.46,
+     55.67
+    ],
+    "buySideLiquidity": 66.02,
+    "rangePos": 0.57,
+    "mss": false,
+    "udRatio": 0.94,
+    "dryUp": 0.72
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 57.74,
+    "stop": 53.87,
+    "target": 65.47,
+    "refClose": 57.53,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.067,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 57.53,
+    "rsi": 48,
+    "atrPct": 0.051,
+    "relVol": 0.8,
+    "ext50": 0.004,
+    "rs126": 1.135
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "LTC",
+   "name": "LTC Properties, Inc.",
+   "sector": "Real Estate",
+   "cap": "중형주",
+   "mcap": 2365570800,
+   "source": "중장기 랭킹",
+   "listScore": 77.4,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 65,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "50일선이 200일선 위 정배열"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 50입니다. 오늘 고점 $44.53를 다시 넘어 반등이 확인되면 삽니다. 손절은 $43.05(-3.3%), +1R에 손절을 매수가로 올리고, $47.5(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 46.92,
+    "swingLow": 41.76,
+    "sweep": null,
+    "fvg": null,
+    "buySideLiquidity": 46.92,
+    "rangePos": 0.6,
+    "mss": false,
+    "udRatio": 1.38,
+    "dryUp": 1.17
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 44.53,
+    "stop": 43.05,
+    "target": 47.5,
+    "refClose": 43.88,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.0333,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 43.88,
+    "rsi": 50,
+    "atrPct": 0.027,
+    "relVol": 0.7,
+    "ext50": 0.02,
+    "rs126": 0.14
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 1,
+    "shelf": false,
+    "offering": true,
+    "likelyDebt": false,
+    "recent": [
+     {
+      "form": "424B5",
+      "date": "2026-08-06",
+      "url": "https://www.sec.gov/Archives/edgar/data/887905/000110465926092008/tm2622154-1_424b5.htm"
+     }
+    ]
+   }
+  }
+ ],
+ "passed": [
+  {
+   "symbol": "UVE",
+   "why": "2026-09-21 증자 공시(424B3), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "JXN",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "HG",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AMTB",
+   "why": "2026-09-14 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "AMAL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SAIC",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SPNT",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LPG",
+   "why": "손절폭 12.6% 과다"
+  },
+  {
+   "symbol": "INSW",
+   "why": "손절폭 12.4% 과다"
+  },
+  {
+   "symbol": "EOG",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "REPX",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "APLE",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CBL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "R",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CNK",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HST",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "THC",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "ASH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EXEL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LTH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AES",
+   "why": "하루 변동폭 0.4%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "CON",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "DRH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PAYC",
+   "why": "최근 5거래일에 대량 하락일(-6.8%, 거래량 2.8배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "QLYS",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "NTRA",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "TEAM",
+   "why": "최근 5거래일에 대량 하락일(-16.2%, 거래량 2.6배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "DBX",
+   "why": "최근 5거래일에 대량 하락일(-6.0%, 거래량 3.5배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "GH",
+   "why": "손절폭 16.3% 과다"
+  },
+  {
+   "symbol": "HALO",
+   "why": "최근 5거래일에 대량 하락일(-15.7%, 거래량 2.8배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "FIVN",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CVI",
+   "why": "2026-11-05 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "AMN",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "FRO",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "GO",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CAI",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "FA",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "ANDG",
+   "why": "실적 발표 1거래일 전, 발표 뒤에 다시 봄"
+  },
+  {
+   "symbol": "TTEK",
+   "why": "최근 5거래일에 대량 하락일(-7.5%, 거래량 5.3배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "OSCR",
+   "why": "손절폭 14.2% 과다"
+  }
+ ]
+}
