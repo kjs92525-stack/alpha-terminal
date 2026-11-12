@@ -458,7 +458,7 @@ function renderToday() {
   $('#tiles').innerHTML = `
     <button class="tile ${mk?.state === 'SELECTIVE' ? 'blue' : mk?.state === 'WAIT' ? 'coral' : 'slate'}" data-v="lab"><span class="glyph">${mk?.state === 'WAIT' ? '!' : '↗'}</span><span class="k">시장 판정</span><span class="v">${esc(st[0])}</span><span class="s">${esc(mk?.reasons?.[0] ?? '시장 데이터를 불러오는 중')}</span></button>
     <button class="tile blue" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">${sig.filter((x) => x.status === 'waiting' && (x.trend || crashRegime())).length}</span><span class="k">오늘 낼 주문 (4시간봉 ICT)</span><span class="v num">${sig.filter((x) => x.status === 'waiting' && (x.trend || crashRegime())).length}건</span><span class="s">추세 일치 ${sig.filter((x) => x.status === 'waiting' && x.trend).length} · 급락장 반등(선택) ${crashRegime() ? sig.filter((x) => x.status === 'waiting' && !x.trend).length : 0}</span></button>
-    <button class="tile violet" onclick="document.getElementById('todo').scrollIntoView({behavior:'smooth'})"><span class="glyph">4H</span><span class="k">ICT 4시간봉 · ${esc(X?.regime?.name ?? '국면 미정')}</span><span class="v num">${sig.length}건 진행</span><span class="s">${X?.regime?.playbook ? esc(X.regime.playbook) : X?.recent?.n ? `최근 소급 ${X.recent.n}건 · 승률 ${pctU(X.recent.winRate)} · ${R(X.recent.expectancyR)}` : '신호 기록을 쌓는 중'}</span></button>`;
+    <button class="tile violet" onclick="document.getElementById('holds').scrollIntoView({behavior:'smooth'})"><span class="glyph">4H</span><span class="k">ICT 4시간봉 · ${esc(X?.regime?.name ?? '국면 미정')}</span><span class="v num">대기 ${sig.filter((x) => x.status === 'waiting').length} · 체결 ${sig.filter((x) => x.status === 'open').length}</span><span class="s">${X?.regime?.playbook ? esc(X.regime.playbook) : X?.recent?.n ? `최근 소급 ${X.recent.n}건 · 승률 ${pctU(X.recent.winRate)} · ${R(X.recent.expectancyR)}` : '신호 기록을 쌓는 중'}</span></button>`;
 
   // orders
   const pick = new Map(); for (const l of D?.ledgers ?? []) for (const p of l.picks) pick.set(`${l.date}:${p.symbol}`, p);
@@ -491,9 +491,9 @@ function renderToday() {
   const rows = [];
   for (const p of D?.open ?? []) rows.push({ sym: p.symbol, src: p.label, entry: p.entry, stop: p.stop, target: p.target, last: p.last, pnl: p.pnlPct, r: p.R, note: p.stop >= p.entry ? '본전 보호' : `${p.days}일째` });
   for (const p of D?.ict?.open ?? []) rows.push({ sym: p.symbol, src: 'ICT 일봉', entry: p.entry, stop: p.stop, target: p.target, last: p.last, pnl: p.pnlPct, r: p.R, note: p.stop >= p.entry ? '본전 보호' : `${p.days}일째` });
-  for (const s of sig.filter((x) => x.status === 'open')) rows.push({ sym: s.symbol, src: 'ICT 4H', entry: s.entry, stop: s.stop, target: s.target, last: s.last, pnl: s.last / s.entry - 1, r: (s.last - s.entry) / (s.entry - s.stop), note: s.trend ? '추세 일치' : '' });
+  for (const s of sig.filter((x) => x.status === 'open')) rows.push({ sym: s.symbol, src: 'ICT 4H', entry: s.entry, stop: s.stop, target: s.target, last: s.last, pnl: s.last / s.entry - 1, r: (s.last - s.entry) / (s.entry - s.stop), note: s.trend ? '추세 일치 · 체결 ' + md(s.filledAt?.slice(0, 10)) : '역추세 · 규칙 외(참고만)' });
   rows.sort((a, b) => (a.last - a.stop) / (a.entry - a.stop || 1) - (b.last - b.stop) / (b.entry - b.stop || 1));
-  $('#holds').innerHTML = `<div class="sec-h"><h2>보유 중</h2><span class="sub">손절에 가까운 순</span></div>
+  $('#holds').innerHTML = `<div class="sec-h"><h2>체결된 신호 추적</h2><span class="sub">모의 기록 · 내 계좌가 아니라 신호가 체결됐다고 가정한 것 · 손절에 가까운 순</span></div>
     ${rows.length ? `<div class="hold">${rows.map((h) => `<div class="hr" data-sym="${esc(h.sym)}">${avatar(h.sym)}<div class="t" style="min-width:0"><b>${esc(h.sym)}</b><span>${esc(h.src)}${h.note ? ' · ' + esc(h.note) : ''}</span>${ladder(h.stop, h.entry, h.target, h.last)}</div>
       <div class="r"><b class="${sign(h.pnl)}">${pct(h.pnl)}</b><small>${R(h.r)} · ${usd(h.last)}</small></div></div>`).join('')}</div>` : '<div class="empty"><b>보유 종목이 없습니다</b>체결되면 여기서 손절과 목표까지의 거리를 보여줍니다.</div>'}`;
   $('#m-acct').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">${accountCard()}</div>`;
