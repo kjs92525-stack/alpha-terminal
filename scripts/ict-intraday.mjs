@@ -128,7 +128,9 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
     if (v.entry === 'limit') {
       const zone = m.fvg ? m.fvg[1] : m.ob ? m.ob.hi : (m.swingHigh + bars[i].c) / 2;
       const lim = Math.min(bars[i].c, Math.max(zone, stop + 1.2 * atr[i]));
-      for (; k <= kEnd; k++) { if (bars[k].o <= stop) { k = -1; break; } if (bars[k].l <= lim) { entry = Math.min(bars[k].o, lim); break; } }
+      for (; k <= kEnd; k++) { if (bars[k].o <= stop) { k = -1; break; }
+        if (v.cancelOnTarget && bars[k].h >= hi) { k = -1; break; }   // the move already reached its target without us: the setup is spent
+        if (bars[k].l <= lim) { entry = Math.min(bars[k].o, lim); break; } }
       if (entry == null || k < 0) continue;
     } else entry = bars[k].o;
     const R = entry - stop; if (!(R > 0) || R / entry > 0.15) continue;
@@ -310,7 +312,10 @@ async function main() {
   }
   if (arg('set') === 'real') {
     // execution realism: the backtest so far could fill on the signal's own day; a once-a-day trader cannot
-    for (const [nm, v] of [['기존(신호 당일 체결 허용)', { entry: 'limit' }], ['현실(다음 거래일부터 체결)', { entry: 'limit', nextSession: true }], ['현실 + 거래량 1.5배', { entry: 'limit', nextSession: true, mssVolReq: 1.5 }]]) {
+    for (const [nm, v] of [['기존(신호 당일 체결 허용)', { entry: 'limit' }], ['현실(다음 거래일부터 체결)', { entry: 'limit', nextSession: true }], ['현실 + 거래량 1.5배', { entry: 'limit', nextSession: true, mssVolReq: 1.5 }],
+      ['현실 + 목표 먼저 닿으면 주문 취소', { entry: 'limit', nextSession: true, cancelOnTarget: true }],
+      ['현실, 다음 거래일 시가 매수(되돌림 안 기다림)', { entry: 'market', nextSession: true }],
+      ['현실, 시가 매수 + 거래량 1.5배', { entry: 'market', nextSession: true, mssVolReq: 1.5 }]]) {
       const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, v));
       for (const t of all) t.reg = regOf.get(t.t) ?? null;
       for (const [pn, pick] of [['전부', () => true], ['추세 일치', (t) => t.trend], ['추세 일치·상승장만', (t) => t.trend && t.reg === '상승장'], ['역추세', (t) => !t.trend]]) {
