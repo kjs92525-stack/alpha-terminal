@@ -121,10 +121,14 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
     let hi = 0; for (let j = i - 60; j < i; j++) hi = Math.max(hi, bars[j].h);
     // entry
     let k = i + 1, entry;
+    // a once-a-day trader (orders placed after the nightly scan) cannot be filled on the signal's own day
+    if (v.nextSession) while (k < bars.length && bars[k].day === bars[i].day) k++;
+    const kEnd = Math.min(k + 9, bars.length - 1);
+    if (k >= bars.length) continue;
     if (v.entry === 'limit') {
       const zone = m.fvg ? m.fvg[1] : m.ob ? m.ob.hi : (m.swingHigh + bars[i].c) / 2;
       const lim = Math.min(bars[i].c, Math.max(zone, stop + 1.2 * atr[i]));
-      for (; k <= Math.min(i + 10, bars.length - 1); k++) { if (bars[k].o <= stop) { k = -1; break; } if (bars[k].l <= lim) { entry = Math.min(bars[k].o, lim); break; } }
+      for (; k <= kEnd; k++) { if (bars[k].o <= stop) { k = -1; break; } if (bars[k].l <= lim) { entry = Math.min(bars[k].o, lim); break; } }
       if (entry == null || k < 0) continue;
     } else entry = bars[k].o;
     const R = entry - stop; if (!(R > 0) || R / entry > 0.15) continue;
@@ -235,7 +239,7 @@ async function main() {
   for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
     const tb = Date.now();
     const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
-    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (!['growth', 'both'].includes(arg('set'))) { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (!['growth', 'both', 'real'].includes(arg('set'))) { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
     console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
@@ -304,6 +308,20 @@ async function main() {
     }
     return;
   }
+  if (arg('set') === 'real') {
+    // execution realism: the backtest so far could fill on the signal's own day; a once-a-day trader cannot
+    for (const [nm, v] of [['기존(신호 당일 체결 허용)', { entry: 'limit' }], ['현실(다음 거래일부터 체결)', { entry: 'limit', nextSession: true }], ['현실 + 거래량 1.5배', { entry: 'limit', nextSession: true, mssVolReq: 1.5 }]]) {
+      const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, v));
+      for (const t of all) t.reg = regOf.get(t.t) ?? null;
+      for (const [pn, pick] of [['전부', () => true], ['추세 일치', (t) => t.trend], ['추세 일치·상승장만', (t) => t.trend && t.reg === '상승장'], ['역추세', (t) => !t.trend]]) {
+        const sub = all.filter(pick), s = summarize(sub, split);
+        const same = sub.filter((t) => t.entryT.slice(0, 10) === t.t), sm = same.length ? same.reduce((a, t) => a + t.R, 0) / same.length : null;
+        const cells = [[0.02, 1], [0.03, 1]].map(([rp, g]) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen: 3, pick, maxGross: g }); return `위험 ${rp * 100}% ${ps.multiple.toFixed(2)}배/연 ${p(ps.cagr)}/DD ${p(ps.maxDD)}/월중앙 ${p(ps.medianMonth)}/최악월 ${p(ps.worstMonth)}`; });
+        console.log(`REAL ${nm} | ${pn}: ${s.all.n}건 승률 ${p(s.all.winRate)} ${s.all.expectancyR?.toFixed(2)}R (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)}) 당일체결 ${same.length}건 ${sm?.toFixed(2)}R | ${cells.join(' | ')}\n    국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
+      }
+    }
+    return;
+  }
   if (arg('set') === 'growth') {
     // growth research: one base rule (4-hour limit), then which signals to take, how many at once, how much risk,
     // under a real cash limit (1x = cash only, 2x = margin)
@@ -349,7 +367,7 @@ if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { conso
  * high): every signal in `bars` with its plan and where it stands now. status: waiting (limit not reached yet), expired,
  * cancelled (opened under the stop first), open, won, lost, timeout. trend: the daily close was above its 50-day average.
  */
-export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01 } = {}) {
+export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01, nextSession = true } = {}) {
   const rules = { ...DESK_RULES, mssRaw: true };
   const atr = atrSeries(bars), bias = dailyBias(bars), ctxOf = dailyContext(bars), out = [];
   for (let i = Math.max(62, since); i < bars.length; i++) {
@@ -367,8 +385,10 @@ export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fill
     const cx = contextRead(ctxOf.get(bars[i].day), bars[i].c, limit, hi);
     if (cx) s.daily = { ext: Math.round(cx.ext * 100) / 100, overhead: cx.overhead, spread: cx.spread != null ? Math.round(cx.spread * 1000) / 1000 : null, ema20: cx.ema20, sma50: cx.sma50, sma200: cx.sma200 };
     let k = i + 1, entry = null;
-    for (; k < bars.length && k <= i + fillBars; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; } if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
-    if (entry == null) { if (s.status !== 'cancelled' && k > i + fillBars) s.status = 'expired'; out.push(s); continue; }
+    if (nextSession) while (k < bars.length && bars[k].day === bars[i].day) k++;   // orders go in after the nightly scan
+    const kLast = k + fillBars - 1;
+    for (; k < bars.length && k <= kLast; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; } if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
+    if (entry == null) { if (s.status !== 'cancelled' && k > kLast) s.status = 'expired'; out.push(s); continue; }
     s.entry = entry; s.filledAt = bars[k].t; s.status = 'open';
     const R = entry - stop; let exit = null, j;
     if (bars[k].l <= stop) { exit = Math.min(bars[k].o, stop); s.status = 'lost'; j = k; }

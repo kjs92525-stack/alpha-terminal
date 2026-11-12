@@ -103,6 +103,8 @@ jobs:
           VS="${{ inputs.variant_set }}"
           if [ "${VS#inspect:}" != "$VS" ]; then
             node scripts/inspect-signal.mjs --symbols "${VS#inspect:}"
+          elif [ "${{ inputs.variant_set }}" = "ict4h-real" ]; then
+            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 400 --set real --out research/ict4h.json
           elif [ "${{ inputs.variant_set }}" = "ict4h-aggr" ]; then
             node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 500 --set growth --aggr --out research/ict4h.json
           elif [ "${{ inputs.variant_set }}" = "ict4h-both" ]; then
