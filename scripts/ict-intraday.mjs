@@ -51,8 +51,11 @@ export function dailyContext(bars4) {
     m50.push(i >= 49 ? s50 / 50 : null);
     // staircase: the two latest daily swing lows (2 bars each side, confirmed) rise
     let lows = []; for (let j = i - 2; j >= Math.max(2, i - 80) && lows.length < 2; j--) { const l = days[j].l; if (l < days[j - 1].l && l < days[j - 2].l && l <= days[j + 1].l && l <= days[j + 2].l) lows.push(l); }
+    // the highest high of the last 252 sessions (or of what history there is, at least 120 sessions) and the 63-session return
+    let hi252 = null; if (i >= 119) { hi252 = 0; for (let j = Math.max(0, i - 251); j <= i; j++) hi252 = Math.max(hi252, days[j].h); }
     if (i + 1 < days.length && i >= 19) out.set(days[i + 1].day, { ema20: e20, sma50: i >= 49 ? s50 / 50 : null, sma200: i >= 199 ? s200 / 200 : null, atr,
-      sma50prev: i >= 69 ? m50[i - 20] : null, higherLows: lows.length === 2 ? lows[0] > lows[1] : null });
+      sma50prev: i >= 69 ? m50[i - 20] : null, higherLows: lows.length === 2 ? lows[0] > lows[1] : null,
+      hi252, close: c, ret63: i >= 63 ? c / days[i - 63].c - 1 : null });
   }
   return out;
 }
@@ -65,7 +68,7 @@ export function contextRead(ctx, close, entry, target) {
   if (!ctx || !(ctx.atr > 0)) return null;
   const walls = [ctx.sma50, ctx.sma200].filter((m) => m != null && m > entry * 1.005 && m < target);
   const stacked = ctx.sma200 != null && ctx.ema20 > ctx.sma50 && ctx.sma50 > ctx.sma200 && ctx.sma50prev != null && ctx.sma50 > ctx.sma50prev;
-  return { stacked, stair: stacked && ctx.higherLows === true, ext: (close - ctx.ema20) / ctx.atr, overhead: walls.length ? Math.min(...walls) : null, spread: ctx.sma50 ? ctx.ema20 / ctx.sma50 - 1 : null,
+  return { stacked, stair: stacked && ctx.higherLows === true, nearHigh: ctx.hi252 ? ctx.close / ctx.hi252 : null, ret63: ctx.ret63 ?? null, ext: (close - ctx.ema20) / ctx.atr, overhead: walls.length ? Math.min(...walls) : null, spread: ctx.sma50 ? ctx.ema20 / ctx.sma50 - 1 : null,
     ema20: ctx.ema20, sma50: ctx.sma50, sma200: ctx.sma200 };
 }
 
@@ -121,10 +124,16 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
     let hi = 0; for (let j = i - 60; j < i; j++) hi = Math.max(hi, bars[j].h);
     // entry
     let k = i + 1, entry;
+    // a once-a-day trader (orders placed after the nightly scan) cannot be filled on the signal's own day
+    if (v.nextSession) while (k < bars.length && bars[k].day === bars[i].day) k++;
+    const kEnd = Math.min(k + 9, bars.length - 1);
+    if (k >= bars.length) continue;
     if (v.entry === 'limit') {
       const zone = m.fvg ? m.fvg[1] : m.ob ? m.ob.hi : (m.swingHigh + bars[i].c) / 2;
       const lim = Math.min(bars[i].c, Math.max(zone, stop + 1.2 * atr[i]));
-      for (; k <= Math.min(i + 10, bars.length - 1); k++) { if (bars[k].o <= stop) { k = -1; break; } if (bars[k].l <= lim) { entry = Math.min(bars[k].o, lim); break; } }
+      for (; k <= kEnd; k++) { if (bars[k].o <= stop) { k = -1; break; }
+        if (v.cancelOnTarget && bars[k].h >= hi) { k = -1; break; }   // the move already reached its target without us: the setup is spent
+        if (bars[k].l <= lim) { entry = Math.min(bars[k].o, lim); break; } }
       if (entry == null || k < 0) continue;
     } else entry = bars[k].o;
     const R = entry - stop; if (!(R > 0) || R / entry > 0.15) continue;
@@ -152,7 +161,7 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
     const r = (exit - entry - cost * (entry + exit)) / R;
     let lo = Infinity; for (let q = i - 60; q < i; q++) lo = Math.min(lo, bars[q].l);
     out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryPx: entry, exitPx: exit, stopPx: stop, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
-      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, ...(() => { const cx = contextRead(ctxAll.get(bars[i].day), bars[i].c, entry, hi); return { stacked: !!cx?.stacked, stair: !!cx?.stair }; })(), disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
+      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, ...(() => { const cx = contextRead(ctxAll.get(bars[i].day), bars[i].c, entry, hi); return { stacked: !!cx?.stacked, stair: !!cx?.stair, nearHigh: cx?.nearHigh ?? null, ret63: cx?.ret63 ?? null, ext: cx?.ext ?? null }; })(), disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
   }
   return out;
 }
@@ -235,7 +244,7 @@ async function main() {
   for (let i = 0; i < symbols.length; i += 10) { // keep memory flat: convert each batch to 4-hour bars right away
     const tb = Date.now();
     const { bars, requests, feed } = await fetchDailyBars({ symbols: symbols.slice(i, i + 10), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 10 });
-    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (!['growth', 'both'].includes(arg('set'))) { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
+    let n = 0; for (const [s, b] of Object.entries(bars)) { n += b.length; const f = toFourHour(b); if (f.length > 200) series.set(s, f); if (!['growth', 'both', 'real'].includes(arg('set'))) { const h = hourBars(b); if (h.length > 400) series1h.set(s, h); } }
     console.log(`ict4h: ${Math.min(i + 10, symbols.length)}/${symbols.length} stocks, ${n} hourly bars, ${requests} requests, feed=${feed}, ${((Date.now() - tb) / 1000).toFixed(1)}s`);
   }
   console.log(`ict4h: ${series.size} stocks, ${((Date.now() - t0) / 1000).toFixed(0)}s to fetch`);
@@ -304,6 +313,35 @@ async function main() {
     }
     return;
   }
+  if (arg('set') === 'real') {
+    // execution realism: the backtest so far could fill on the signal's own day; a once-a-day trader cannot
+    // relative strength: each stock's 63-session return ranked against the other stocks on the same day (0 = weakest, 1 = strongest)
+    const ctxBySym = new Map([...series].map(([s, bars]) => [s, dailyContext(bars)])), retsByDay = new Map();
+    for (const ctx of ctxBySym.values()) for (const [day, c] of ctx) if (c.ret63 != null) { let a = retsByDay.get(day); if (!a) retsByDay.set(day, a = []); a.push(c.ret63); }
+    for (const a of retsByDay.values()) a.sort((x, y) => x - y);
+    const rsOf = (day, r) => { const a = retsByDay.get(day); if (!a || r == null || a.length < 30) return null; let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < r) lo = m + 1; else hi = m; } return lo / a.length; };
+    const picks = [['전부', () => true], ['추세 일치', (t) => t.trend], ['추세 일치·상승장만', (t) => t.trend && t.reg === '상승장'], ['추세 일치·조정횡보만', (t) => t.trend && t.reg === '조정·횡보'], ['역추세', (t) => !t.trend],
+      ['정배열', (t) => t.stacked], ['추세 + 52주 고점 15% 이내', (t) => t.trend && t.nearHigh >= 0.85], ['추세 + 상대강도 상위 30%', (t) => t.trend && t.rs >= 0.7],
+      ['추세 + 고점 15% 이내 + 상대강도 상위 30%', (t) => t.trend && t.nearHigh >= 0.85 && t.rs >= 0.7], ['추세 + 과열 아님(20일선 위 2ATR 이내)', (t) => t.trend && t.ext != null && t.ext <= 2]];
+    const rows = [];
+    for (const [nm, v] of [['기존(신호 당일 체결 허용)', { entry: 'limit' }], ['현실(다음 거래일부터 체결)', { entry: 'limit', nextSession: true }], ['현실 + 거래량 1.5배', { entry: 'limit', nextSession: true, mssVolReq: 1.5 }],
+      ['현실 + 목표 먼저 닿으면 주문 취소', { entry: 'limit', nextSession: true, cancelOnTarget: true }],
+      ['현실, 다음 거래일 시가 매수(되돌림 안 기다림)', { entry: 'market', nextSession: true }],
+      ['현실, 시가 매수 + 거래량 1.5배', { entry: 'market', nextSession: true, mssVolReq: 1.5 }]]) {
+      const all = []; for (const [sym, bars] of series) for (const t of tradesFor(bars, v)) { t.sym = sym; all.push(t); }
+      for (const t of all) { t.reg = regOf.get(t.t) ?? null; t.rs = rsOf(t.t, t.ret63); }
+      for (const [pn, pick] of picks) {
+        const sub = all.filter(pick), s = summarize(sub, split);
+        const same = sub.filter((t) => t.entryT.slice(0, 10) === t.t), sm = same.length ? same.reduce((a, t) => a + t.R, 0) / same.length : null;
+        const sims = [[0.02, 1], [0.03, 1]].map(([rp, g]) => ({ riskPct: rp, gross: g, ...portfolioSim(all, { riskPct: rp, maxOpen: 3, pick, maxGross: g }) }));
+        const cells = sims.map((ps) => `위험 ${ps.riskPct * 100}% ${ps.multiple.toFixed(2)}배/연 ${p(ps.cagr)}/DD ${p(ps.maxDD)}/월중앙 ${p(ps.medianMonth)}/최악월 ${p(ps.worstMonth)}`);
+        rows.push({ variant: nm, pick: pn, ...s, sameDay: { n: same.length, expectancyR: sm }, account: sims });
+        console.log(`REAL ${nm} | ${pn}: ${s.all.n}건 승률 ${p(s.all.winRate)} ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)} (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)}) 당일체결 ${same.length}건 ${sm?.toFixed(2)}R | ${cells.join(' | ')}\n    국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
+      }
+    }
+    const out = arg('out'); if (out) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), years, stocks: series.size, split, set: 'real', rows })); }
+    return;
+  }
   if (arg('set') === 'growth') {
     // growth research: one base rule (4-hour limit), then which signals to take, how many at once, how much risk,
     // under a real cash limit (1x = cash only, 2x = margin)
@@ -347,9 +385,9 @@ if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { conso
 /**
  * Live view of the same rule (4-hour shift, limit in the gap / order block, stop under the swept low, target the 60-bar
  * high): every signal in `bars` with its plan and where it stands now. status: waiting (limit not reached yet), expired,
- * cancelled (opened under the stop first), open, won, lost, timeout. trend: the daily close was above its 50-day average.
+ * cancelled (opened under the stop first, or reached the target before the limit filled: cancelReason 'target'), open, won, lost, timeout. trend: the daily close was above its 50-day average.
  */
-export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01 } = {}) {
+export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01, nextSession = true, cancelOnTarget = true } = {}) {
   const rules = { ...DESK_RULES, mssRaw: true };
   const atr = atrSeries(bars), bias = dailyBias(bars), ctxOf = dailyContext(bars), out = [];
   for (let i = Math.max(62, since); i < bars.length; i++) {
@@ -367,8 +405,13 @@ export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fill
     const cx = contextRead(ctxOf.get(bars[i].day), bars[i].c, limit, hi);
     if (cx) s.daily = { ext: Math.round(cx.ext * 100) / 100, overhead: cx.overhead, spread: cx.spread != null ? Math.round(cx.spread * 1000) / 1000 : null, ema20: cx.ema20, sma50: cx.sma50, sma200: cx.sma200 };
     let k = i + 1, entry = null;
-    for (; k < bars.length && k <= i + fillBars; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; } if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
-    if (entry == null) { if (s.status !== 'cancelled' && k > i + fillBars) s.status = 'expired'; out.push(s); continue; }
+    if (nextSession) while (k < bars.length && bars[k].day === bars[i].day) k++;   // orders go in after the nightly scan
+    const kLast = k + fillBars - 1;
+    for (; k < bars.length && k <= kLast; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; }
+      // the price reached the target before the limit filled: the move is spent, the order is withdrawn (2026-11 ZETA)
+      if (cancelOnTarget && bars[k].h >= hi) { s.status = 'cancelled'; s.cancelReason = 'target'; break; }
+      if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
+    if (entry == null) { if (s.status !== 'cancelled' && k > kLast) s.status = 'expired'; out.push(s); continue; }
     s.entry = entry; s.filledAt = bars[k].t; s.status = 'open';
     const R = entry - stop; let exit = null, j;
     if (bars[k].l <= stop) { exit = Math.min(bars[k].o, stop); s.status = 'lost'; j = k; }
