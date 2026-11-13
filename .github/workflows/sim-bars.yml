@@ -24,18 +24,25 @@ on:
         description: 'Research only: years of history to test'
         default: '3'
       variant_set:
-        description: 'Research only: ict, growth, short, edge, ict4h or ict4h-edge (4-hour ICT event study)'
+        description: 'Research only: ict, growth, short, edge, ict4h, ict4h-edge, ict4h-real (execution realism), momo (momentum screen + its history) or inspect:SYM,SYM'
         default: 'ict'
+      size:
+        description: 'Research only (ict4h-real): number of stocks, by traded value'
+        default: '250'
+      timeout:
+        description: 'Research only: job timeout in minutes (hourly bars for 250 stocks x 3 years took over 90)'
+        default: '240'
 permissions:
   contents: write
 concurrency:
-  group: ${{ github.ref == 'refs/heads/main' && 'data-branch-writer' || format('sim-bars-{0}', github.ref) }}
+  # research runs commit nothing, so different research sets on one branch may run side by side
+  group: ${{ github.ref == 'refs/heads/main' && inputs.research != true && 'data-branch-writer' || format('sim-bars-{0}-{1}', github.ref, inputs.research && inputs.variant_set || 'build') }}
   cancel-in-progress: false
 jobs:
   bars:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.research && 90 || 45 }}
+    timeout-minutes: ${{ inputs.research && fromJSON(inputs.timeout || '240') || 45 }}
     env:
       ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
       ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
@@ -104,7 +111,9 @@ jobs:
           if [ "${VS#inspect:}" != "$VS" ]; then
             node scripts/inspect-signal.mjs --symbols "${VS#inspect:}"
           elif [ "${{ inputs.variant_set }}" = "ict4h-real" ]; then
-            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 400 --set real --out research/ict4h.json
+            node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size "${{ inputs.size || '250' }}" --set real --out research/ict4h.json
+          elif [ "${{ inputs.variant_set }}" = "momo" ]; then
+            node scripts/momentum-screen.mjs --rankings data-branch/rankings --years "${{ inputs.years || '3' }}" --out research/momo.json
           elif [ "${{ inputs.variant_set }}" = "ict4h-aggr" ]; then
             node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size 500 --set growth --aggr --out research/ict4h.json
           elif [ "${{ inputs.variant_set }}" = "ict4h-both" ]; then

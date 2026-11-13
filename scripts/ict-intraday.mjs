@@ -51,8 +51,11 @@ export function dailyContext(bars4) {
     m50.push(i >= 49 ? s50 / 50 : null);
     // staircase: the two latest daily swing lows (2 bars each side, confirmed) rise
     let lows = []; for (let j = i - 2; j >= Math.max(2, i - 80) && lows.length < 2; j--) { const l = days[j].l; if (l < days[j - 1].l && l < days[j - 2].l && l <= days[j + 1].l && l <= days[j + 2].l) lows.push(l); }
+    // the highest high of the last 252 sessions (or of what history there is, at least 120 sessions) and the 63-session return
+    let hi252 = null; if (i >= 119) { hi252 = 0; for (let j = Math.max(0, i - 251); j <= i; j++) hi252 = Math.max(hi252, days[j].h); }
     if (i + 1 < days.length && i >= 19) out.set(days[i + 1].day, { ema20: e20, sma50: i >= 49 ? s50 / 50 : null, sma200: i >= 199 ? s200 / 200 : null, atr,
-      sma50prev: i >= 69 ? m50[i - 20] : null, higherLows: lows.length === 2 ? lows[0] > lows[1] : null });
+      sma50prev: i >= 69 ? m50[i - 20] : null, higherLows: lows.length === 2 ? lows[0] > lows[1] : null,
+      hi252, close: c, ret63: i >= 63 ? c / days[i - 63].c - 1 : null });
   }
   return out;
 }
@@ -65,7 +68,7 @@ export function contextRead(ctx, close, entry, target) {
   if (!ctx || !(ctx.atr > 0)) return null;
   const walls = [ctx.sma50, ctx.sma200].filter((m) => m != null && m > entry * 1.005 && m < target);
   const stacked = ctx.sma200 != null && ctx.ema20 > ctx.sma50 && ctx.sma50 > ctx.sma200 && ctx.sma50prev != null && ctx.sma50 > ctx.sma50prev;
-  return { stacked, stair: stacked && ctx.higherLows === true, ext: (close - ctx.ema20) / ctx.atr, overhead: walls.length ? Math.min(...walls) : null, spread: ctx.sma50 ? ctx.ema20 / ctx.sma50 - 1 : null,
+  return { stacked, stair: stacked && ctx.higherLows === true, nearHigh: ctx.hi252 ? ctx.close / ctx.hi252 : null, ret63: ctx.ret63 ?? null, ext: (close - ctx.ema20) / ctx.atr, overhead: walls.length ? Math.min(...walls) : null, spread: ctx.sma50 ? ctx.ema20 / ctx.sma50 - 1 : null,
     ema20: ctx.ema20, sma50: ctx.sma50, sma200: ctx.sma200 };
 }
 
@@ -158,7 +161,7 @@ export function tradesFor(bars, v, { cost = 0.001, maxHold: maxHold0 = 60, minRR
     const r = (exit - entry - cost * (entry + exit)) / R;
     let lo = Infinity; for (let q = i - 60; q < i; q++) lo = Math.min(lo, bars[q].l);
     out.push({ t: bars[i].day, R: r, win: r > 0, kind, entryPx: entry, exitPx: exit, stopPx: stop, entryT: bars[k].t, exitT: bars[xi].t, held: xi - k,
-      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, ...(() => { const cx = contextRead(ctxAll.get(bars[i].day), bars[i].c, entry, hi); return { stacked: !!cx?.stacked, stair: !!cx?.stair }; })(), disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
+      trend: trendOf.get(bars[i].day) === true, volMult: m.volMult, stopPct: R / entry, ...(() => { const cx = contextRead(ctxAll.get(bars[i].day), bars[i].c, entry, hi); return { stacked: !!cx?.stacked, stair: !!cx?.stair, nearHigh: cx?.nearHigh ?? null, ret63: cx?.ret63 ?? null, ext: cx?.ext ?? null }; })(), disc: hi > lo && (entry - lo) / (hi - lo) <= 0.5 }); busyUntil = j;
   }
   return out;
 }
@@ -312,19 +315,31 @@ async function main() {
   }
   if (arg('set') === 'real') {
     // execution realism: the backtest so far could fill on the signal's own day; a once-a-day trader cannot
+    // relative strength: each stock's 63-session return ranked against the other stocks on the same day (0 = weakest, 1 = strongest)
+    const ctxBySym = new Map([...series].map(([s, bars]) => [s, dailyContext(bars)])), retsByDay = new Map();
+    for (const ctx of ctxBySym.values()) for (const [day, c] of ctx) if (c.ret63 != null) { let a = retsByDay.get(day); if (!a) retsByDay.set(day, a = []); a.push(c.ret63); }
+    for (const a of retsByDay.values()) a.sort((x, y) => x - y);
+    const rsOf = (day, r) => { const a = retsByDay.get(day); if (!a || r == null || a.length < 30) return null; let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < r) lo = m + 1; else hi = m; } return lo / a.length; };
+    const picks = [['전부', () => true], ['추세 일치', (t) => t.trend], ['추세 일치·상승장만', (t) => t.trend && t.reg === '상승장'], ['추세 일치·조정횡보만', (t) => t.trend && t.reg === '조정·횡보'], ['역추세', (t) => !t.trend],
+      ['정배열', (t) => t.stacked], ['추세 + 52주 고점 15% 이내', (t) => t.trend && t.nearHigh >= 0.85], ['추세 + 상대강도 상위 30%', (t) => t.trend && t.rs >= 0.7],
+      ['추세 + 고점 15% 이내 + 상대강도 상위 30%', (t) => t.trend && t.nearHigh >= 0.85 && t.rs >= 0.7], ['추세 + 과열 아님(20일선 위 2ATR 이내)', (t) => t.trend && t.ext != null && t.ext <= 2]];
+    const rows = [];
     for (const [nm, v] of [['기존(신호 당일 체결 허용)', { entry: 'limit' }], ['현실(다음 거래일부터 체결)', { entry: 'limit', nextSession: true }], ['현실 + 거래량 1.5배', { entry: 'limit', nextSession: true, mssVolReq: 1.5 }],
       ['현실 + 목표 먼저 닿으면 주문 취소', { entry: 'limit', nextSession: true, cancelOnTarget: true }],
       ['현실, 다음 거래일 시가 매수(되돌림 안 기다림)', { entry: 'market', nextSession: true }],
       ['현실, 시가 매수 + 거래량 1.5배', { entry: 'market', nextSession: true, mssVolReq: 1.5 }]]) {
-      const all = []; for (const bars of series.values()) all.push(...tradesFor(bars, v));
-      for (const t of all) t.reg = regOf.get(t.t) ?? null;
-      for (const [pn, pick] of [['전부', () => true], ['추세 일치', (t) => t.trend], ['추세 일치·상승장만', (t) => t.trend && t.reg === '상승장'], ['역추세', (t) => !t.trend]]) {
+      const all = []; for (const [sym, bars] of series) for (const t of tradesFor(bars, v)) { t.sym = sym; all.push(t); }
+      for (const t of all) { t.reg = regOf.get(t.t) ?? null; t.rs = rsOf(t.t, t.ret63); }
+      for (const [pn, pick] of picks) {
         const sub = all.filter(pick), s = summarize(sub, split);
         const same = sub.filter((t) => t.entryT.slice(0, 10) === t.t), sm = same.length ? same.reduce((a, t) => a + t.R, 0) / same.length : null;
-        const cells = [[0.02, 1], [0.03, 1]].map(([rp, g]) => { const ps = portfolioSim(all, { riskPct: rp, maxOpen: 3, pick, maxGross: g }); return `위험 ${rp * 100}% ${ps.multiple.toFixed(2)}배/연 ${p(ps.cagr)}/DD ${p(ps.maxDD)}/월중앙 ${p(ps.medianMonth)}/최악월 ${p(ps.worstMonth)}`; });
-        console.log(`REAL ${nm} | ${pn}: ${s.all.n}건 승률 ${p(s.all.winRate)} ${s.all.expectancyR?.toFixed(2)}R (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)}) 당일체결 ${same.length}건 ${sm?.toFixed(2)}R | ${cells.join(' | ')}\n    국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
+        const sims = [[0.02, 1], [0.03, 1]].map(([rp, g]) => ({ riskPct: rp, gross: g, ...portfolioSim(all, { riskPct: rp, maxOpen: 3, pick, maxGross: g }) }));
+        const cells = sims.map((ps) => `위험 ${ps.riskPct * 100}% ${ps.multiple.toFixed(2)}배/연 ${p(ps.cagr)}/DD ${p(ps.maxDD)}/월중앙 ${p(ps.medianMonth)}/최악월 ${p(ps.worstMonth)}`);
+        rows.push({ variant: nm, pick: pn, ...s, sameDay: { n: same.length, expectancyR: sm }, account: sims });
+        console.log(`REAL ${nm} | ${pn}: ${s.all.n}건 승률 ${p(s.all.winRate)} ${s.all.expectancyR?.toFixed(2)}R PF ${s.all.profitFactor?.toFixed(2)} (앞 ${s.first.expectancyR?.toFixed(2)} / 최근 ${s.last.expectancyR?.toFixed(2)}) 당일체결 ${same.length}건 ${sm?.toFixed(2)}R | ${cells.join(' | ')}\n    국면: ${Object.entries(s.byRegime).map(([k, a]) => `${k} ${a.n}건 ${a.expectancyR?.toFixed(2)}R`).join(' | ')}`);
       }
     }
+    const out = arg('out'); if (out) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), years, stocks: series.size, split, set: 'real', rows })); }
     return;
   }
   if (arg('set') === 'growth') {
