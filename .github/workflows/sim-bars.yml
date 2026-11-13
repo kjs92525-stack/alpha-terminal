@@ -30,7 +30,7 @@ on:
         description: 'Research only (ict4h-real): number of stocks, by traded value'
         default: '250'
       save_output:
-        description: 'Research only (inspect): also commit the output to this branch as research-out/inspect.jsonl'
+        description: 'Research only: also commit the research/ output files to this branch under research-out/'
         type: boolean
         default: false
       timeout:
@@ -134,14 +134,15 @@ jobs:
         with:
           name: desk-variants
           path: research/
-      - name: Commit inspect output (feature branch, save_output only)
-        # the chart data of an inspect run, committed as research-out/inspect.jsonl for tools that cannot download artifacts
-        if: inputs.research == true && inputs.save_output == true && github.ref != 'refs/heads/main' && startsWith(inputs.variant_set, 'inspect:')
+      - name: Commit research output (feature branch, save_output only)
+        # the run's research/ files, committed under research-out/ for tools that cannot download artifacts
+        if: inputs.research == true && inputs.save_output == true && github.ref != 'refs/heads/main'
         run: |
-          mkdir -p research-out && cp research/inspect.jsonl research-out/inspect.jsonl
-          git add -f research-out/inspect.jsonl
-          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "research: inspect output"
-          git pull -q --rebase origin ${GITHUB_REF_NAME} && git push -q origin HEAD:${GITHUB_REF_NAME}
+          mkdir -p research-out && cp -r research/. research-out/
+          git add -f research-out
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "research: output of ${{ inputs.variant_set }}"
+          for i in 1 2 3; do git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" pull -q --rebase origin ${GITHUB_REF_NAME} && git push -q origin HEAD:${GITHUB_REF_NAME} && exit 0; sleep 5; done; exit 1
       - name: Commit preview build (feature branch)
         if: env.PUBLISH_DATA != 'true' && inputs.research != true
         run: |
