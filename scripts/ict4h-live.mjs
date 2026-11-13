@@ -5,7 +5,7 @@
 //   node scripts/ict4h-live.mjs --universe data-branch/latest.json --prev data-branch/desk/ict4h.json --out data-branch/desk/ict4h.json
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { toFourHour, signalsFor } from './ict-intraday.mjs';
+import { toFourHour, signalsFor, dailyContext } from './ict-intraday.mjs';
 import { chooseUniverse, regimeSeries } from './desk-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
@@ -39,6 +39,13 @@ export const REGIME_PLAYBOOK = {
   '약세장': '추세 일치 신호 위험 2%(드묾). 반등 구조 전환은 선택으로 위험 0.5%만(3년 40건 승률 60%, +1.35R). 숏은 손실',
 };
 
+/** share of the universe with a lower 63-session return that day (0 = weakest, 1 = strongest); null under 30 stocks */
+export function rsRank(all, r) {
+  if (!all || r == null || all.length < 30) return null;
+  let n = 0; for (const x of all) if (x < r) n++;
+  return n / all.length;
+}
+
 /** merge tonight's view of each signal into the stored list: finished signals keep their result */
 export function mergeSignals(prev, fresh, keepDays = 120, now = Date.now()) {
   const key = (s) => `${s.symbol}|${s.t}`, done = new Set(['won', 'lost', 'timeout', 'expired', 'cancelled']);
@@ -64,16 +71,20 @@ async function main() {
   const prevPath = arg('prev'), prev = prevPath && existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, 'utf8')) : null;
   const { fetchDailyBars } = await import('../packages/pipeline/alpaca.mjs');
   const start = new Date(Date.now() - 110 * 864e5).toISOString().slice(0, 10), now = new Date().toISOString();
-  const fresh = []; let asOf = null; const t0 = Date.now();
+  const fresh = []; let asOf = null; const t0 = Date.now(); const ret63 = new Map(), retsByDay = new Map();
   for (let i = 0; i < symbols.length; i += 25) {
     const { bars } = await fetchDailyBars({ symbols: symbols.slice(i, i + 25), start, end: new Date(Date.now() - 20 * 60 * 1000).toISOString(), timeframe: '1Hour', keyId: process.env.ALPACA_KEY_ID, secretKey: process.env.ALPACA_SECRET_KEY, batchSize: 25 });
     for (const [sym, hb] of Object.entries(bars)) {
       const b4 = toFourHour(hb); if (b4.length < 80) continue;
       if (!asOf || b4.at(-1).t > asOf) asOf = b4.at(-1).t;
       const m = meta.get(sym) ?? {};
+      // 63-session return known before each day opens, for the relative-strength rank among the universe
+      const ctx = dailyContext(b4); ret63.set(sym, ctx);
+      for (const [day, c] of ctx) if (c.ret63 != null) { let a = retsByDay.get(day); if (!a) retsByDay.set(day, a = []); a.push(c.ret63); }
       for (const s of signalsFor(b4, { since: b4.length - 140 })) /* long enough to follow open trades (60 bars) after a 10-bar fill window */ fresh.push({ symbol: sym, name: m.name ?? sym, sector: m.sector ?? null, ...s, firstSeen: now });
     }
   }
+  for (const s of fresh) { const r = ret63.get(s.symbol)?.get(s.day)?.ret63, rs = rsRank(retsByDay.get(s.day), r); if (rs != null) s.rs = Math.round(rs * 100) / 100; }
   const signals = mergeSignals(prev?.signals, fresh);
   // market regime from QQQ daily closes (same rule as the backtest split)
   let regime = null;
@@ -84,7 +95,7 @@ async function main() {
   } catch (e) { console.warn(`ict4h-live: regime unavailable (${e.message})`); }
   const firstLive = prev?.firstLive ?? now;
   const out = { model: 'ict4h-v1', generatedAt: now, asOf, firstLive, universe: symbols.length, backtest: BACKTEST_4H, regime,
-    rules: { bars: '정규장 4시간봉(09:30-13:30, 13:30-16:00 ET)', entry: '구조 전환 뒤 갭(FVG)·오더블록 지정가, 10봉(약 5거래일) 유효', stop: '쓸고 간 저점 아래(0.2 ATR)', exit: '60봉 고점(매수 쪽 유동성)에서 전량, 60봉(약 30거래일) 지나면 정리', minRR: 1.5 },
+    rules: { bars: '정규장 4시간봉(09:30-13:30, 13:30-16:00 ET)', entry: '구조 전환 뒤 갭(FVG)·오더블록 지정가, 신호 다음 거래일부터 10봉(약 5거래일) 유효, 체결 전에 목표가에 닿으면 취소', stop: '쓸고 간 저점 아래(0.2 ATR)', exit: '60봉 고점(매수 쪽 유동성)에서 전량, 60봉(약 30거래일) 지나면 정리', minRR: 1.5 },
     stats: liveStats(signals, firstLive), recent: liveStats(signals), signals };
   mkdirSync(dirname(arg('out', 'desk/ict4h.json')), { recursive: true });
   writeFileSync(arg('out', 'desk/ict4h.json'), JSON.stringify(out));

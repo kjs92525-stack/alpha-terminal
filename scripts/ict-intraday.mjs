@@ -385,9 +385,9 @@ if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { conso
 /**
  * Live view of the same rule (4-hour shift, limit in the gap / order block, stop under the swept low, target the 60-bar
  * high): every signal in `bars` with its plan and where it stands now. status: waiting (limit not reached yet), expired,
- * cancelled (opened under the stop first), open, won, lost, timeout. trend: the daily close was above its 50-day average.
+ * cancelled (opened under the stop first, or reached the target before the limit filled: cancelReason 'target'), open, won, lost, timeout. trend: the daily close was above its 50-day average.
  */
-export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01, nextSession = true } = {}) {
+export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fillBars = 10, since = 0, minRiskPct = 0.01, nextSession = true, cancelOnTarget = true } = {}) {
   const rules = { ...DESK_RULES, mssRaw: true };
   const atr = atrSeries(bars), bias = dailyBias(bars), ctxOf = dailyContext(bars), out = [];
   for (let i = Math.max(62, since); i < bars.length; i++) {
@@ -407,7 +407,10 @@ export function signalsFor(bars, { cost = 0.001, maxHold = 60, minRR = 1.5, fill
     let k = i + 1, entry = null;
     if (nextSession) while (k < bars.length && bars[k].day === bars[i].day) k++;   // orders go in after the nightly scan
     const kLast = k + fillBars - 1;
-    for (; k < bars.length && k <= kLast; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; } if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
+    for (; k < bars.length && k <= kLast; k++) { if (bars[k].o <= stop) { s.status = 'cancelled'; break; }
+      // the price reached the target before the limit filled: the move is spent, the order is withdrawn (2026-11 ZETA)
+      if (cancelOnTarget && bars[k].h >= hi) { s.status = 'cancelled'; s.cancelReason = 'target'; break; }
+      if (bars[k].l <= limit) { entry = Math.min(bars[k].o, limit); break; } }
     if (entry == null) { if (s.status !== 'cancelled' && k > kLast) s.status = 'expired'; out.push(s); continue; }
     s.entry = entry; s.filledAt = bars[k].t; s.status = 'open';
     const R = entry - stop; let exit = null, j;

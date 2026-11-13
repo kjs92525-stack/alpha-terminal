@@ -294,7 +294,7 @@ const crashRegime = () => ['급락 조정', '약세장'].includes(DATA.ict4h?.re
 /* rank 4-hour signals by what paid in the current regime (3-year backtest, 2026-11-08) */
 function sigScore(s) {
   const vol = s.volMult >= 1.5, disc = s.rangePos != null && s.rangePos <= 0.5;
-  return (s.trend ? 3 : 0) + (vol ? 1 : 0) + (disc ? 0.5 : 0);
+  return (s.trend ? 3 : 0) + (s.rs >= 0.7 ? 1.5 : 0) + (vol ? 1 : 0) + (disc ? 0.5 : 0);
 }
 /* the account rule (3 years, 400 stocks, cash only): trend-aligned signals only. Adding the crash-regime signals raised the
    per-trade result but doubled the account's drawdown (-15% → -31%), so they are shown for reference, not traded */
@@ -308,6 +308,7 @@ function skipNote(s) {
 }
 function sigTags(s) {
   const t = [];
+  if (s.rs >= 0.7) t.push(`상대강도 상위 ${Math.max(1, Math.round((1 - s.rs) * 100))}%`);
   if (s.volMult >= 1.5) t.push(`거래량 실린 전환 ${s.volMult.toFixed(1)}배`);
   if (s.rangePos != null && s.rangePos <= 0.5) t.push(`할인 구간 (60봉 범위 ${Math.round(s.rangePos * 100)}%)`);
   return t.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${t.map((x) => `<span class="chip mint">${esc(x)}</span>`).join('')}</div>` : '';
@@ -438,6 +439,7 @@ function feedItems() {
   for (const e of DATA.desk?.ict?.events ?? []) items.push({ date: e.date, sym: e.symbol, text: e.text, src: 'ICT 일봉' });
   for (const s of DATA.ict4h?.signals ?? []) {
     if (s.status === 'waiting') items.push({ date: s.day, sym: s.symbol, text: `4시간봉 구조 전환. ${usd(s.limit)} 지정가 대기`, src: 'ICT 4H' });
+    else if (s.cancelReason === 'target') items.push({ date: s.day, sym: s.symbol, text: `체결 전에 목표가 ${usd(s.target)}에 먼저 닿아 주문 취소`, src: 'ICT 4H' });
     else if (s.filledAt) items.push({ date: s.filledAt.slice(0, 10), sym: s.symbol, text: s.R != null ? `${ST4[s.status]} ${R(s.R)}` : `${usd(s.entry)} 체결`, src: 'ICT 4H' });
   }
   return items.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
@@ -475,7 +477,7 @@ function renderToday() {
       ${levels(entry, p.plan.stop, tgt, '내일 시가')}<div class="oc-f"><span>${n}주 · ${usd(n * entry, 0)}</span><span>목표에서 전량</span></div></article>`); }
   for (const s of sig.filter((x) => x.status === 'waiting').sort((a, b) => sigScore(b) - sigScore(a))) { const n = s.trend ? sizeFor(ICT4_RISK, s.limit, s.stop, ICT4_CAP) : crashRegime() ? sizeFor(CRASH_RISK, s.limit, s.stop, 0.25) : 0;
     (n ? cards : skip).push(`<article class="card oc" data-sym="${esc(s.symbol)}"><div class="oc-h">${avatar(s.symbol)}<div class="t"><b>${esc(s.symbol)}</b><span>${esc(s.name ?? '')}</span></div><span class="chip violet">ICT 4H</span>${s.trend ? '<span class="chip mint">추세 일치</span>' : ''}</div>
-      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}${skipNote(s)}<div class="oc-f"><span>${n ? `${n}주 · 위험 ${s.trend ? (ICT4_RISK * 100).toFixed(0) : '0.5'}% · ${usd(n * s.limit, 0)}` : '주문 안 냄'}</span><span>약 5거래일 유효</span></div></article>`); }
+      ${levels(s.limit, s.stop, s.target, `지정가 · ${esc(s.zone)}`)}${sigTags(s)}${dailyWarn(s)}${skipNote(s)}<div class="oc-f"><span>${n ? `${n}주 · 위험 ${s.trend ? (ICT4_RISK * 100).toFixed(0) : '0.5'}% · ${usd(n * s.limit, 0)}` : '주문 안 냄'}</span><span>약 5거래일 유효 · 목표가 먼저 닿으면 취소</span></div></article>`); }
   for (const o of blocked) ref.push(`<article class="card oc void" data-sym="${esc(o.symbol)}"><div class="oc-h">${avatar(o.symbol)}<div class="t"><b>${esc(o.symbol)}</b><span>${esc(o.blocked)}</span></div><span class="chip coral">주문 취소</span></div></article>`);
   $('#todo').innerHTML = `<div class="sec-h"><h2>오늘 낼 주문</h2><span class="sub">장 마감 기준 · 다음 거래일에 넣을 주문</span><span class="grow"></span>
       <label class="acct-in" for="mode">모드 <select id="mode">${Object.entries(MODES).map(([k, m]) => `<option value="${k}" ${mode() === m ? 'selected' : ''}>${m.label}</option>`).join('')}</select></label>
