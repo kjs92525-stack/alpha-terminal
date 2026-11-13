@@ -9,34 +9,33 @@ import { toFourHour, signalsFor, dailyContext } from './ict-intraday.mjs';
 import { chooseUniverse, regimeSeries } from './desk-backtest.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
-// 2026-11-08 run (3 years, 251 stocks): the same limit rule, split by the Nasdaq-100 regime on the signal day
+// 2026-11-13 run (3 years, 399 stocks, scripts/ict-intraday.mjs --set real): what a once-a-day trader can get. Orders go in
+// after the nightly scan, so a fill is possible from the next session on, and an order whose target is reached first is
+// withdrawn. The earlier figures (2026-11-08: trend-aligned +0.39R to +0.52R, account 3.1x) did not survive this rerun:
+// the same old rule on the new sample gave +0.21R, 1.76x. Account = entry order, at most 3 open, cash only, compounding.
 export const BACKTEST_4H = {
-  study: '3년, 거래대금 상위 250종목, 신호마다 따로 거래(비용 0.1%씩 포함)', from: '2023-11', to: '2026-11',
-  limit: { n: 757, winRate: 0.392, expectancyR: 0.38, first: 0.21, last: 0.86 },
-  trendLimit: { n: 227, winRate: 0.454, expectancyR: 0.52, first: 0.50, last: 0.55 },
-  volume: { n: 169, winRate: 0.432, expectancyR: 0.56, first: 0.40, last: 1.30 },
-  discount: { n: 568, winRate: 0.373, expectancyR: 0.36, first: 0.17, last: 0.88 },
-  // the signals as one account (2026-11-08, scripts/ict-intraday.mjs portfolioSim: entry order, max 5 open, compounding)
-  // 2026-11-08 growth run (400 stocks, cash limit = account): trend-aligned only, risk 2%, ≤2 positions → 3.16x, 46%/yr, max DD -15%
-  accountCash: { trend: { risk2: { multiple: 3.16, cagr: 0.458, maxDD: -0.153 }, risk3: { multiple: 3.28, cagr: 0.475, maxDD: -0.181 } },
-    trendMargin2x: { risk2: { multiple: 4.73, cagr: 0.665, maxDD: -0.173 } }, allSignals: { risk1: { multiple: 2.72, cagr: 0.372, maxDD: -0.243 } } },
-  account: {
-    trend: { label: '일봉 추세 일치 신호만', risk1: { multiple: 2.51, cagr: 0.353, maxDD: -0.110 }, risk2: { multiple: 5.55, cagr: 0.757, maxDD: -0.209 } },
-    all: { label: '신호 전부', risk1: { multiple: 2.58, cagr: 0.350, maxDD: -0.313 }, risk2: { multiple: 4.41, cagr: 0.599, maxDD: -0.543 } },
-  },
+  study: '3년, 거래대금 상위 400종목, 신호 다음 거래일부터 체결·목표 먼저 닿으면 취소, 신호마다 따로 거래(비용 0.1%씩 포함)', from: '2023-11', to: '2026-11',
+  limit: { n: 1178, winRate: 0.345, expectancyR: 0.17, first: -0.01, last: 0.64 },
+  trendLimit: { n: 323, winRate: 0.381, expectancyR: 0.21, first: 0.13, last: 0.36 },
+  trendRs: { n: 145, winRate: 0.372, expectancyR: 0.26, first: 0.18, last: 0.43, note: '추세 일치 + 63일 상대강도 상위 30%. 표본이 작아 우선순위로만 씀' },
+  trendMarket: { n: 168, winRate: 0.423, expectancyR: 0.25, first: 0.13, last: 0.50, note: '다음 거래일 시가 매수. 계좌 1.59배, 낙폭 -22%로 지정가보다 나쁨' },
+  sameDayAllowed: { n: 346, winRate: 0.390, expectancyR: 0.21, note: '신호 당일 체결을 허용한 예전 방식. 당일 체결 41건 +0.46R' },
+  accountCash: { trend: { risk2: { multiple: 1.90, cagr: 0.233, maxDD: -0.190, medianMonth: 0.009, worstMonth: -0.142, losingMonths: 0.34 }, risk3: { multiple: 1.86, cagr: 0.225, maxDD: -0.246, medianMonth: 0.005, worstMonth: -0.163, losingMonths: 0.42 } },
+    trendRs: { risk2: { multiple: 2.60, cagr: 0.374, maxDD: -0.110, worstMonth: -0.078 }, risk3: { multiple: 3.22, cagr: 0.475, maxDD: -0.130, worstMonth: -0.089 } },
+    allSignals: { risk2: { multiple: 1.70, cagr: 0.184, maxDD: -0.375, worstMonth: -0.225 } }, margin2x: null },
   byRegime: {
-    '상승장': { n: 389, winRate: 0.393, expectancyR: 0.48, trend: 0.72 },
-    '조정·횡보': { n: 106, winRate: 0.311, expectancyR: -0.01, trend: 0.19 },
-    '급락 조정': { n: 41, winRate: 0.585, expectancyR: 0.76, volume: 0.90, discount: 0.85 },
-    '약세장': { n: 38, winRate: 0.553, expectancyR: 1.10, discount: 1.19 },
+    '상승장': { n: 625, winRate: 0.347, expectancyR: 0.24, trend: 0.33, trendN: 200 },
+    '조정·횡보': { n: 150, winRate: 0.353, expectancyR: 0.13, trend: 0.04, trendN: 57 },
+    '급락 조정': { n: 69, winRate: 0.478, expectancyR: 0.39, trend: -0.76, trendN: 7, counter: 0.52, counterN: 62 },
+    '약세장': { n: 56, winRate: 0.500, expectancyR: 1.00, trend: 0.68, trendN: 5, counter: 1.04, counterN: 51 },
   },
 };
 /** what the backtest says to trade in each regime (shown with the signals) */
 export const REGIME_PLAYBOOK = {
-  '상승장': '일봉 50일선 위(추세 일치) 신호만. 3년 +0.72R, 계좌 낙폭이 가장 작았던 규칙',
-  '조정·횡보': '전체 기대값 0 근처(-0.01R), 추세 일치 신호만 +0.19R. 추세 일치만 받거나 쉼',
-  '급락 조정': '추세 일치 신호 위험 2%. 투매 뒤 상승 구조 전환(반등)은 선택으로 위험 0.5%만(3년 51건 승률 57%, +0.74R). 숏·인버스 ETF는 3년 검증에서 손실',
-  '약세장': '추세 일치 신호 위험 2%(드묾). 반등 구조 전환은 선택으로 위험 0.5%만(3년 40건 승률 60%, +1.35R). 숏은 손실',
+  '상승장': '일봉 50일선 위(추세 일치) 신호만. 3년 200건 승률 40%, +0.33R',
+  '조정·횡보': '추세 일치 신호도 우위 없음(3년 57건 +0.04R, 최근 1년 -0.19R). 쉬거나 위험을 절반으로',
+  '급락 조정': '추세 일치 신호는 드물고 손실(7건 -0.76R). 반등 구조 전환은 선택으로 위험 0.5%만(62건 승률 52%, +0.52R). 숏·인버스 ETF는 손실',
+  '약세장': '추세 일치 신호는 거의 없음(5건). 반등 구조 전환은 선택으로 위험 0.5%만(51건 승률 51%, +1.04R). 숏은 손실',
 };
 
 /** share of the universe with a lower 63-session return that day (0 = weakest, 1 = strongest); null under 30 stocks */
