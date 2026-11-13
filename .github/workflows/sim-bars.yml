@@ -29,6 +29,10 @@ on:
       size:
         description: 'Research only (ict4h-real): number of stocks, by traded value'
         default: '250'
+      save_output:
+        description: 'Research only (inspect): also commit the output to this branch as research-out/inspect.jsonl'
+        type: boolean
+        default: false
       timeout:
         description: 'Research only: job timeout in minutes (hourly bars for 250 stocks x 3 years took over 90)'
         default: '240'
@@ -109,7 +113,7 @@ jobs:
           git fetch origin data --depth=1
           VS="${{ inputs.variant_set }}"
           if [ "${VS#inspect:}" != "$VS" ]; then
-            node scripts/inspect-signal.mjs --symbols "${VS#inspect:}"
+            mkdir -p research && node scripts/inspect-signal.mjs --symbols "${VS#inspect:}" | tee research/inspect.jsonl
           elif [ "${{ inputs.variant_set }}" = "ict4h-real" ]; then
             node scripts/ict-intraday.mjs --universe data-branch/latest.json --years "${{ inputs.years || '3' }}" --size "${{ inputs.size || '250' }}" --set real --out research/ict4h.json
           elif [ "${{ inputs.variant_set }}" = "momo" ]; then
@@ -130,6 +134,14 @@ jobs:
         with:
           name: desk-variants
           path: research/
+      - name: Commit inspect output (feature branch, save_output only)
+        # the chart data of an inspect run, committed as research-out/inspect.jsonl for tools that cannot download artifacts
+        if: inputs.research == true && inputs.save_output == true && github.ref != 'refs/heads/main' && startsWith(inputs.variant_set, 'inspect:')
+        run: |
+          mkdir -p research-out && cp research/inspect.jsonl research-out/inspect.jsonl
+          git add -f research-out/inspect.jsonl
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "research: inspect output"
+          git pull -q --rebase origin ${GITHUB_REF_NAME} && git push -q origin HEAD:${GITHUB_REF_NAME}
       - name: Commit preview build (feature branch)
         if: env.PUBLISH_DATA != 'true' && inputs.research != true
         run: |
