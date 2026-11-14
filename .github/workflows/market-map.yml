@@ -1,0 +1,42 @@
+name: Refresh broad market map from existing data
+on:
+  push:
+    branches: [main]
+    paths: ['packages/analysis/market-map.*', 'scripts/publish-market-map.mjs', '.github/workflows/market-map.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: data-branch-writer
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/cache/restore@v4
+        with:
+          path: .pipeline-cache
+          key: pipeline-cache-${{ github.run_id }}
+          restore-keys: pipeline-cache-
+      - name: Read published universe
+        run: |
+          git fetch origin data --depth=1
+          git worktree add data-branch origin/data
+      - name: Build map without new API requests
+        run: node scripts/publish-market-map.mjs
+      - name: Publish map only
+        working-directory: data-branch
+        run: |
+          git add market-map.json
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "data: publish broad US equity market map"
+          for i in 1 2 3; do
+            git -c user.name="alpha-terminal-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" pull --rebase origin data && git push origin HEAD:data && exit 0
+            git rebase --abort 2>/dev/null || true
+          done
+          exit 1
