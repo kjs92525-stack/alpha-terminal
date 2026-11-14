@@ -18,7 +18,7 @@ const PERIODS: { key: Period; label: string }[] = [
 ];
 const valid = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 const cap = (s: SetupRow) => valid(s.mcap) && s.mcap > 0 ? s.mcap : 0;
-const value = (s: SetupRow, p: Period): number | null => valid(s[p]) ? s[p] : null;
+const value = (s: SetupRow, p: Period): number | null => { const n = s[p]; return valid(n) ? n : null; };
 const weight = (s: SetupRow, size: SizeMode) => size === 'equal' ? 1 : cap(s);
 const position = (r: Rect, base: Rect) => ({
   left: `${((r.x - base.x) / base.w) * 100}%`,
