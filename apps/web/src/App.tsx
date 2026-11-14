@@ -3,6 +3,7 @@ import { Sidebar, Topbar, PAGES } from './components/Layout';
 import { TerminalProvider, useTerminal } from './lib/store';
 import { Loading } from './components/ui';
 import { Dashboard } from './pages/Dashboard';
+import { MarketMap } from './components/MarketMap';
 import { Discover } from './pages/Discover';
 import { ChartLab } from './pages/ChartLab';
 import { EventRadar } from './pages/EventRadar';
@@ -17,6 +18,7 @@ import { MarketGate } from './components/MarketGate';
 const TITLES: Record<string, [string, string]> = {
   'market-brief':['매일 시황 브리핑','시장부터 확인하는 신규 진입 환경 · 근거·재개 조건·데이터 최신성'],
   dashboard: ['Market Intelligence', 'Discover signals. Validate evidence. Manage risk.'],
+  'market-map': ['미국 주식 시장맵', 'NYSE · NASDAQ 상장 스캐너 후보의 업종·테마별 등락률 히트맵'],
   'early-alpha': ['EARLY ALPHA', '소외된 미국 소형주의 사업 변곡점 · 근거와 희석 위험 · 최초 발굴 성과'],
   discover: ['AI 종목발굴', '사업 변화와 바닥 전환의 교차 검토 · 상승 초입·바닥 관찰·기존 셋업 구분'],
   charts: ['차트 연구실', '지표·시장구조·ICT 신호와 확정 여부'],
@@ -50,6 +52,7 @@ function Shell() {
               {['dashboard','discover','early-alpha','research'].includes(page)&&<MarketGate />}
               {page==='market-brief'&&<MarketBrief />}
               {page === 'dashboard' && <Dashboard />}
+              {page === 'market-map' && <MarketMap />}
               {page === 'discover' && <Discover />}
               {page === 'early-alpha' && <EarlyAlpha />}
               {page === 'charts' && <ChartLab />}

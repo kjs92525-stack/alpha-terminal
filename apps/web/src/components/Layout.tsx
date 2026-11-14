@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BellRing, Trophy, ChevronsLeft, ChevronsRight, CandlestickChart, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
+import { Activity, BarChart3, BellRing, Trophy, ChevronsLeft, ChevronsRight, CandlestickChart, Layers3, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
 import { useTerminal, type Page } from '../lib/store';
 import { load, save } from '../lib/storage';
 import type { TickerHit } from '../lib/types';
@@ -7,6 +7,7 @@ import type { TickerHit } from '../lib/types';
 export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNode }> = [
   { id:'market-brief',label:'매일 시황 브리핑',code:'MARKET BRIEF',icon:<Activity size={16} /> },
   { id: 'dashboard', label: '통합 터미널', code: 'DASHBOARD', icon: <Activity size={16} /> },
+  { id: 'market-map', label: '미국 주식 시장맵', code: 'US MARKET MAP', icon: <Layers3 size={16} /> },
   { id: 'discover', label: 'AI 종목발굴', code: 'DISCOVERY', icon: <Sparkles size={16} /> },
   { id: 'early-alpha', label: 'EARLY ALPHA', code: 'EARLY ALPHA', icon: <Search size={16} /> },
   { id: 'charts', label: '차트 연구실', code: 'CHART LAB', icon: <CandlestickChart size={16} /> },
