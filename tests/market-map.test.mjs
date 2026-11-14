@@ -71,6 +71,10 @@ test('cache refresh publishes only a map and truncates future bars at the publis
     assert.equal(coverage.priced,1);assert.equal(map.stocks[0].price,100);
     assert.equal(map.stocks[0].mcap,null);assert.equal(map.stocks[0].ret21,0);
     assert.equal(fs.readFileSync(path.join(dataDir,'latest.json'),'utf8'),before);
+    fs.writeFileSync(path.join(dataDir,'latest.json'),JSON.stringify({asOf:'2026-11-16',universe:1}));
+    fs.copyFileSync(path.join(dataDir,'rankings','2026-11-13.json'),path.join(dataDir,'rankings','2026-11-16.json'));
+    assert.throws(()=>publishCachedMap({cacheDir,dataDir}),/published session/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir,'market-map.json'))).asOf,'2026-11-13','failed refresh preserves the last published map');
   }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 

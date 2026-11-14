@@ -36,7 +36,7 @@ function tileColor(ret:number|null,period:Period){
 export function MarketMap({compact=false}:{compact?:boolean}) {
   const {mapTheme,setMapTheme,setPage}=useTerminal();
   const {market,setups,error,loading,refresh}=useResearchData();
-  const [view,setView]=useState<'sector'|'theme'>('sector');
+  const [view,setView]=useState<'sector'|'theme'>(()=>mapTheme?'theme':'sector');
   const [period,setPeriod]=useState<Period>('ret1'),[size,setSize]=useState<'cap'|'equal'>('cap');
   const [display,setDisplay]=useState<'map'|'list'>(()=>!compact&&window.matchMedia('(max-width:600px)').matches?'list':'map');
   const [focus,setFocus]=useState(''),[q,setQ]=useState(''),[selected,setSelected]=useState<MarketStock|null>(null);

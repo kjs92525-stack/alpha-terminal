@@ -24,6 +24,7 @@ export function publishCachedMap({cacheDir,dataDir,now=new Date().toISOString()}
   }
   if(rows.length<Math.min(20,ranking.rows.length))throw Error('Nightly bars cache missing or incomplete; wait for the next nightly pipeline');
   const snapshot=buildMarketSnapshot({rows,asOf:latest.asOf,generatedAt:now,universe:latest.universe,source:`${latest.sources?.prices??'Nightly daily bars'} · 기존 캐시 재사용 · 프로필 회사 시총/보고 주식 수 기반 추정, ADR 교차 검토`});
+  if(snapshot.coverage.priced<Math.min(20,ranking.rows.length))throw Error('Cached bars do not cover the published session; refusing an empty or stale map');
   fs.writeFileSync(path.join(dataDir,'market-map.json'),JSON.stringify(snapshot));
   return snapshot.coverage;
 }
