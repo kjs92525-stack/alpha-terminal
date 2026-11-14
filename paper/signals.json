@@ -73,5 +73,20 @@
   "target": 9.158,
   "entryType": "buy-stop",
   "recordedAt": "2026-11-05T02:19:17.200Z"
+ },
+ {
+  "id": "2026-11-13:PUBM:early",
+  "symbol": "PUBM",
+  "name": "PubMatic, Inc.",
+  "sector": "Communication Services",
+  "mode": "early",
+  "type": "breakout",
+  "stage": "BREAKOUT",
+  "signalDate": "2026-11-13",
+  "entry": 19.48,
+  "stop": 16.61,
+  "target": 32.81,
+  "entryType": "limit",
+  "recordedAt": "2026-11-14T02:00:20.275Z"
  }
 ]
