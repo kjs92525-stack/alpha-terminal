@@ -24,13 +24,15 @@ test('business membership supports overlaps and never derives a theme from a pri
   assert.deepEqual(themeMembership('NOTCLASSIFIED'),[]);
 });
 
-test('ADR cap uses an observed issuer cap anchor, never ordinary shares times an ADR price',()=>{
+test('domestic issuer cap uses a dated profile; ADR/local-currency and unknown bases stay missing',()=>{
   const bars=[{time:Date.parse('2026-11-10')/1000,close:100},{time:Date.parse('2026-11-13')/1000,close:110}];
-  const company={source:'Finnhub',facts:{sharesOutstanding:{value:10e9,form:'profile'}}};
+  const company={source:'Finnhub',filings:[{form:'10-K'}],facts:{sharesOutstanding:{value:10e9,form:'profile'}}};
   const a=marketCapEstimate({company,profile:{marketCap:100e9,fetchedAt:'2026-11-10T23:00:00Z'},bars,asOf:'2026-11-13'});
   assert.equal(a.mcap,110e9);
   assert.equal(marketCapEstimate({company,profile:null,bars,asOf:'2026-11-13'}).mcap,null);
   assert.equal(marketCapEstimate({company,profile:{marketCap:100e9,fetchedAt:'2026-11-20'},bars,asOf:'2026-11-13'}).mcap,null);
+  const foreign={...company,filings:[{form:'20-F'}]};
+  assert.equal(marketCapEstimate({company:foreign,profile:{marketCap:100e12,fetchedAt:'2026-11-10'},bars,asOf:'2026-11-13'}).mcap,null);
 });
 
 test('multiple listed share classes do not double-count issuer cap',()=>{

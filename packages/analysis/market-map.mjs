@@ -13,11 +13,15 @@ export const MARKET_THEMES = [
 ];
 
 const n = v => typeof v === 'number' && Number.isFinite(v);
-/** A reported ordinary-share count cannot be multiplied by an ADR price.
- * Anchor provider issuer-cap to the last close at profile observation, then
- * scale by the price ratio. This is an estimate, with explicit provenance. */
+/** ADR ratios and profile market-cap currencies are not retained in the old
+ * cache. Do not assume a foreign cap is USD. Domestic-reporting issuers can use
+ * a dated profile anchor; foreign/unknown bases remain unverified. */
 export function marketCapEstimate({company,profile,bars,asOf}) {
   const current=bars.at(-1)?.close, observed=Date.parse(profile?.fetchedAt);
+  const forms=[...(company?.filings??[]),...(company?.facts?.revenueQuarterly??[]),...(company?.facts?.netIncomeQuarterly??[]),company?.facts?.revenue].filter(Boolean).map(f=>f.form??'');
+  const domestic=forms.some(f=>/^10-[KQ](?:\s|\/|$)/.test(f));
+  const foreign=forms.some(f=>/^(20-F|40-F|6-K)/.test(f));
+  if(foreign||!domestic)return {mcap:null,source:'통화·주식 단위 미확인',note:'ADR/해외 발행사 및 보고 양식 미확인 종목은 프로필 통화·예탁비율 검증 전 시총 합산 제외'};
   const cap=profile?.marketCap??(profile?.profile?.marketCapitalization*1e6);
   if(n(cap)&&cap>0&&n(current)&&Number.isFinite(observed)&&observed<=Date.parse(asOf)+86400000){
     const anchor=bars.filter(b=>b.time*1000<=observed).at(-1);
@@ -25,8 +29,7 @@ export function marketCapEstimate({company,profile,bars,asOf}) {
       return {mcap:cap*current/anchor.close,source:'프로필 회사 시총 × 기준일/프로필시점 조정종가',note:`프로필 관측 ${profile.fetchedAt.slice(0,10)} · 가격비율 추정, 이후 주식 수 변화 미반영`};
   }
   const shares=company?.facts?.sharesOutstanding;
-  const forms=(company?.filings??[]).map(f=>f.form);
-  if(company?.source==='Finnhub'||shares?.form==='profile'||forms.some(f=>/^(20-F|40-F|6-K)/.test(f??'')))
+  if(company?.source==='Finnhub'||shares?.form==='profile')
     return {mcap:null,source:'미확인',note:'ADR 비율·주식 수 기준 또는 프로필 시점 교차 확인 필요'};
   if(n(shares?.value)&&shares.value>0&&n(current)&&shares.end&&Date.parse(shares.end)<=Date.parse(asOf)&&Date.parse(asOf)-Date.parse(shares.end)<=400*86400000)
     return {mcap:shares.value*current,source:'보고 주식 수 × 종가',note:`주식 수 보고 ${shares.end} · 복수 클래스·이후 발행 변동은 별도 검토`};
