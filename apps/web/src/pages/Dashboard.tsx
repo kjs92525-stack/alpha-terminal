@@ -15,6 +15,7 @@ import { CATEGORY_LABEL, fmtEt } from '../lib/format';
 import { PanelHead } from '../components/ui';
 import { NewsFeed } from '../components/NewsFeed';
 import { TopMovers } from '../components/TopMovers';
+import { MarketMap } from '../components/MarketMap';
 
 const RANK = { critical: 4, high: 3, medium: 2, low: 1 } as const;
 
@@ -32,7 +33,8 @@ export function Dashboard() {
     .sort((a, b) => RANK[b.importance] - RANK[a.importance] || String(b.acceptedAt).localeCompare(String(a.acceptedAt))).slice(0, 4);
   return (
     <>
-      <TopPicks />
+      <MarketMap compact />
+      <div style={{ marginTop: 12 }}><TopPicks /></div>
       <div className="kpi-grid" style={{ marginTop: 12 }}>
         <div className="kpi-card"><div className="kpi-top">NIGHTLY SCAN <Activity size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{setups ? setups.stats.scanned.toLocaleString() : '—'}</strong><span>종목 검사</span></div><div className="kpi-foot">● {setups ? `기준일 ${setups.asOf} · 장 마감 후 자동` : '야간 수집 전'}</div></div>
         <div className="kpi-card"><div className="kpi-top">STORY PICK <Sparkles size={13} className="kpi-icon" /></div><div className="kpi-value"><strong>{top?.row.symbol ?? '—'}</strong><span>{top ? top.hook : ''}</span></div><div className="kpi-foot">● {top ? top.why.slice(0, 2).join(' · ') : '스토리 신호 종목 없음'}</div></div>
