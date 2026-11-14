@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeFeatures } from '../packages/pipeline/features.mjs';
-import { buildMarketSnapshot } from '../packages/analysis/market-map.mjs';
+import { buildMarketSnapshot,marketCapEstimate } from '../packages/analysis/market-map.mjs';
 const read=(p,fallback=null)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return fallback;}};
 export function publishCachedMap({cacheDir,dataDir,now=new Date().toISOString()}){
   const latest=read(path.join(dataDir,'latest.json'));
@@ -17,11 +17,13 @@ export function publishCachedMap({cacheDir,dataDir,now=new Date().toISOString()}
     const bars=raw.map(([time,open,high,low,close,volume])=>({time,open,high,low,close,volume})).filter(b=>b.time<=Date.parse(latest.asOf)/1000);
     const company=read(path.join(dataDir,'companies',`${symbol.replace('.','-')}.json`));
     const f=computeFeatures(bars,company,latest.asOf);if(!f)continue;
+    const profile=read(path.join(cacheDir,'finnhub',`${symbol.replace(/[^A-Z0-9.\-]/gi,'_')}.json`));
+    const estimate=marketCapEstimate({company,profile,bars,asOf:latest.asOf});
     const ret=k=>bars.length>k?bars.at(-1).close/bars.at(-1-k).close-1:null;
-    rows.push({symbol,name:company?.name??symbol,sector,features:{...f,ret21:ret(21),ret63:ret(63)}});
+    rows.push({symbol,cik:company?.cik,name:company?.name??symbol,sector,features:{...f,mcap:estimate.mcap,mcapSource:estimate.source,mcapNote:estimate.note,ret21:ret(21),ret63:ret(63)}});
   }
   if(rows.length<Math.min(20,ranking.rows.length))throw Error('Nightly bars cache missing or incomplete; wait for the next nightly pipeline');
-  const snapshot=buildMarketSnapshot({rows,asOf:latest.asOf,generatedAt:now,universe:latest.universe,source:`${latest.sources?.prices??'Nightly daily bars'} · 기존 캐시 재사용 · 보고 주식 수 기반 추정 시총`});
+  const snapshot=buildMarketSnapshot({rows,asOf:latest.asOf,generatedAt:now,universe:latest.universe,source:`${latest.sources?.prices??'Nightly daily bars'} · 기존 캐시 재사용 · 프로필 회사 시총/보고 주식 수 기반 추정, ADR 교차 검토`});
   fs.writeFileSync(path.join(dataDir,'market-map.json'),JSON.stringify(snapshot));
   return snapshot.coverage;
 }

@@ -13,6 +13,25 @@ export const MARKET_THEMES = [
 ];
 
 const n = v => typeof v === 'number' && Number.isFinite(v);
+/** A reported ordinary-share count cannot be multiplied by an ADR price.
+ * Anchor provider issuer-cap to the last close at profile observation, then
+ * scale by the price ratio. This is an estimate, with explicit provenance. */
+export function marketCapEstimate({company,profile,bars,asOf}) {
+  const current=bars.at(-1)?.close, observed=Date.parse(profile?.fetchedAt);
+  const cap=profile?.marketCap??(profile?.profile?.marketCapitalization*1e6);
+  if(n(cap)&&cap>0&&n(current)&&Number.isFinite(observed)&&observed<=Date.parse(asOf)+86400000){
+    const anchor=bars.filter(b=>b.time*1000<=observed).at(-1);
+    if(anchor?.close>0&&observed-anchor.time*1000<=7*86400000&&Date.parse(asOf)-observed<=120*86400000)
+      return {mcap:cap*current/anchor.close,source:'프로필 회사 시총 × 기준일/프로필시점 조정종가',note:`프로필 관측 ${profile.fetchedAt.slice(0,10)} · 가격비율 추정, 이후 주식 수 변화 미반영`};
+  }
+  const shares=company?.facts?.sharesOutstanding;
+  const forms=(company?.filings??[]).map(f=>f.form);
+  if(company?.source==='Finnhub'||shares?.form==='profile'||forms.some(f=>/^(20-F|40-F|6-K)/.test(f??'')))
+    return {mcap:null,source:'미확인',note:'ADR 비율·주식 수 기준 또는 프로필 시점 교차 확인 필요'};
+  if(n(shares?.value)&&shares.value>0&&n(current)&&shares.end&&Date.parse(shares.end)<=Date.parse(asOf)&&Date.parse(asOf)-Date.parse(shares.end)<=400*86400000)
+    return {mcap:shares.value*current,source:'보고 주식 수 × 종가',note:`주식 수 보고 ${shares.end} · 복수 클래스·이후 발행 변동은 별도 검토`};
+  return {mcap:null,source:'미확인',note:'사용 가능한 시총 기준 자료 없음'};
+}
 export function themeMembership(symbol) {
   const ticker = String(symbol).toUpperCase().replace('-', '.');
   return MARKET_THEMES.flatMap(t => t.groups.filter(([,syms])=>syms.split(' ').includes(ticker)).map(([group])=>({id:t.id,name:t.name,group})));
@@ -22,23 +41,33 @@ export function themeMembership(symbol) {
 // stay missing; stale prices cannot silently masquerade as today's return.
 export function buildMarketSnapshot({rows,asOf,generatedAt,universe,source}) {
   const unique = new Map();
+  const issuers=new Map();
+  const sorted=[...rows].sort((a,b)=>(b.features?.adv20??0)-(a.features?.adv20??0));
   let stale = 0;
-  for (const r of rows) {
+  let shareClasses=0;
+  for (const r of sorted) {
     const f=r.features;
     if(!f || f.lastDate!==asOf){stale++;continue;}
     if(!n(f.price)||f.price<=0||unique.has(r.symbol))continue;
-    unique.set(r.symbol,{
+    const issuer=r.cik?String(r.cik).replace(/^0+/,''):null;
+    if(issuer&&issuers.has(issuer)){
+      issuers.get(issuer).aliases.push(r.symbol);shareClasses++;continue;
+    }
+    const stock={
+      aliases:[],
       symbol:r.symbol,name:r.name||r.symbol,sector:r.sector||'Unknown',exchange:r.exchange||null,
       price:f.price,priceAsOf:f.lastDate,mcap:n(f.mcap)&&f.mcap>0?Math.round(f.mcap):null,
       ret1:n(f.ret_1)?f.ret_1:null,ret5:n(f.ret_5)?f.ret_5:null,
       ret21:n(f.ret21)?f.ret21:null,ret63:n(f.ret63)?f.ret63:null,
       adv20:n(f.adv20)?f.adv20:null,revenueGrowth:n(f.rev_growth)?f.rev_growth:null,
+      mcapSource:f.mcapSource??'보고 주식 수/프로필 기반 추정',mcapNote:f.mcapNote??'',
       themes:themeMembership(r.symbol),
-    });
+    };
+    unique.set(r.symbol,stock);if(issuer)issuers.set(issuer,stock);
   }
   const stocks=[...unique.values()].sort((a,b)=>(b.mcap??0)-(a.mcap??0));
   return {model:'market-map-v1',asOf,generatedAt,universe,source,
-    coverage:{priced:stocks.length,withCap:stocks.filter(s=>s.mcap!==null).length,staleExcluded:stale},
+    coverage:{priced:stocks.length,withCap:stocks.filter(s=>s.mcap!==null).length,staleExcluded:stale,shareClassesExcluded:shareClasses},
     classification:{reviewedAt:THEME_REVIEWED_AT,method:'미국 거래소 상장 종목 · 사업 연결 편집 분류(중복 가능), 업종은 SIC/공급자 근사 분류. 부문 매출 비중을 뜻하지 않음'},stocks};
 }
 

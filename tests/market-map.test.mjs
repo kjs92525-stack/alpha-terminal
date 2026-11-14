@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildMarketSnapshot, groupPerformance, themeMembership } from '../packages/analysis/market-map.mjs';
+import { buildMarketSnapshot, groupPerformance, themeMembership,marketCapEstimate } from '../packages/analysis/market-map.mjs';
 import { publishCachedMap } from '../scripts/publish-market-map.mjs';
 
 test('market map is independent of trading setups, excludes stale closes, and preserves unknown caps', () => {
@@ -22,6 +22,22 @@ test('business membership supports overlaps and never derives a theme from a pri
   assert.ok(themeMembership('VRT').some(t=>t.id==='power'&&t.group==='전력장비·냉각'));
   assert.ok(themeMembership('ISRG').some(t=>t.id==='robotics'));
   assert.deepEqual(themeMembership('NOTCLASSIFIED'),[]);
+});
+
+test('ADR cap uses an observed issuer cap anchor, never ordinary shares times an ADR price',()=>{
+  const bars=[{time:Date.parse('2026-11-10')/1000,close:100},{time:Date.parse('2026-11-13')/1000,close:110}];
+  const company={source:'Finnhub',facts:{sharesOutstanding:{value:10e9,form:'profile'}}};
+  const a=marketCapEstimate({company,profile:{marketCap:100e9,fetchedAt:'2026-11-10T23:00:00Z'},bars,asOf:'2026-11-13'});
+  assert.equal(a.mcap,110e9);
+  assert.equal(marketCapEstimate({company,profile:null,bars,asOf:'2026-11-13'}).mcap,null);
+  assert.equal(marketCapEstimate({company,profile:{marketCap:100e9,fetchedAt:'2026-11-20'},bars,asOf:'2026-11-13'}).mcap,null);
+});
+
+test('multiple listed share classes do not double-count issuer cap',()=>{
+  const f={price:100,lastDate:'2026-11-13',mcap:1e9,adv20:1e8};
+  const map=buildMarketSnapshot({rows:[{symbol:'GOOG',cik:'0001652044',features:f},{symbol:'GOOGL',cik:'1652044',features:{...f,adv20:2e8}}],asOf:'2026-11-13',generatedAt:'2026-11-14',universe:2,source:'test'});
+  assert.equal(map.stocks.length,1);assert.equal(map.stocks[0].symbol,'GOOGL');
+  assert.deepEqual(map.stocks[0].aliases,['GOOG']);assert.equal(map.coverage.shareClassesExcluded,1);
 });
 
 test('weighted returns exclude missing observations and expose the measured count', () => {
