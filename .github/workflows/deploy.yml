@@ -1,6 +1,6 @@
-# Cloudflare Git integration remains the only automatic production deployer.
-# This workflow validates credentials on configuration releases and provides a
-# manual fallback. Validation uploads an inactive version; it does not route traffic.
+# Cloudflare connection and manual deploy.
+# For deployment recovery, a change to this workflow on main triggers one production deploy.
+# Manual dispatch with deploy=false still validates credentials using an inactive version.
 name: Cloudflare connection / manual deploy
 on:
   push:
@@ -63,8 +63,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: Validate deployment permission without changing production traffic
-        if: github.event_name != 'workflow_dispatch' || inputs.deploy != true
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy != true
         run: npx wrangler versions upload --keep-vars --message "GitHub deployment connection validation"
-      - name: Manual production deploy
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
+      - name: Production deploy (workflow change or manual request)
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
         run: npx wrangler deploy --keep-vars
