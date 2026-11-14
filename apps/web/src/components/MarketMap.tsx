@@ -148,7 +148,7 @@ export function MarketMap({ compact = false }: { compact?: boolean }) {
               const ret = groupReturn(g, period, size);
               return <div key={g.key} className="usmap-group" style={position(rect, root)}>
                 <button className="usmap-group-label" onClick={() => setFocus(focus === g.key ? null : g.key)} title={`${g.key} 확대`}>
-                  <span>{g.key}</span><span className={ret !== null ? (ret >= 0 ? 'up' : 'down') : ''}>{fmtPct(ret, 2)}</span>
+                  <span>{g.key}</span><span className={ret !== null ? (ret > 0 ? 'usmap-rise' : ret < 0 ? 'usmap-fall' : '') : ''}>{fmtPct(ret, 2)}</span>
                 </button>
                 <div className="usmap-tiles">
                   {pieces.map(({ item: s, rect: sr }) => {

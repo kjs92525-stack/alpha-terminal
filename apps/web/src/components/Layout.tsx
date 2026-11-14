@@ -50,6 +50,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             {p.id === 'dashboard' && watchlist.length > 0 && <em className="nav-count">★{watchlist.length}</em>}
           </button>
         ))}
+        <button title="알파 데스크 (기존)" aria-label="알파 데스크 (기존)" onClick={() => location.assign('/desk.html')}>
+          <FileSearch size={16} /><span>알파 데스크 (기존)</span>
+        </button>
       </nav>
       <div className="sidebar-bottom">
         <div className="sidebar-status">

@@ -1,11 +1,10 @@
-# Cloudflare connection and manual deploy.
-# For deployment recovery, a change to this workflow on main triggers one production deploy.
+# Cloudflare production deployment and manual connection validation.
+# Every main update deploys the same checked-out source after validation.
 # Manual dispatch with deploy=false still validates credentials using an inactive version.
 name: Cloudflare connection / manual deploy
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/deploy.yml']
   workflow_dispatch:
     inputs:
       deploy:
@@ -66,7 +65,7 @@ jobs:
       - name: Validate deployment permission without changing production traffic
         if: github.event_name == 'workflow_dispatch' && inputs.deploy != true
         run: npx wrangler versions upload --keep-vars --message "GitHub deployment connection validation"
-      - name: Production deploy (workflow change or manual request)
+      - name: Production deploy (main update or manual request)
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
         run: npx wrangler deploy --keep-vars
       - name: Publish deployment status on GitHub commit
