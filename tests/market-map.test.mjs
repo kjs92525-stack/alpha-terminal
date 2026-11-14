@@ -37,7 +37,7 @@ test('domestic issuer cap uses a dated profile; ADR/local-currency and unknown b
 
 test('multiple listed share classes do not double-count issuer cap',()=>{
   const f={price:100,lastDate:'2026-11-13',mcap:1e9,adv20:1e8};
-  const map=buildMarketSnapshot({rows:[{symbol:'GOOG',cik:'0001652044',features:f},{symbol:'GOOGL',cik:'1652044',features:{...f,adv20:2e8}}],asOf:'2026-11-13',generatedAt:'2026-11-14',universe:2,source:'test'});
+  const map=buildMarketSnapshot({rows:[{symbol:'GOOG',cik:'0001288776',features:f},{symbol:'GOOGL',cik:'1652044',features:{...f,adv20:2e8}}],asOf:'2026-11-13',generatedAt:'2026-11-14',universe:2,source:'test'});
   assert.equal(map.stocks.length,1);assert.equal(map.stocks[0].symbol,'GOOGL');
   assert.deepEqual(map.stocks[0].aliases,['GOOG']);assert.equal(map.coverage.shareClassesExcluded,1);
 });

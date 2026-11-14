@@ -1,8 +1,12 @@
-# ALPHA TERMINAL — V0.6
+# ALPHA TERMINAL — US Equity Research
 
-미국 주식 퀀트 분석 터미널. React 19 + TypeScript + Vite, TradingView Lightweight Charts v5, Cloudflare Pages Functions(Workers) API, Supabase(선택).
+미국 상장 주식의 시장 → 산업 → 기업 근거 → 위험 → 관심종목 추적을 연결하는 리서치 워크스페이스. React 19 + TypeScript + Vite, Cloudflare Worker API, 기존 야간 데이터 파이프라인을 사용합니다.
 
-세 가지 핵심 기능을 같은 우선순위로 제공합니다.
+리모델링된 첫 화면은 `/#dashboard`, 산업·테마는 `/#industries`, 시장맵은 `/#market-map`, 관심종목은 `/#watchlist`입니다. 테마 공유 링크 `/#market-map?theme=power`, 기업 공유 링크 `/#research?symbol=NVDA`를 지원합니다. 기존 통합 화면은 `/#workbench`, 독립 데스크·시뮬레이터는 기존 주소로 유지됩니다. 기존 정량 도구는 분석 도구 메뉴에 있습니다.
+
+시장맵은 스캐너 매매 후보와 분리한 가격 유니버스입니다. `.github/workflows/market-map.yml`이 야간 배치 성공 후 기존 캐시만 재사용해 `data/market-map.json`을 갱신합니다. 추가 공급자 API 호출은 없습니다. 시총 통화·ADR 비율이 불명확한 해외 발행사는 시총 모드에서 제외하고 동일 비중 모드에서 조회합니다. 같은 발행사의 복수 주식종류는 대표 티커로 통합합니다. [진단과 리모델링 범위](docs/REMODEL.md)를 참고하세요.
+
+기존 분석 기능도 보존합니다.
 
 | 기능 | 구현 내용 | 데이터 |
 |---|---|---|
@@ -62,8 +66,8 @@ TradingView 알림 웹훅 수신 → SEC 공시·희석·런웨이·퀀트 점�
 
 ## 데이터 모드
 
-- **LIVE**: `/api/v1/health`가 응답하면 자동 전환. 실제 티커, SEC 공식 데이터, 무료 지연 시세. 모든 패널에 출처와 갱신 시각 표시.
-- **SIMULATED**: API가 없으면 가상 종목 `SIM01–SIM06`과 합성 시세로 동작(실제 기업명/티커를 쓰지 않음). 상단 경고 배너 표시.
+- **실데이터 요청**: API 연결과 데이터 기준일을 구분합니다. API 장애 시 오류를 표시하고 공개된 야간 스냅샷은 계속 이용할 수 있습니다. 합성 분석으로 자동 전환하지 않습니다.
+- **명시적 데모**: `VITE_DATA_MODE=mock`을 설정했을 때만 합성 데이터 모드를 사용하며 상단 배너로 표시합니다.
 
 ## 데이터 출처 (모두 무료, 유료 API 미사용)
 
@@ -100,10 +104,10 @@ Node.js 22.18+ 필요.
 
 ```bash
 npm install
-npm test            # 68 tests
+npm test
 npm run typecheck
 npm run build
-npm run dev         # UI만 (API 없으면 SIMULATED 모드)
+npm run dev         # UI + 공개 스냅샷; API 없으면 개별 API 분석은 연결 오류 표시
 # API 포함:
 echo 'SEC_USER_AGENT="AlphaTerminal/0.3 you@example.com"' > .dev.vars
 npm run dev:pages   # wrangler pages dev — UI + /api 를 함께 서비스

@@ -12,15 +12,18 @@ import { ErrorBox, FactorBars, Loading, PanelHead, ScoreRing, SourceBadge } from
 import { FilingRow } from '../components/FilingRow';
 import { ChartWorkspace, useBars } from '../components/ChartWorkspace';
 import { fmtNum, fmtPct, fmtPrice, fmtShares, fmtUsd, RISK_LABEL, signClass, SIZE_LABEL, STYLE_LABEL } from '../lib/format';
+import { useResearchData } from '../lib/research';
 
 export function Research() {
   const { selected, watchlist, toggleWatch, mode } = useTerminal();
   const { data, error, loading } = useAnalysis(selected);
   const { data: bars } = useBars(selected, '1D');
+  const { market } = useResearchData();
   if (error) return <ErrorBox error={error} hint="티커가 맞는지, API/시세 공급자가 동작하는지 확인하세요." />;
   if (loading || !data) return <Loading label={`${selected} 분석`} />;
   const s = data.score;
-  const m = s.metrics;
+  const capRow = market?.stocks.find(r => r.symbol === data.symbol || r.aliases?.includes(data.symbol));
+  const m = mode === 'mock' ? s.metrics : { ...s.metrics, marketCap: capRow?.priceAsOf === s.metrics.asOf ? capRow.mcap : null, priceToSales: null, priceToEarnings: null };
   const f = data.fundamentals;
   const storyRow = {ticker:data.symbol,name:data.name ?? data.symbol,status:'watch',evidence:[],reasons:[],risk:{level:'unknown',checked:false},marketCap:m.marketCap,reportPeriod:f?.revenueQuarterly.at(-1)?.end,demo:mode==='mock'};
   const hasDossier = Boolean(companyDossier(storyRow,m.asOf));
@@ -33,18 +36,18 @@ export function Research() {
             <span className="section-overline">{data.cik ? `CIK ${data.cik}` : 'NO SEC CIK'} · {data.sic ?? '—'}</span>
             <h2>{data.symbol} <small>{data.name}</small></h2>
             <div className="chips">
-              <span className="chip">{SIZE_LABEL[s.size]}</span><span className="chip">{STYLE_LABEL[s.style]}</span>
+              {mode === 'mock' && <span className="chip">{SIZE_LABEL[s.size]}</span>}<span className="chip">{STYLE_LABEL[s.style]}</span>
               <span className={`chip ${s.riskLevel === 'HIGH' ? 'down' : ''}`}>위험 {RISK_LABEL[s.riskLevel]}</span>
               <span className="chip">커버리지 {s.coverage}%</span>
             </div>
           </div>
           <div className="hero-right">
-            <div><strong>{s.rating}</strong><small>팩터 점수 · 매수 판정 아님 · {s.model}</small></div>
-            <ScoreRing score={s.score} size={92} />
+            <div><strong>${fmtPrice(m.price)}</strong><small>{m.asOf} 종가 · 1개월 {fmtPct(m.ret1m)} / 3개월 {fmtPct(m.ret3m)}</small></div>
             <button className="secondary-button" onClick={() => toggleWatch(selected)}><Star size={12} /> {watchlist.includes(selected) ? '관심 해제' : '관심등록'}</button>
           </div>
         </div>
         {data.warnings.map((w) => <ErrorBox key={w} error={w} />)}
+        {mode !== 'mock' && <p className="pad-box small muted">시총 검토: {capRow?.mcapSource ?? '동일 기준일 시총 자료 확인 대기'} · {capRow?.mcapNote ?? '시총·통화·보고기간을 확인하기 전 가치 배수 산정을 보류합니다.'}</p>}
       </section>
 
       {hasDossier && <section className="panel pad-box"><CompanyDossier row={storyRow} asOf={m.asOf} /></section>}
@@ -53,6 +56,8 @@ export function Research() {
       <InvestmentReviewPanel input={{ticker:data.symbol,asOf:m.asOf,price:m.price,marketCap:m.marketCap,fundamentals:f,risk:{checked:false},demo:mode==='mock'}} />
       {!hasDossier && mode!=='mock' && <details className="panel pad-box"><summary>세계정세·산업 전망과 연결해서 읽기</summary><MacroStory ticker={data.symbol} asOf={m.asOf} /></details>}
       {mode!=='mock'&&<DecisionTools key={data.symbol} ticker={data.symbol} price={m.price} marketCap={m.marketCap} revenue={f?.revenue?.value} adv20={m.adv20Usd} asOf={m.asOf} />}
+      <details className="research-model"><summary>정량 모델과 변동성 시나리오 <small>규칙 점수는 확률·목표가가 아닙니다</small></summary>
+      <div className="pad-box" style={{display:'flex',alignItems:'center',gap:16}}><ScoreRing score={s.score} size={60}/><div><b>{s.rating} · {s.model}</b><p className="muted small">사업의 경쟁력·적정가·매수 여부를 판정하는 점수가 아닙니다.</p></div></div>
       <div className="detail-grid">
         <section className="panel">
           <PanelHead kicker="FACTORS" title="팩터 분해" />
@@ -74,6 +79,7 @@ export function Research() {
           ) : <div className="pad-box muted">변동성 데이터 부족</div>}
         </section>
       </div>
+      </details>
 
       <div className="detail-grid">
         <section className="panel">
@@ -95,11 +101,11 @@ export function Research() {
           <PanelHead kicker="FUNDAMENTALS" title="보고 재무 (출처·기간 확인)" right={data.sources.fundamentals && <SourceBadge {...data.sources.fundamentals} />} />
           {f ? (
             <div className="fact-grid">
-              <div><small>시가총액 (추정)</small><b>{fmtUsd(m.marketCap)}</b><em>주식수 × 종가</em></div>
+              <div><small>시가총액 (추정)</small><b>{fmtUsd(m.marketCap)}</b><em>{capRow?.mcapSource ?? '미확인'}</em></div>
               <div><small>보고 매출</small><b>{fmtUsd(f.revenue?.value)}</b><em>{f.revenue ? `${f.revenue.form} ${f.revenue.end} · 제출 ${f.revenue.filed}` : ''}</em></div>
               <div><small>매출 성장률</small><b className={signClass(f.revenueGrowth)}>{fmtPct(f.revenueGrowth)}</b><em>전년 대비</em></div>
               <div><small>순이익 / 이익률</small><b>{fmtUsd(f.netIncome?.value)}</b><em>{fmtPct(f.netMargin)}</em></div>
-              <div><small>P/S · P/E</small><b>{fmtNum(m.priceToSales, 1)} · {fmtNum(m.priceToEarnings, 1)}</b><em>보고 매출·순이익 기간 기준</em></div>
+              <div><small>P/S · P/E</small><b>{fmtNum(m.priceToSales, 1)} · {fmtNum(m.priceToEarnings, 1)}</b><em>시총·통화·기간 교차 검증 전 산정 보류</em></div>
               <div><small>자동 수집 현금성 자산 (원문 검토값과 구분)</small><b>{fmtUsd(f.liquidAssets)}</b><em>{f.cash?.end}{f.cash && f.revenueQuarterly.at(-1) && f.cash.end < f.revenueQuarterly.at(-1)!.end ? ' · 과거 현금, 최신 확인 필요' : ''}</em></div>
               <div><small>영업현금흐름</small><b className={signClass(f.operatingCashFlow?.value)}>{fmtUsd(f.operatingCashFlow?.value)}</b><em>{f.operatingCashFlow?.end}</em></div>
               <div><small>런웨이</small><b>{f.runwayMonths !== null ? `${f.runwayMonths.toFixed(0)}개월` : '—'}</b></div>

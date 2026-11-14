@@ -22,20 +22,16 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return body as T;
 }
 
-/** Decide live vs mock. Live requires the API to answer and SEC to be configured. */
+/** Synthetic data is opt-in only. An API outage must not become a fake analysis. */
 export async function detectMode(): Promise<{ mode: DataMode; health: Health | null; reason: string }> {
   const forced = import.meta.env.VITE_DATA_MODE;
   if (forced === 'mock') return { mode: 'mock', health: null, reason: 'VITE_DATA_MODE=mock' };
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-    const health = await getJson<Health>('/api/v1/health', ctrl.signal);
-    clearTimeout(timer);
-    if (!health.ok) return { mode: 'mock', health, reason: 'API health check failed' };
+    const health = await getJson<Health>('/api/v1/health', AbortSignal.timeout(6000));
+    if (!health.ok) return { mode: 'live', health, reason: 'API 상태 확인 필요' };
     return { mode: 'live', health, reason: health.secConfigured ? 'API 연결됨' : 'API 연결됨 (SEC_USER_AGENT 미설정 — 공시/재무 비활성)' };
   } catch (e) {
-    if (forced === 'live') throw e;
-    return { mode: 'mock', health: null, reason: `API 미연결: ${(e as Error).message}` };
+    return { mode: 'live', health: null, reason: `API 미연결: ${(e as Error).message}` };
   }
 }
 

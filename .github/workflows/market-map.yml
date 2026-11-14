@@ -4,6 +4,10 @@ on:
     branches: [main]
     paths: ['packages/analysis/market-map.*', 'scripts/publish-market-map.mjs', '.github/workflows/market-map.yml']
   workflow_dispatch:
+  workflow_run:
+    workflows: ['Nightly pipeline']
+    types: [completed]
+    branches: [main]
 permissions:
   contents: write
 concurrency:
@@ -11,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -64,5 +64,5 @@ export function PanelHead({ kicker, title, right }: { kicker: string; title: Rea
 
 export function ModeBadge() {
   const { mode } = useTerminal();
-  return mode === 'live' ? <span className="live-badge">LIVE DATA</span> : <span className="demo-badge">SIMULATED</span>;
+  return mode === 'live' ? <span className="live-badge">실데이터 요청 · 지연 시세</span> : <span className="demo-badge">SIMULATED</span>;
 }

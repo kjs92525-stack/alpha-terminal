@@ -4,8 +4,9 @@ import { SIM_UNIVERSE } from './mock';
 import { load, save } from './storage';
 import { fetchWatchlist, setWatch, supabase, type Session } from './supabase';
 import type { AnalyzeResponse, DataMode, Health, ScreenRow } from './types';
+import { readRoute, routeHash, type Page } from './navigation';
 
-export type Page = 'dashboard' | 'market-map' | 'market-brief' | 'early-alpha' | 'discover' | 'charts' | 'events' | 'research' | 'performance' | 'alerts' | 'settings';
+export type { Page } from './navigation';
 
 // Default live universe: a mix of mega/large caps and smaller, higher-volatility names.
 export const DEFAULT_LIVE_UNIVERSE = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'AVGO', 'TSLA', 'AMD', 'JPM', 'LLY', 'XOM', 'PLTR', 'SOFI', 'RKLB', 'HIMS', 'IONQ', 'CELH', 'UPST', 'OKLO'];
@@ -18,6 +19,8 @@ interface Store {
   source: DataSource;
   page: Page;
   setPage: (p: Page) => void;
+  mapTheme: string;
+  setMapTheme: (theme: string) => void;
   universe: string[];
   setUniverse: (u: string[]) => void;
   rows: ScreenRow[];
@@ -40,11 +43,12 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<DataMode>('mock');
   const [health, setHealth] = useState<Health | null>(null);
   const [modeReason, setModeReason] = useState('확인 중');
-  const [page, setPage] = useState<Page>(() => (location.hash.slice(1) as Page) || 'dashboard');
+  const [page, setPage] = useState<Page>(() => readRoute(location.hash).page);
+  const [mapTheme, setMapTheme] = useState(() => readRoute(location.hash).theme);
   const [universe, setUniverseState] = useState<string[]>([]);
   const [rows, setRows] = useState<ScreenRow[]>([]);
   const [screening, setScreening] = useState({ done: 0, total: 0, running: false, at: null as string | null });
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(() => readRoute(location.hash).symbol);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -61,13 +65,25 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       setModeReason(reason);
       const u = m === 'live' ? load(`alpha:live:universe`, DEFAULT_LIVE_UNIVERSE) : SIM_UNIVERSE.map((s) => s.symbol);
       setUniverseState(u);
-      setSelected(load(`alpha:${m}:selected`, u[0]));
+      setSelected(readRoute(location.hash).symbol || load(`alpha:${m}:selected`, u[0]));
       setWatchlist(load(`alpha:${m}:watchlist`, []));
       setReady(true);
     });
   }, []);
 
-  useEffect(() => { location.hash = page; }, [page]);
+  useEffect(() => {
+    const onRoute = () => {
+      const route = readRoute(location.hash);
+      setPage(route.page); setMapTheme(route.theme);
+      if (route.symbol) setSelected(route.symbol);
+    };
+    window.addEventListener('hashchange', onRoute);
+    return () => window.removeEventListener('hashchange', onRoute);
+  }, []);
+  useEffect(() => {
+    const next = routeHash(page, selected, mapTheme);
+    if (location.hash !== next) location.hash = next;
+  }, [page, selected, mapTheme]);
 
   // Supabase auth + watchlist sync (live mode only; mock symbols are never persisted remotely).
   useEffect(() => {
@@ -88,7 +104,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       .then((r) => { setRows(r); setScreening({ done: universe.length, total: universe.length, running: false, at: new Date().toISOString() }); });
   }, [source, universe]);
 
-  useEffect(() => { if (ready) runScreen(); }, [ready, runScreen]);
+  useEffect(() => { if (ready && ['discover', 'charts', 'workbench'].includes(page)) runScreen(); }, [ready, page, runScreen]);
 
   const select = useCallback((s: string) => { setSelected(s); save(nsKey('selected'), s); }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,9 +136,9 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
   }, [source]);
 
   const value = useMemo<Store>(() => ({
-    ready, mode, health, modeReason, source, page, setPage, universe, setUniverse, rows, screening, runScreen,
+    ready, mode, health, modeReason, source, page, setPage, mapTheme, setMapTheme, universe, setUniverse, rows, screening, runScreen,
     selected, select, watchlist, toggleWatch, analysis: (s) => cache.current.get(s), loadAnalysis, session, syncError,
-  }), [ready, mode, health, modeReason, source, page, universe, setUniverse, rows, screening, runScreen, selected, select, watchlist, toggleWatch, loadAnalysis, session, syncError]);
+  }), [ready, mode, health, modeReason, source, page, mapTheme, universe, setUniverse, rows, screening, runScreen, selected, select, watchlist, toggleWatch, loadAnalysis, session, syncError]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

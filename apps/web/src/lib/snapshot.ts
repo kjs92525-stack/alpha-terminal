@@ -25,11 +25,22 @@ export interface Performance { summary: Record<string, PerfSummary>; detail: Per
 
 export class NoSnapshotError extends Error {}
 
-async function get<T>(file: string): Promise<T> {
-  const res = await fetch(`${SNAPSHOT_BASE}/${file}`, { cache: 'no-cache' });
-  if (res.status === 404) throw new NoSnapshotError('아직 야간 배치가 실행되지 않았습니다');
-  if (!res.ok) throw new Error(`스냅샷 HTTP ${res.status}`);
-  return res.json() as Promise<T>;
+const snapshotCache = new Map<string, { at: number; value: unknown }>();
+const snapshotPending = new Map<string, Promise<unknown>>();
+async function get<T>(file: string, force = false): Promise<T> {
+  const hit = snapshotCache.get(file);
+  if (!force && hit && Date.now() - hit.at < 60000) return hit.value as T;
+  const pending = snapshotPending.get(file);
+  if (pending) return pending as Promise<T>;
+  const request = fetch(`${SNAPSHOT_BASE}/${file}`, { cache: 'no-cache', signal: AbortSignal.timeout(15000) }).then(async res => {
+    if (res.status === 404) throw new NoSnapshotError('아직 야간 배치가 실행되지 않았습니다');
+    if (!res.ok) throw new Error(`스냅샷 HTTP ${res.status}`);
+    const value: unknown = await res.json();
+    snapshotCache.set(file, { at: Date.now(), value });
+    return value as T;
+  }).finally(() => snapshotPending.delete(file));
+  snapshotPending.set(file, request);
+  return request;
 }
 
 export const fetchLatest = () => get<Latest>('latest.json');
@@ -83,7 +94,8 @@ export interface Backtest {
   caseStudies: Record<string, Array<{ date: string; entry: number; stop: number; baseMonths: number; results: Record<string, { ret: number; r: number; stopped: boolean; spy: number | null } | null> }>>;
   caseNearMisses?: Record<string, Array<{ date: string; close: number; volMult: number; why: string[] }>>;
 }
-export const fetchSetups = () => get<Setups>('setups.json');
+export const fetchSetups = (force = false) => get<Setups>('setups.json', force);
+export const fetchMarketSnapshot = (force = false) => get<import('../../../../packages/analysis/market-map.mjs').MarketSnapshot>('market-map.json', force);
 export const fetchBacktest = () => get<Backtest>('backtest/breakouts.json');
 export interface EdgeEvents { generatedAt: string; method: string; limits: string[]; symbols: number; errors: number; events: number; firstEventDate: string | null; report: Record<string, Record<string, BtSummary>> }
 export const fetchEdgeEvents = () => get<EdgeEvents>('backtest/edge-events.json');

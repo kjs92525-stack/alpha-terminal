@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BellRing, Trophy, ChevronsLeft, ChevronsRight, CandlestickChart, Layers3, Menu, Radar, Search, Settings, Sparkles, X, FileSearch } from 'lucide-react';
+import { Activity, BarChart3, BellRing, Bookmark, ChevronDown, Trophy, ChevronsLeft, ChevronsRight, CandlestickChart, Layers3, Menu, Radar, Search, Settings, Sparkles, X, FileSearch, Workflow, LayoutDashboard } from 'lucide-react';
 import { useTerminal, type Page } from '../lib/store';
 import { load, save } from '../lib/storage';
 import type { TickerHit } from '../lib/types';
 
 export const PAGES: Array<{ id: Page; label: string; code: string; icon: ReactNode }> = [
-  { id:'market-brief',label:'매일 시황 브리핑',code:'MARKET BRIEF',icon:<Activity size={16} /> },
-  { id: 'dashboard', label: '통합 터미널', code: 'DASHBOARD', icon: <Activity size={16} /> },
+  { id: 'dashboard', label: '오늘의 리서치', code: 'TODAY', icon: <LayoutDashboard size={17} /> },
+  { id: 'industries', label: '산업·테마 리서치', code: 'INDUSTRIES', icon: <Workflow size={17} /> },
   { id: 'market-map', label: '미국 주식 시장맵', code: 'US MARKET MAP', icon: <Layers3 size={16} /> },
-  { id: 'discover', label: 'AI 종목발굴', code: 'DISCOVERY', icon: <Sparkles size={16} /> },
+  { id: 'watchlist', label: '나의 관심종목', code: 'WATCHLIST', icon: <Bookmark size={17} /> },
+  { id:'market-brief',label:'시장 브리핑',code:'MARKET BRIEF',icon:<Activity size={16} /> },
+  { id: 'performance', label: '성과 검증', code: 'TRACK RECORD', icon: <Trophy size={16} /> },
+  { id: 'research', label: '기업 정밀분석', code: 'RESEARCH', icon: <FileSearch size={16} /> },
+  { id: 'discover', label: '조건 기반 종목발굴', code: 'DISCOVERY', icon: <Sparkles size={16} /> },
   { id: 'early-alpha', label: 'EARLY ALPHA', code: 'EARLY ALPHA', icon: <Search size={16} /> },
   { id: 'charts', label: '차트 연구실', code: 'CHART LAB', icon: <CandlestickChart size={16} /> },
   { id: 'events', label: '이벤트 레이더', code: 'EVENT RADAR', icon: <Radar size={16} /> },
-  { id: 'research', label: '기업 정밀분석', code: 'RESEARCH', icon: <FileSearch size={16} /> },
-  { id: 'performance', label: '성과 검증', code: 'TRACK RECORD', icon: <Trophy size={16} /> },
+  { id: 'workbench', label: '고급 워크벤치', code: 'WORKBENCH', icon: <BarChart3 size={16} /> },
   { id: 'alerts', label: 'TradingView 연동', code: 'TRADINGVIEW', icon: <BellRing size={16} /> },
   { id: 'settings', label: '데이터 연결', code: 'CONNECTIONS', icon: <Settings size={16} /> },
 ];
@@ -32,37 +35,39 @@ function marketStatus(now = new Date()) {
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { page, setPage, mode, modeReason, health, universe, watchlist } = useTerminal();
-  const [rail, setRail] = useState(() => load('alpha:rail', true));
-  const toggleRail = () => { setRail(!rail); save('alpha:rail', !rail); };
+  const [rail, setRail] = useState(() => load('alpha:navcompact:v2', false));
+  const toggleRail = () => { setRail(!rail); save('alpha:navcompact:v2', !rail); };
+  const navButton = (p: typeof PAGES[number]) => <button key={p.id} className={page === p.id ? 'active' : ''} title={p.label} aria-label={p.label} aria-current={page === p.id ? 'page' : undefined} onClick={() => { setPage(p.id); onClose(); }}>{p.icon}<span>{p.label}</span>{p.id === 'watchlist' && watchlist.length > 0 && <em className="nav-count">{watchlist.length}</em>}{p.id === 'discover' && <em className="nav-count">{universe.length}</em>}</button>;
   return (
+    <>
+    {open && <button className="nav-overlay" aria-label="메뉴 배경 닫기" onClick={onClose} />}
     <aside className={`sidebar ${rail ? 'rail' : ''} ${open ? 'mobile-show' : ''}`}>
       <div className="brand">
         <div className="brand-logo">Λ</div>
-        <div><strong>ALPHA<span>TERMINAL</span></strong><small>QUANT INTELLIGENCE</small></div>
+        <div><strong>ALPHA<span>TERMINAL</span></strong><small>US EQUITY RESEARCH</small></div>
         <button className="mobile-close icon-button" onClick={onClose} aria-label="메뉴 닫기"><X size={16} /></button>
       </div>
-      <div className="workspace-label">WORKSPACE <span>01</span></div>
+      <div className="workspace-label">RESEARCH WORKSPACE</div>
       <nav className="main-nav">
-        {PAGES.map((p) => (
-          <button key={p.id} className={page === p.id ? 'active' : ''} title={p.label} aria-label={p.label} onClick={() => { setPage(p.id); onClose(); }}>
-            {p.icon}<span>{p.label}</span>
-            {p.id === 'discover' && <em className="nav-count">{universe.length}</em>}
-            {p.id === 'dashboard' && watchlist.length > 0 && <em className="nav-count">★{watchlist.length}</em>}
-          </button>
-        ))}
+        {PAGES.slice(0,6).map(navButton)}
+        <details className="nav-secondary" open={PAGES.slice(6).some(p => p.id === page) || undefined}>
+          <summary>분석 도구 <ChevronDown size={13} /></summary>
+          {PAGES.slice(6).map(navButton)}
         <button title="알파 데스크 (기존)" aria-label="알파 데스크 (기존)" onClick={() => location.assign('/desk.html')}>
           <FileSearch size={16} /><span>알파 데스크 (기존)</span>
         </button>
+        </details>
       </nav>
       <div className="sidebar-bottom">
         <div className="sidebar-status">
           <span className={`status-circle ${mode === 'live' ? '' : 'amber'}`} />
-          <div><b>{mode === 'live' ? '실데이터 모드' : '가상 데이터 모드'}</b><small>{modeReason}</small>{health && <small>API v{health.version}</small>}</div>
+          <div><b>{mode === 'mock' ? '명시적 데모 모드' : health?.ok ? '리서치 API 연결' : 'API 연결 확인 필요'}</b><small>{modeReason}</small><small>시세는 지연·종가 기준</small></div>
         </div>
-        <div className="sidebar-version">ALPHA TERMINAL <span>V0.6</span></div>
+        <div className="sidebar-version">US STOCKS ONLY <span>RESEARCH</span></div>
         <button className="rail-toggle" onClick={toggleRail} title={rail ? '메뉴 펼치기' : '메뉴 접기'} aria-label={rail ? '메뉴 펼치기' : '메뉴 접기'}>{rail ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}</button>
       </div>
     </aside>
+    </>
   );
 }
 
@@ -102,7 +107,7 @@ function SymbolSearch() {
 }
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
-  const { page, mode } = useTerminal();
+  const { page, mode, health } = useTerminal();
   const [ms, setMs] = useState(marketStatus());
   useEffect(() => { const t = setInterval(() => setMs(marketStatus()), 30000); return () => clearInterval(t); }, []);
   const current = PAGES.find((p) => p.id === page);
@@ -120,10 +125,17 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         </div>
       </header>
       {mode === 'mock' ? (
-        <div className="announcement">⚠ <b>SIMULATED DATA</b> · API 미연결 — 대시보드·차트·개별 분석은 가상 종목(SIM01–06)과 합성 시세입니다. (AI 종목발굴의 야간 랭킹·성과 검증은 실데이터 스냅샷이 있을 때 실데이터)<span className="announcement-right">데이터 연결 메뉴 참고</span></div>
+        <div className="announcement">⚠ <b>DEMO</b> · 개별 API 분석은 합성 데이터입니다. 시장맵·야간 리서치는 공개 스냅샷을 사용합니다.</div>
       ) : (
-        <div className="announcement live">● <b>LIVE</b> · SEC EDGAR 공식 공시·재무 + 무료 지연 시세(EOD/비공식). 실시간 체결가가 아니며 투자 자문이 아닙니다.<span className="announcement-right">모든 수치에 출처·갱신 시각 표시</span></div>
+        <div className="announcement live"><span className="rd-live-dot"/><b>DELAYED DATA</b><span>미국 주식 · SEC 공시·재무 + 지연 시세 · 각 자료의 기준일 확인</span><span className="announcement-right">{health?.ok?'API 연결됨':'API 확인 필요 · 공개 스냅샷 이용 가능'}</span></div>
       )}
     </>
   );
+}
+
+export function BottomNav() {
+  const {page,setPage}=useTerminal();
+  const ids=['dashboard','industries','market-map','watchlist','performance'];
+  const labels=['오늘','산업','시장맵','관심','성과'];
+  return <nav className="bottom-nav" aria-label="모바일 주요 메뉴">{ids.map((id,i)=>{const p=PAGES.find(p=>p.id===id)!;return <button key={id} aria-label={`하단 ${p.label}`} aria-current={page===id?'page':undefined} className={page===id?'active':''} onClick={()=>setPage(p.id)}>{p.icon}<span>{labels[i]}</span></button>;})}</nav>;
 }

@@ -13,6 +13,11 @@ export const MARKET_THEMES = [
 ];
 
 const n = v => typeof v === 'number' && Number.isFinite(v);
+// Known share-class aliases also cover legacy/mis-mapped CIKs in older caches.
+const CLASS_ISSUER = Object.fromEntries([
+  ['GOOGL','GOOG'],['BRK.A','BRK.B'],['FOX','FOXA'],['NWS','NWSA'],
+  ['HEI','HEI.A'],['LEN','LEN.B'],['UA','UAA'],['BF.A','BF.B'],
+].flatMap(classes=>classes.map(symbol=>[symbol,`class:${classes[0]}`])));
 /** ADR ratios and profile market-cap currencies are not retained in the old
  * cache. Do not assume a foreign cap is USD. Domestic-reporting issuers can use
  * a dated profile anchor; foreign/unknown bases remain unverified. */
@@ -52,7 +57,7 @@ export function buildMarketSnapshot({rows,asOf,generatedAt,universe,source}) {
     const f=r.features;
     if(!f || f.lastDate!==asOf){stale++;continue;}
     if(!n(f.price)||f.price<=0||unique.has(r.symbol))continue;
-    const issuer=r.cik?String(r.cik).replace(/^0+/,''):null;
+    const issuer=CLASS_ISSUER[r.symbol]||(r.cik?String(r.cik).replace(/^0+/,''):null);
     if(issuer&&issuers.has(issuer)){
       issuers.get(issuer).aliases.push(r.symbol);shareClasses++;continue;
     }
