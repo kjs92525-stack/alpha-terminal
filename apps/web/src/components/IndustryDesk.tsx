@@ -15,6 +15,7 @@ export function IndustryDesk({compact=false}:{compact?:boolean}) {
   const open=(id:string)=>{setMapTheme(id);setPage('market-map');};
   return <section className="industry-desk" aria-label="산업과 사업 테마">
     <div className="rd-section-heading"><div><span className="section-label">INDUSTRY LENS</span><h2>{compact?'어디에서 변화가 생기고 있나':'산업의 이야기와 숫자를 함께'}</h2><p>{compact?'수요의 변화 → 기업의 매출 → 이익과 현금. 연결 고리를 확인하세요.':'가격 회복과 사업 회복을 구분합니다. ETF 국면은 가격 참고 지표이며 기업 실적의 확인은 별도입니다.'}</p></div>{compact?<button className="rd-text-link" onClick={()=>setPage('industries')}>산업 리서치 전체 <ArrowUpRight size={15}/></button>:<span className="rd-source-pill">ETF 기준 {data?.asOf??'확인 중'}</span>}</div>
+    {!compact&&<button className="rd-button cycle-jump" onClick={()=>document.getElementById('next-cycle-research')?.scrollIntoView({block:'start'})}>다음 사이클 후보 기업의 사업·재평가 분석 보기 ↓</button>}
     {error&&<p className="rd-notice" role="alert">{error}</p>}
     <div className={`industry-grid${compact?' compact':''}`}>
       {MARKET_THEMES.slice(0,compact?4:undefined).map((t,i)=>{
