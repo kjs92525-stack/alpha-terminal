@@ -1,0 +1,1109 @@
+{
+ "asOf": "2026-11-16",
+ "model": "xs-v1-prior",
+ "createdAt": "2026-11-17T04:46:49.210Z",
+ "rule": "신호일 종가 후 생성 → 다음 거래일 시가 진입 가정, h거래일 후 종가 청산, 같은 기간 SPY와 비교. 수수료·슬리피지 미반영.",
+ "mid": [
+  {
+   "rank": 1,
+   "symbol": "UVE",
+   "name": "Universal Insurance Holdings Inc",
+   "sector": "Financials",
+   "score": 86.5,
+   "factors": {
+    "momentum": 83,
+    "quality": null,
+    "value": 95,
+    "lowrisk": 83,
+    "trend": 87
+   },
+   "signalClose": 49.03
+  },
+  {
+   "rank": 5,
+   "symbol": "JXN",
+   "name": "Jackson Financial Inc.",
+   "sector": "Financials",
+   "score": 83.9,
+   "factors": {
+    "momentum": 79,
+    "quality": null,
+    "value": 94,
+    "lowrisk": 82,
+    "trend": 83
+   },
+   "signalClose": 137.59
+  },
+  {
+   "rank": 7,
+   "symbol": "AMAL",
+   "name": "Amalgamated Financial Corp",
+   "sector": "Financials",
+   "score": 83,
+   "factors": {
+    "momentum": 86,
+    "quality": null,
+    "value": 76,
+    "lowrisk": 92,
+    "trend": 77
+   },
+   "signalClose": 50.21
+  },
+  {
+   "rank": 8,
+   "symbol": "HG",
+   "name": "Hamilton Insurance Group, Ltd.",
+   "sector": "Financials",
+   "score": 83,
+   "factors": {
+    "momentum": 83,
+    "quality": 78,
+    "value": 84,
+    "lowrisk": 91,
+    "trend": 80
+   },
+   "signalClose": 38.63
+  },
+  {
+   "rank": 9,
+   "symbol": "AMTB",
+   "name": "Amerant Bancorp Inc.",
+   "sector": "Financials",
+   "score": 82.8,
+   "factors": {
+    "momentum": 90,
+    "quality": null,
+    "value": 62,
+    "lowrisk": 94,
+    "trend": 86
+   },
+   "signalClose": 30.27
+  },
+  {
+   "rank": 18,
+   "symbol": "APA",
+   "name": "APA Corporation",
+   "sector": "Energy",
+   "score": 81.6,
+   "factors": {
+    "momentum": 83,
+    "quality": null,
+    "value": 95,
+    "lowrisk": 56,
+    "trend": 89
+   },
+   "signalClose": 47.3
+  },
+  {
+   "rank": 19,
+   "symbol": "OFG",
+   "name": "OFG Bancorp",
+   "sector": "Financials",
+   "score": 81,
+   "factors": {
+    "momentum": 78,
+    "quality": null,
+    "value": 80,
+    "lowrisk": 95,
+    "trend": 72
+   },
+   "signalClose": 50.4
+  },
+  {
+   "rank": 27,
+   "symbol": "INSW",
+   "name": "International Seaways, Inc.",
+   "sector": "Energy",
+   "score": 80.3,
+   "factors": {
+    "momentum": 81,
+    "quality": 94,
+    "value": 73,
+    "lowrisk": 57,
+    "trend": 92
+   },
+   "signalClose": 102.12
+  },
+  {
+   "rank": 29,
+   "symbol": "EOG",
+   "name": "EOG Resources, Inc.",
+   "sector": "Energy",
+   "score": 80.2,
+   "factors": {
+    "momentum": 79,
+    "quality": 88,
+    "value": 74,
+    "lowrisk": 81,
+    "trend": 76
+   },
+   "signalClose": 155.47
+  },
+  {
+   "rank": 31,
+   "symbol": "LPG",
+   "name": "Dorian LPG Ltd.",
+   "sector": "Energy",
+   "score": 80.1,
+   "factors": {
+    "momentum": 79,
+    "quality": 95,
+    "value": 77,
+    "lowrisk": 58,
+    "trend": 86
+   },
+   "signalClose": 46.81
+  },
+  {
+   "rank": 33,
+   "symbol": "SAIC",
+   "name": "Science Applications International Corp",
+   "sector": "Industrials",
+   "score": 80,
+   "factors": {
+    "momentum": 87,
+    "quality": null,
+    "value": 71,
+    "lowrisk": 70,
+    "trend": 92
+   },
+   "signalClose": 147.03
+  },
+  {
+   "rank": 64,
+   "symbol": "CBL",
+   "name": "CBL & Associates Properties, Inc.",
+   "sector": "Real Estate",
+   "score": 78.5,
+   "factors": {
+    "momentum": 76,
+    "quality": null,
+    "value": 87,
+    "lowrisk": 72,
+    "trend": 78
+   },
+   "signalClose": 53.95
+  },
+  {
+   "rank": 65,
+   "symbol": "COP",
+   "name": "ConocoPhillips",
+   "sector": "Energy",
+   "score": 78.5,
+   "factors": {
+    "momentum": 81,
+    "quality": null,
+    "value": 78,
+    "lowrisk": 72,
+    "trend": 81
+   },
+   "signalClose": 140.52
+  },
+  {
+   "rank": 66,
+   "symbol": "REPX",
+   "name": "Riley Exploration Permian Inc",
+   "sector": "Energy",
+   "score": 78.5,
+   "factors": {
+    "momentum": 78,
+    "quality": 87,
+    "value": 82,
+    "lowrisk": 53,
+    "trend": 89
+   },
+   "signalClose": 43.56
+  },
+  {
+   "rank": 88,
+   "symbol": "LTC",
+   "name": "LTC Properties, Inc.",
+   "sector": "Real Estate",
+   "score": 77.5,
+   "factors": {
+    "momentum": 74,
+    "quality": 92,
+    "value": 56,
+    "lowrisk": 91,
+    "trend": 75
+   },
+   "signalClose": 42.71
+  },
+  {
+   "rank": 100,
+   "symbol": "PBI",
+   "name": "Pitney Bowes Inc.",
+   "sector": "Industrials",
+   "score": 77.1,
+   "factors": {
+    "momentum": 69,
+    "quality": null,
+    "value": 90,
+    "lowrisk": 82,
+    "trend": 68
+   },
+   "signalClose": 15.38
+  },
+  {
+   "rank": 101,
+   "symbol": "APLE",
+   "name": "Apple Hospitality REIT Inc",
+   "sector": "Real Estate",
+   "score": 77,
+   "factors": {
+    "momentum": 86,
+    "quality": 73,
+    "value": 52,
+    "lowrisk": 90,
+    "trend": 90
+   },
+   "signalClose": 19.45
+  },
+  {
+   "rank": 104,
+   "symbol": "HST",
+   "name": "Host Hotels & Resorts, Inc.",
+   "sector": "Real Estate",
+   "score": 76.8,
+   "factors": {
+    "momentum": 84,
+    "quality": 76,
+    "value": 59,
+    "lowrisk": 87,
+    "trend": 80
+   },
+   "signalClose": 25.72
+  },
+  {
+   "rank": 110,
+   "symbol": "R",
+   "name": "Ryder System, Inc.",
+   "sector": "Other",
+   "score": 76.5,
+   "factors": {
+    "momentum": 77,
+    "quality": null,
+    "value": 77,
+    "lowrisk": 76,
+    "trend": 74
+   },
+   "signalClose": 283.79
+  },
+  {
+   "rank": 117,
+   "symbol": "THC",
+   "name": "Tenet Healthcare Corp",
+   "sector": "Health Care",
+   "score": 76.1,
+   "factors": {
+    "momentum": 86,
+    "quality": 61,
+    "value": 86,
+    "lowrisk": 59,
+    "trend": 91
+   },
+   "signalClose": 291.54
+  },
+  {
+   "rank": 124,
+   "symbol": "CNK",
+   "name": "Cinemark Holdings Inc",
+   "sector": "Communication Services",
+   "score": 75.8,
+   "factors": {
+    "momentum": 86,
+    "quality": 67,
+    "value": 72,
+    "lowrisk": 66,
+    "trend": 90
+   },
+   "signalClose": 40.6
+  },
+  {
+   "rank": 126,
+   "symbol": "MTCH",
+   "name": "Match Group, Inc.",
+   "sector": "Communication Services",
+   "score": 75.7,
+   "factors": {
+    "momentum": 74,
+    "quality": null,
+    "value": 79,
+    "lowrisk": 71,
+    "trend": 80
+   },
+   "signalClose": 40.92
+  },
+  {
+   "rank": 135,
+   "symbol": "MATX",
+   "name": "Matson Inc",
+   "sector": "Industrials",
+   "score": 75.2,
+   "factors": {
+    "momentum": 83,
+    "quality": 62,
+    "value": 70,
+    "lowrisk": 86,
+    "trend": 77
+   },
+   "signalClose": 209.95
+  },
+  {
+   "rank": 138,
+   "symbol": "AES",
+   "name": "The AES Corporation",
+   "sector": "Utilities",
+   "score": 75,
+   "factors": {
+    "momentum": 60,
+    "quality": 78,
+    "value": 91,
+    "lowrisk": 90,
+    "trend": 58
+   },
+   "signalClose": 14.94
+  },
+  {
+   "rank": 139,
+   "symbol": "PAYC",
+   "name": "Paycom Software, Inc.",
+   "sector": "Industrials",
+   "score": 75,
+   "factors": {
+    "momentum": 88,
+    "quality": 85,
+    "value": 45,
+    "lowrisk": 58,
+    "trend": 98
+   },
+   "signalClose": 254.75
+  },
+  {
+   "rank": 145,
+   "symbol": "RPRX",
+   "name": "Royalty Pharma PLC",
+   "sector": "Health Care",
+   "score": 74.7,
+   "factors": {
+    "momentum": 86,
+    "quality": 81,
+    "value": 34,
+    "lowrisk": 89,
+    "trend": 87
+   },
+   "signalClose": 68.525
+  },
+  {
+   "rank": 147,
+   "symbol": "EXEL",
+   "name": "Exelixis Inc",
+   "sector": "Health Care",
+   "score": 74.6,
+   "factors": {
+    "momentum": 81,
+    "quality": 78,
+    "value": 47,
+    "lowrisk": 83,
+    "trend": 91
+   },
+   "signalClose": 67.1
+  },
+  {
+   "rank": 150,
+   "symbol": "DRH",
+   "name": "Diamondrock Hospitality Co",
+   "sector": "Real Estate",
+   "score": 74.5,
+   "factors": {
+    "momentum": 89,
+    "quality": 56,
+    "value": 57,
+    "lowrisk": 90,
+    "trend": 88
+   },
+   "signalClose": 14.56
+  },
+  {
+   "rank": 165,
+   "symbol": "CON",
+   "name": "Concentra Group Holdings Parent Inc",
+   "sector": "Health Care",
+   "score": 74,
+   "factors": {
+    "momentum": 95,
+    "quality": 55,
+    "value": 49,
+    "lowrisk": 84,
+    "trend": 96
+   },
+   "signalClose": 43.44
+  },
+  {
+   "rank": 166,
+   "symbol": "LTH",
+   "name": "Life Time Group Holdings, Inc.",
+   "sector": "Consumer Discretionary",
+   "score": 74,
+   "factors": {
+    "momentum": 85,
+    "quality": 71,
+    "value": 52,
+    "lowrisk": 76,
+    "trend": 90
+   },
+   "signalClose": 46.28
+  }
+ ],
+ "short": [
+  {
+   "rank": 1,
+   "symbol": "HTFL",
+   "name": "Heartflow, Inc",
+   "sector": "Health Care",
+   "score": 84.4,
+   "factors": {
+    "trend": 96,
+    "pullback": 92,
+    "flow": 90,
+    "breakout": 50
+   },
+   "signalClose": 46.86
+  },
+  {
+   "rank": 2,
+   "symbol": "NIQ",
+   "name": "NIQ Global Intelligence PLC",
+   "sector": "Communication Services",
+   "score": 83.5,
+   "factors": {
+    "trend": 98,
+    "pullback": 79,
+    "flow": 90,
+    "breakout": 59
+   },
+   "signalClose": 18.78
+  },
+  {
+   "rank": 4,
+   "symbol": "GO",
+   "name": "Grocery Outlet Holding Corp.",
+   "sector": "Consumer Discretionary",
+   "score": 81.7,
+   "factors": {
+    "trend": 94,
+    "pullback": 76,
+    "flow": 92,
+    "breakout": 58
+   },
+   "signalClose": 12.39
+  },
+  {
+   "rank": 5,
+   "symbol": "QLYS",
+   "name": "Qualys, Inc.",
+   "sector": "Information Technology",
+   "score": 81.6,
+   "factors": {
+    "trend": 96,
+    "pullback": 79,
+    "flow": 92,
+    "breakout": 50
+   },
+   "signalClose": 182.01
+  },
+  {
+   "rank": 9,
+   "symbol": "NSIT",
+   "name": "Insight Enterprises Inc",
+   "sector": "Industrials",
+   "score": 79.3,
+   "factors": {
+    "trend": 95,
+    "pullback": 72,
+    "flow": 83,
+    "breakout": 57
+   },
+   "signalClose": 155.29
+  },
+  {
+   "rank": 11,
+   "symbol": "ANDG",
+   "name": "Andersen Group Inc",
+   "sector": "Industrials",
+   "score": 78.9,
+   "factors": {
+    "trend": 96,
+    "pullback": 56,
+    "flow": 92,
+    "breakout": 64
+   },
+   "signalClose": 62.85
+  },
+  {
+   "rank": 13,
+   "symbol": "TWST",
+   "name": "Twist Bioscience Corporation",
+   "sector": "Health Care",
+   "score": 78.1,
+   "factors": {
+    "trend": 88,
+    "pullback": 97,
+    "flow": 83,
+    "breakout": 33
+   },
+   "signalClose": 105.04
+  },
+  {
+   "rank": 14,
+   "symbol": "PSNL",
+   "name": "Personalis, Inc.",
+   "sector": "Health Care",
+   "score": 77.8,
+   "factors": {
+    "trend": 96,
+    "pullback": 75,
+    "flow": 78,
+    "breakout": 50
+   },
+   "signalClose": 14.8
+  },
+  {
+   "rank": 15,
+   "symbol": "PLSE",
+   "name": "Pulse Biosciences Inc",
+   "sector": "Health Care",
+   "score": 77.5,
+   "factors": {
+    "trend": 96,
+    "pullback": 91,
+    "flow": 54,
+    "breakout": 51
+   },
+   "signalClose": 46.36
+  },
+  {
+   "rank": 17,
+   "symbol": "AVAH",
+   "name": "Aveanna Healthcare Holdings Inc",
+   "sector": "Health Care",
+   "score": 77.2,
+   "factors": {
+    "trend": 92,
+    "pullback": 85,
+    "flow": 69,
+    "breakout": 51
+   },
+   "signalClose": 11.63
+  },
+  {
+   "rank": 19,
+   "symbol": "FA",
+   "name": "First Advantage Corporation",
+   "sector": "Industrials",
+   "score": 77.2,
+   "factors": {
+    "trend": 88,
+    "pullback": 62,
+    "flow": 99,
+    "breakout": 57
+   },
+   "signalClose": 21.43
+  },
+  {
+   "rank": 23,
+   "symbol": "JHX",
+   "name": "James Hardie Industries PLC",
+   "sector": "Industrials",
+   "score": 75.9,
+   "factors": {
+    "trend": 80,
+    "pullback": 66,
+    "flow": 98,
+    "breakout": 58
+   },
+   "signalClose": 27.22
+  },
+  {
+   "rank": 25,
+   "symbol": "GPN",
+   "name": "Global Payments Inc",
+   "sector": "Financials",
+   "score": 75.5,
+   "factors": {
+    "trend": 81,
+    "pullback": 68,
+    "flow": 91,
+    "breakout": 59
+   },
+   "signalClose": 89.82
+  },
+  {
+   "rank": 28,
+   "symbol": "S",
+   "name": "SentinelOne Inc",
+   "sector": "Information Technology",
+   "score": 75.2,
+   "factors": {
+    "trend": 84,
+    "pullback": 73,
+    "flow": 83,
+    "breakout": 54
+   },
+   "signalClose": 21.95
+  },
+  {
+   "rank": 32,
+   "symbol": "CVLT",
+   "name": "Commvault Systems, Inc.",
+   "sector": "Information Technology",
+   "score": 74.5,
+   "factors": {
+    "trend": 89,
+    "pullback": 83,
+    "flow": 58,
+    "breakout": 56
+   },
+   "signalClose": 147.48
+  },
+  {
+   "rank": 34,
+   "symbol": "ARHS",
+   "name": "Arhaus, Inc.",
+   "sector": "Consumer Discretionary",
+   "score": 74.4,
+   "factors": {
+    "trend": 97,
+    "pullback": 52,
+    "flow": 78,
+    "breakout": 59
+   },
+   "signalClose": 13.27
+  },
+  {
+   "rank": 35,
+   "symbol": "UTZ",
+   "name": "Utz Brands, Inc.",
+   "sector": "Consumer Staples",
+   "score": 74.4,
+   "factors": {
+    "trend": 97,
+    "pullback": 33,
+    "flow": 87,
+    "breakout": 74
+   },
+   "signalClose": 14.28
+  },
+  {
+   "rank": 36,
+   "symbol": "APPS",
+   "name": "Digital Turbine, Inc.",
+   "sector": "Information Technology",
+   "score": 74.2,
+   "factors": {
+    "trend": 68,
+    "pullback": 98,
+    "flow": 98,
+    "breakout": 32
+   },
+   "signalClose": 7.06
+  },
+  {
+   "rank": 37,
+   "symbol": "TEAM",
+   "name": "Atlassian Corp",
+   "sector": "Information Technology",
+   "score": 74.2,
+   "factors": {
+    "trend": 95,
+    "pullback": 74,
+    "flow": 72,
+    "breakout": 41
+   },
+   "signalClose": 149.94
+  },
+  {
+   "rank": 40,
+   "symbol": "KDP",
+   "name": "Keurig Dr Pepper Inc",
+   "sector": "Consumer Staples",
+   "score": 74,
+   "factors": {
+    "trend": 81,
+    "pullback": 52,
+    "flow": 98,
+    "breakout": 66
+   },
+   "signalClose": 35.58
+  }
+ ],
+ "setups": [
+  {
+   "rank": 1,
+   "symbol": "COLD",
+   "name": "Americold Realty Trust Inc",
+   "sector": "Real Estate",
+   "score": 60,
+   "factors": {
+    "chart": 89,
+    "story": 25,
+    "type": "breakout",
+    "stage": "POST_BREAKOUT"
+   },
+   "signalClose": 16.65
+  },
+  {
+   "rank": 2,
+   "symbol": "DDI",
+   "name": "DoubleDown Interactive Co Ltd",
+   "sector": "Communication Services",
+   "score": 49,
+   "factors": {
+    "chart": 89,
+    "story": 0,
+    "type": "breakout",
+    "stage": "POST_BREAKOUT"
+   },
+   "signalClose": 15.68
+  },
+  {
+   "rank": 3,
+   "symbol": "SGRY",
+   "name": "Surgery Partners, Inc.",
+   "sector": "Health Care",
+   "score": 47,
+   "factors": {
+    "chart": 85,
+    "story": 0,
+    "type": "breakout",
+    "stage": "POST_BREAKOUT"
+   },
+   "signalClose": 26.79
+  },
+  {
+   "rank": 4,
+   "symbol": "USPH",
+   "name": "US Physical Therapy Inc",
+   "sector": "Health Care",
+   "score": 37,
+   "factors": {
+    "chart": 67,
+    "story": 0,
+    "type": "breakout",
+    "stage": "POST_BREAKOUT"
+   },
+   "signalClose": 99.55
+  },
+  {
+   "rank": 5,
+   "symbol": "ZBH",
+   "name": "Zimmer Biomet Holdings, Inc.",
+   "sector": "Health Care",
+   "score": 37,
+   "factors": {
+    "chart": 67,
+    "story": 0,
+    "type": "breakout",
+    "stage": "POST_BREAKOUT"
+   },
+   "signalClose": 101.41
+  },
+  {
+   "rank": 6,
+   "symbol": "FCN",
+   "name": "FTI Consulting, Inc.",
+   "sector": "Industrials",
+   "score": 35,
+   "factors": {
+    "chart": 64,
+    "story": 0,
+    "type": "breakout",
+    "stage": "POST_BREAKOUT"
+   },
+   "signalClose": 206.42
+  }
+ ],
+ "pullback": [
+  {
+   "rank": 1,
+   "symbol": "GNK",
+   "name": "Genco Shipping & Trading Limited",
+   "sector": "Industrials",
+   "score": 63,
+   "factors": {
+    "chart": 70,
+    "story": 55,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 24.62
+  },
+  {
+   "rank": 2,
+   "symbol": "MPB",
+   "name": "Mid Penn Bancorp Inc",
+   "sector": "Financials",
+   "score": 61,
+   "factors": {
+    "chart": 77,
+    "story": 42,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 34.98
+  },
+  {
+   "rank": 3,
+   "symbol": "ESNT",
+   "name": "Essent Group Ltd.",
+   "sector": "Financials",
+   "score": 59,
+   "factors": {
+    "chart": 82,
+    "story": 30,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 65.23
+  },
+  {
+   "rank": 4,
+   "symbol": "EXPD",
+   "name": "Expeditors International of Washington Inc",
+   "sector": "Industrials",
+   "score": 59,
+   "factors": {
+    "chart": 73,
+    "story": 42,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 195.34
+  },
+  {
+   "rank": 5,
+   "symbol": "TWFG",
+   "name": "TWFG, Inc.",
+   "sector": "Financials",
+   "score": 58,
+   "factors": {
+    "chart": 80,
+    "story": 30,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 27.01
+  },
+  {
+   "rank": 6,
+   "symbol": "IOT",
+   "name": "Samsara Inc",
+   "sector": "Information Technology",
+   "score": 57,
+   "factors": {
+    "chart": 75,
+    "story": 35,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 40.85
+  },
+  {
+   "rank": 7,
+   "symbol": "PRCH",
+   "name": "Porch Group, Inc.",
+   "sector": "Financials",
+   "score": 57,
+   "factors": {
+    "chart": 58,
+    "story": 55,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 20.92
+  },
+  {
+   "rank": 8,
+   "symbol": "U",
+   "name": "Unity Software Inc.",
+   "sector": "Information Technology",
+   "score": 57,
+   "factors": {
+    "chart": 58,
+    "story": 55,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 51.88
+  },
+  {
+   "rank": 9,
+   "symbol": "AMC",
+   "name": "AMC Entertainment Holdings, Inc.",
+   "sector": "Communication Services",
+   "score": 56,
+   "factors": {
+    "chart": 73,
+    "story": 35,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 3.23
+  },
+  {
+   "rank": 10,
+   "symbol": "CHMG",
+   "name": "Chemung Financial Corp",
+   "sector": "Financials",
+   "score": 56,
+   "factors": {
+    "chart": 73,
+    "story": 35,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 84.99
+  },
+  {
+   "rank": 11,
+   "symbol": "MET",
+   "name": "MetLife, Inc.",
+   "sector": "Financials",
+   "score": 56,
+   "factors": {
+    "chart": 68,
+    "story": 42,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 101.45
+  },
+  {
+   "rank": 12,
+   "symbol": "NIC",
+   "name": "Nicolet Bankshares Inc",
+   "sector": "Financials",
+   "score": 56,
+   "factors": {
+    "chart": 68,
+    "story": 42,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 171.74
+  },
+  {
+   "rank": 13,
+   "symbol": "STT",
+   "name": "State Street Corporation",
+   "sector": "Financials",
+   "score": 56,
+   "factors": {
+    "chart": 67,
+    "story": 42,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 170.03
+  },
+  {
+   "rank": 14,
+   "symbol": "TREX",
+   "name": "Trex Company, Inc.",
+   "sector": "Industrials",
+   "score": 56,
+   "factors": {
+    "chart": 78,
+    "story": 30,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 51.43
+  },
+  {
+   "rank": 15,
+   "symbol": "TXN",
+   "name": "Texas Instruments Incorporated",
+   "sector": "Information Technology",
+   "score": 56,
+   "factors": {
+    "chart": 68,
+    "story": 42,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 294.21
+  },
+  {
+   "rank": 16,
+   "symbol": "EVER",
+   "name": "EverQuote, Inc.",
+   "sector": "Communication Services",
+   "score": 55,
+   "factors": {
+    "chart": 75,
+    "story": 30,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 28.93
+  },
+  {
+   "rank": 17,
+   "symbol": "AII",
+   "name": "American Integrity Insurance Group Inc",
+   "sector": "Financials",
+   "score": 54,
+   "factors": {
+    "chart": 73,
+    "story": 30,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 28.31
+  },
+  {
+   "rank": 18,
+   "symbol": "HFWA",
+   "name": "Heritage Financial Corp",
+   "sector": "Financials",
+   "score": 54,
+   "factors": {
+    "chart": 74,
+    "story": 30,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 27.96
+  },
+  {
+   "rank": 19,
+   "symbol": "UFPT",
+   "name": "UFP Technologies Inc",
+   "sector": "Health Care",
+   "score": 54,
+   "factors": {
+    "chart": 73,
+    "story": 30,
+    "type": "pullback",
+    "stage": "AT_SUPPORT"
+   },
+   "signalClose": 298.54
+  },
+  {
+   "rank": 20,
+   "symbol": "CODI",
+   "name": "Compass Diversified Holdings",
+   "sector": "Financials",
+   "score": 53,
+   "factors": {
+    "chart": 75,
+    "story": 25,
+    "type": "pullback",
+    "stage": "BOUNCE"
+   },
+   "signalClose": 11.56
+  }
+ ],
+ "bottom": []
+}

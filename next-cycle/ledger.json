@@ -52,5 +52,32 @@
   "sector": "Consumer Staples",
   "pts": 4,
   "close": 90.89
+ },
+ {
+  "id": "2026-11-16:XLI",
+  "week": "2026-11-16",
+  "recordedAsOf": "2026-11-16",
+  "etf": "XLI",
+  "sector": "Industrials",
+  "pts": 4,
+  "close": 165.66
+ },
+ {
+  "id": "2026-11-16:XLP",
+  "week": "2026-11-16",
+  "recordedAsOf": "2026-11-16",
+  "etf": "XLP",
+  "sector": "Consumer Staples",
+  "pts": 4,
+  "close": 92.6
+ },
+ {
+  "id": "2026-11-16:XLU",
+  "week": "2026-11-16",
+  "recordedAsOf": "2026-11-16",
+  "etf": "XLU",
+  "sector": "Utilities",
+  "pts": 4,
+  "close": 44.12
  }
 ]
