@@ -24010,5 +24010,41 @@
    "improving": true
   },
   "recordedAt": "2026-11-17T04:46:48.929Z"
+ },
+ {
+  "id": "2026-11-13:OWLT",
+  "symbol": "OWLT",
+  "filed": "2026-11-13",
+  "recordedAsOf": "2026-11-17",
+  "close": 3.25,
+  "posIn52w": 0.035236081747709654,
+  "story": {
+   "known": true,
+   "filed": "2026-11-13",
+   "revYoY": -0.04879954983118673,
+   "prevYoY": 0.2993515711928787,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-18T03:37:17.895Z"
+ },
+ {
+  "id": "2026-11-16:PNRG",
+  "symbol": "PNRG",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-17",
+  "close": 220.72,
+  "posIn52w": 0.6001374570446736,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": -0.021731091340192688,
+   "prevYoY": 0.011695209965938647,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-18T03:37:17.897Z"
  }
 ]
