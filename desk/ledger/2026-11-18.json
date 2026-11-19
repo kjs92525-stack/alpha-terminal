@@ -1,0 +1,365 @@
+{
+ "date": "2026-11-18",
+ "rulesVersion": 6,
+ "live": true,
+ "createdAt": "2026-11-19T03:01:48.695Z",
+ "market": "LIMIT",
+ "picks": [
+  {
+   "symbol": "CNK",
+   "name": "Cinemark Holdings Inc",
+   "sector": "Communication Services",
+   "cap": "중형주",
+   "mcap": 4605104300,
+   "source": "중장기 랭킹",
+   "listScore": 76.3,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 74,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +52%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 51입니다. 오늘 고점 $41.03를 다시 넘어 반등이 확인되면 삽니다. 손절은 $39.25(-4.3%), +1R에 손절을 매수가로 올리고, $44.59(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 41.67,
+    "swingLow": 38.47,
+    "sweep": null,
+    "fvg": null,
+    "buySideLiquidity": 41.67,
+    "rangePos": 0.76,
+    "mss": false,
+    "udRatio": 0.86,
+    "dryUp": 0.72
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 41.03,
+    "stop": 39.25,
+    "target": 44.59,
+    "refClose": 39.73,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.0434,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 39.73,
+    "rsi": 51,
+    "atrPct": 0.036,
+    "relVol": 0.9,
+    "ext50": 0.045,
+    "rs126": 0.523
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "ECO",
+   "name": "Okeanis Eco Tankers Corp",
+   "sector": "Energy",
+   "cap": "중형주",
+   "mcap": 2990841400,
+   "source": "단기 랭킹",
+   "listScore": 73.5,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 73,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +66%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 44입니다. 오늘 고점 $85.61를 다시 넘어 반등이 확인되면 삽니다. 손절은 $79.81(-6.8%), +1R에 손절을 매수가로 올리고, $97.2(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 89.2,
+    "swingLow": 78.5,
+    "sweep": {
+     "level": 80.97,
+     "low": 78.5,
+     "sessionsAgo": 6
+    },
+    "fvg": null,
+    "buySideLiquidity": 102.56,
+    "rangePos": 0.51,
+    "mss": false,
+    "udRatio": 1.13,
+    "dryUp": 1.02
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 85.61,
+    "stop": 79.81,
+    "target": 97.2,
+    "refClose": 82.78,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.0677,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 82.78,
+    "rsi": 44,
+    "atrPct": 0.058,
+    "relVol": 1,
+    "ext50": -0.05,
+    "rs126": 0.663
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "GO",
+   "name": "Grocery Outlet Holding Corp.",
+   "sector": "Consumer Discretionary",
+   "cap": "소형주",
+   "mcap": 1212739200,
+   "source": "단기 랭킹",
+   "listScore": 73.2,
+   "setup": "pullback",
+   "label": "추세 눌림목",
+   "quality": 73,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +52%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세 속에서 20일 지수이평 아래로 눌렸고 RSI 45입니다. 오늘 고점 $12.67를 다시 넘어 반등이 확인되면 삽니다. 손절은 $11.59(-8.6%), +1R에 손절을 매수가로 올리고, $14.84(+2R)를 넘으면 그때부터 50일선 종가 이탈까지 전량 보유합니다(중간 익절 없음).",
+   "ict": {
+    "swingHigh": 14.33,
+    "swingLow": 12.5,
+    "sweep": {
+     "level": 12.65,
+     "low": 12.63,
+     "sessionsAgo": 4
+    },
+    "fvg": [
+     11.53,
+     11.69
+    ],
+    "buySideLiquidity": 14.33,
+    "rangePos": 0.41,
+    "mss": false,
+    "udRatio": 0.86,
+    "dryUp": 1.04
+   },
+   "plan": {
+    "entryType": "buy-stop",
+    "trigger": 12.67,
+    "stop": 11.59,
+    "target": 14.84,
+    "refClose": 12.24,
+    "validDays": 5,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.08560000000000001,
+    "riskPct": 0.007
+   },
+   "snapshot": {
+    "close": 12.24,
+    "rsi": 45,
+    "atrPct": 0.061,
+    "relVol": 1,
+    "ext50": -0.003,
+    "rs126": 0.515
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  }
+ ],
+ "passed": [
+  {
+   "symbol": "UVE",
+   "why": "2026-09-21 증자 공시(424B3), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "HG",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "JXN",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "AMTB",
+   "why": "2026-09-14 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "OFG",
+   "why": "11-06 손절 뒤 10거래일 쉬는 중"
+  },
+  {
+   "symbol": "SAIC",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "INSW",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LPG",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "APLE",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "REPX",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HST",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "MTCH",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "R",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EXEL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LTH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "RPRX",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "MATX",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "ASH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AES",
+   "why": "하루 변동폭 0.3%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "DRH",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PAYC",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "NIQ",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HTFL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HUM",
+   "why": "손절폭 12.7% 과다"
+  },
+  {
+   "symbol": "AVAH",
+   "why": "2026-08-24 증자 공시(424B4), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "ANDG",
+   "why": "2026-08-20 증자 공시(424B4), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "NSIT",
+   "why": "최근 5거래일에 대량 하락일(-8.0%, 거래량 2.7배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "AGL",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "MANE",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CVLT",
+   "why": "11-13 손절 뒤 10거래일 쉬는 중"
+  },
+  {
+   "symbol": "KDP",
+   "why": "최근 5거래일에 대량 하락일(-7.4%, 거래량 2.0배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "ACIW",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "GPN",
+   "why": "최근 5거래일에 대량 하락일(-12.0%, 거래량 2.8배) — 눌림이 아니라 매도 압력"
+  },
+  {
+   "symbol": "IBTA",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PSX",
+   "why": "이미 보유·주문 중"
+  },
+  {
+   "symbol": "UTZ",
+   "why": "하루 변동폭 0.3%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "LIFE",
+   "why": "정해 둔 자리(신고가 돌파·수축 후 돌파 대기·추세 눌림목·과매도 반등) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "COLD",
+   "why": "ETF·레버리지 상품 제외"
+  },
+  {
+   "symbol": "DDI",
+   "why": "하루 거래대금 $4.8M, 기준 미달"
+  },
+  {
+   "symbol": "SGRY",
+   "why": "RSI 88 과열"
+  }
+ ]
+}
