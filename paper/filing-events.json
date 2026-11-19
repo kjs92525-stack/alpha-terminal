@@ -24046,5 +24046,23 @@
    "improving": false
   },
   "recordedAt": "2026-11-18T03:37:17.897Z"
+ },
+ {
+  "id": "2026-11-13:TONX",
+  "symbol": "TONX",
+  "filed": "2026-11-13",
+  "recordedAsOf": "2026-11-18",
+  "close": 2.73,
+  "posIn52w": 0.3643122676579925,
+  "story": {
+   "known": true,
+   "filed": "2026-11-13",
+   "revYoY": 2.6201163757273482,
+   "prevYoY": 5.014130946773434,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-19T02:55:29.355Z"
  }
 ]
