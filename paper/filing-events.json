@@ -24064,5 +24064,311 @@
    "improving": false
   },
   "recordedAt": "2026-11-19T02:55:29.355Z"
+ },
+ {
+  "id": "2026-11-18:ACM",
+  "symbol": "ACM",
+  "filed": "2026-11-18",
+  "recordedAsOf": "2026-11-19",
+  "close": 80.31,
+  "posIn52w": 0.35173616155746035,
+  "story": {
+   "known": true,
+   "filed": "2026-11-18",
+   "revYoY": -0.07113090961345025,
+   "prevYoY": -0.1417767566532644,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.432Z"
+ },
+ {
+  "id": "2026-11-17:AGPU",
+  "symbol": "AGPU",
+  "filed": "2026-11-17",
+  "recordedAsOf": "2026-11-19",
+  "close": 6.405,
+  "posIn52w": 0.4313804173354735,
+  "story": {
+   "known": true,
+   "filed": "2026-11-17",
+   "revYoY": 1990.9900497512438,
+   "prevYoY": 1197.7293064876958,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.435Z"
+ },
+ {
+  "id": "2026-11-16:CDZI",
+  "symbol": "CDZI",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 3.6,
+  "posIn52w": 0.19617224880382783,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": -0.6211135213304411,
+   "prevYoY": -0.762724188075618,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-20T02:58:54.455Z"
+ },
+ {
+  "id": "2026-11-17:CLFD",
+  "symbol": "CLFD",
+  "filed": "2026-11-17",
+  "recordedAsOf": "2026-11-19",
+  "close": 28.48,
+  "posIn52w": 0.1629271660338281,
+  "story": {
+   "known": true,
+   "filed": "2026-11-17",
+   "revYoY": 1.2370500938192985,
+   "prevYoY": -0.12101476865118332,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.456Z"
+ },
+ {
+  "id": "2026-11-17:CSCO",
+  "symbol": "CSCO",
+  "filed": "2026-11-17",
+  "recordedAsOf": "2026-11-19",
+  "close": 94.7,
+  "posIn52w": 0.39707927677329635,
+  "story": {
+   "known": true,
+   "filed": "2026-11-17",
+   "revYoY": 0.244171202042599,
+   "prevYoY": 0.17576501056362015,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.460Z"
+ },
+ {
+  "id": "2026-11-16:IDR",
+  "symbol": "IDR",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 15.07,
+  "posIn52w": 0.0018276762402088848,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": 0.07563536027271955,
+   "prevYoY": 0.13249241115535626,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-20T02:58:54.483Z"
+ },
+ {
+  "id": "2026-11-16:NRGV",
+  "symbol": "NRGV",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 3.06,
+  "posIn52w": 0.1433691756272402,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": -0.6077613373750712,
+   "prevYoY": 1.040531015037594,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-20T02:58:54.507Z"
+ },
+ {
+  "id": "2026-11-16:OMER",
+  "symbol": "OMER",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 14.01,
+  "posIn52w": 0.5026758199427691,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": null,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-20T02:58:54.510Z"
+ },
+ {
+  "id": "2026-11-16:PAL",
+  "symbol": "PAL",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 2.82,
+  "posIn52w": 0.05982511593567585,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": -0.34831012090453384,
+   "prevYoY": -0.5265987997256795,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-20T02:58:54.512Z"
+ },
+ {
+  "id": "2026-11-17:POWL",
+  "symbol": "POWL",
+  "filed": "2026-11-17",
+  "recordedAsOf": "2026-11-19",
+  "close": 158.75,
+  "posIn52w": 0.28209926423680515,
+  "story": {
+   "known": true,
+   "filed": "2026-11-17",
+   "revYoY": 0.33130749069577803,
+   "prevYoY": 0.08896053766858913,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.515Z"
+ },
+ {
+  "id": "2026-11-16:QBTS",
+  "symbol": "QBTS",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 7.31,
+  "posIn52w": 0.001989653800238751,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": 0.20700722118213433,
+   "prevYoY": -0.006138933764135657,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.518Z"
+ },
+ {
+  "id": "2026-11-16:SNTI",
+  "symbol": "SNTI",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 2.79,
+  "posIn52w": 0.0031337799870326346,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": null,
+   "prevYoY": null,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.529Z"
+ },
+ {
+  "id": "2026-11-18:SONO",
+  "symbol": "SONO",
+  "filed": "2026-11-18",
+  "recordedAsOf": "2026-11-19",
+  "close": 17.06,
+  "posIn52w": 0.6260162601626015,
+  "story": {
+   "known": true,
+   "filed": "2026-11-18",
+   "revYoY": 0.19639110802361937,
+   "prevYoY": 0.08845786815870604,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.529Z"
+ },
+ {
+  "id": "2026-11-16:TGL",
+  "symbol": "TGL",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 4.09,
+  "posIn52w": 0.0005206559256477413,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": 11.09799646079758,
+   "prevYoY": -0.1198046014148555,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.534Z"
+ },
+ {
+  "id": "2026-11-16:TSN",
+  "symbol": "TSN",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 63.86,
+  "posIn52w": 0.7591480065537959,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": 0.052308802308802305,
+   "prevYoY": -0.0011524056467876465,
+   "revAccel": true,
+   "niImproved": false,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.539Z"
+ },
+ {
+  "id": "2026-11-17:TTEK",
+  "symbol": "TTEK",
+  "filed": "2026-11-17",
+  "recordedAsOf": "2026-11-19",
+  "close": 37.3,
+  "posIn52w": 0.6744593804792518,
+  "story": {
+   "known": true,
+   "filed": "2026-11-17",
+   "revYoY": 0.005460491692353964,
+   "prevYoY": -0.04472279488632047,
+   "revAccel": false,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.539Z"
+ },
+ {
+  "id": "2026-11-16:TWST",
+  "symbol": "TWST",
+  "filed": "2026-11-16",
+  "recordedAsOf": "2026-11-19",
+  "close": 111.62,
+  "posIn52w": 0.4442185517225777,
+  "story": {
+   "known": true,
+   "filed": "2026-11-16",
+   "revYoY": 0.27911603995596357,
+   "prevYoY": 0.23235162455625313,
+   "revAccel": true,
+   "niImproved": true,
+   "improving": true
+  },
+  "recordedAt": "2026-11-20T02:58:54.540Z"
  }
 ]
