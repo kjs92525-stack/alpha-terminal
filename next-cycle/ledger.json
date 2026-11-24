@@ -79,5 +79,14 @@
   "sector": "Utilities",
   "pts": 4,
   "close": 44.12
+ },
+ {
+  "id": "2026-11-23:XLU",
+  "week": "2026-11-23",
+  "recordedAsOf": "2026-11-23",
+  "etf": "XLU",
+  "sector": "Utilities",
+  "pts": 4,
+  "close": 43.32
  }
 ]
