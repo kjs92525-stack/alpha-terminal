@@ -24820,5 +24820,23 @@
    "improving": true
   },
   "recordedAt": "2026-11-24T06:07:58.481Z"
+ },
+ {
+  "id": "2026-11-23:VREX",
+  "symbol": "VREX",
+  "filed": "2026-11-23",
+  "recordedAsOf": "2026-11-24",
+  "close": 17.47,
+  "posIn52w": 0.8784054340192246,
+  "story": {
+   "known": true,
+   "filed": "2026-11-23",
+   "revYoY": -0.038881607688947106,
+   "prevYoY": 0.03694581280788167,
+   "revAccel": false,
+   "niImproved": false,
+   "improving": false
+  },
+  "recordedAt": "2026-11-25T04:49:19.642Z"
  }
 ]
