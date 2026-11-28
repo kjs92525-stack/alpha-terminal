@@ -1,0 +1,333 @@
+{
+ "date": "2026-11-27",
+ "rulesVersion": 6,
+ "live": true,
+ "createdAt": "2026-11-28T04:08:41.836Z",
+ "market": "WAIT",
+ "picks": [
+  {
+   "symbol": "ZBRA",
+   "name": "ZBRA",
+   "sector": null,
+   "cap": "미분류",
+   "mcap": null,
+   "source": "시세 보유 전 종목",
+   "listScore": 60,
+   "setup": "structure",
+   "label": "구조 전환(MSS)",
+   "quality": 72,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +39%p 강함",
+    "50일선이 200일선 위 정배열",
+    "최근 180일 증자 공시 없음"
+   ],
+   "warnings": [],
+   "thesis": "상승 추세의 조정 중 스윙 저점 $314.98 아래 손절 물량을 $297.69까지 쓸고(유동성 사냥) 되돌린 뒤, 오늘 직전 스윙 고점 $324.93를 장대 양봉(거래량 0.4배)으로 종가 돌파해 구조가 상승으로 바뀌었습니다. 다음 날 시가에 삽니다. 쓸고 간 저점 아래가 손절입니다. 손절은 $295.01(-11.0%), 목표는 위쪽 유동성(60일 고점) $392.78(+1.7R)에서 전량 정리합니다.",
+   "structure": {
+    "swingHigh": 324.93,
+    "swingLow": 314.98,
+    "sweepLow": 297.69,
+    "fvg": null,
+    "ob": null
+   },
+   "ict": {
+    "swingHigh": 324.93,
+    "swingLow": 298.38,
+    "sweep": {
+     "level": 298.38,
+     "low": 297.69,
+     "sessionsAgo": 1
+    },
+    "fvg": [
+     318.86,
+     320.55
+    ],
+    "buySideLiquidity": 392.78,
+    "rangePos": 0.36,
+    "mss": true,
+    "udRatio": 0.89,
+    "dryUp": 0.75
+   },
+   "plan": {
+    "entryType": "market",
+    "trigger": 331.5,
+    "stop": 295.01,
+    "target": 392.78,
+    "exitAt": 392.78,
+    "refClose": 331.5,
+    "validDays": 1,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.1101,
+    "riskPct": 0.0035
+   },
+   "snapshot": {
+    "close": 331.5,
+    "rsi": 49,
+    "atrPct": 0.04,
+    "relVol": 0.4,
+    "ext50": -0.069,
+    "rs126": 0.393
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 0,
+    "shelf": false,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": []
+   }
+  },
+  {
+   "symbol": "FA",
+   "name": "FA",
+   "sector": null,
+   "cap": "미분류",
+   "mcap": null,
+   "source": "시세 보유 전 종목",
+   "listScore": 60,
+   "setup": "structure",
+   "label": "구조 전환(MSS)",
+   "quality": 67,
+   "reasons": [
+    "30거래일 안에 실적 발표 없음",
+    "6개월 수익률이 SPY보다 +41%p 강함",
+    "50일선이 200일선 위 정배열"
+   ],
+   "warnings": [
+    "증자 가능 서류 제출(S-3ASR 2026-08-10)"
+   ],
+   "thesis": "상승 추세의 조정 중 스윙 저점 $21 아래 손절 물량을 $20.81까지 쓸고(유동성 사냥) 되돌린 뒤, 오늘 직전 스윙 고점 $21.86를 장대 양봉(거래량 0.4배)으로 종가 돌파해 구조가 상승으로 바뀌었습니다. 다음 날 시가에 삽니다. 쓸고 간 저점 아래가 손절입니다. 손절은 $20.64(-6.3%), 목표는 위쪽 유동성(60일 고점) $24.69(+1.9R)에서 전량 정리합니다.",
+   "structure": {
+    "swingHigh": 21.86,
+    "swingLow": 21,
+    "sweepLow": 20.81,
+    "fvg": null,
+    "ob": {
+     "lo": 21.01,
+     "hi": 21.59
+    }
+   },
+   "ict": {
+    "swingHigh": 21.86,
+    "swingLow": 20.81,
+    "sweep": {
+     "level": 21,
+     "low": 20.96,
+     "sessionsAgo": 4
+    },
+    "fvg": [
+     19.95,
+     20.79
+    ],
+    "buySideLiquidity": 24.69,
+    "rangePos": 0.64,
+    "mss": true,
+    "udRatio": 0.68,
+    "dryUp": 0.86
+   },
+   "plan": {
+    "entryType": "market",
+    "trigger": 22.02,
+    "stop": 20.64,
+    "target": 24.69,
+    "exitAt": 24.69,
+    "refClose": 22.02,
+    "validDays": 1,
+    "riskMult": 1,
+    "trailMa": "sma50",
+    "trailLabel": "50일선",
+    "stopPct": 0.06269999999999999,
+    "riskPct": 0.0035
+   },
+   "snapshot": {
+    "close": 22.02,
+    "rsi": 58,
+    "atrPct": 0.039,
+    "relVol": 0.4,
+    "ext50": 0.077,
+    "rs126": 0.409
+   },
+   "earningsIn": null,
+   "dilution": {
+    "days": 180,
+    "count": 1,
+    "shelf": true,
+    "offering": false,
+    "likelyDebt": false,
+    "recent": [
+     {
+      "form": "S-3ASR",
+      "date": "2026-08-10",
+      "url": "https://www.sec.gov/Archives/edgar/data/1210677/000119312526342494/d178702ds3asr.htm"
+     }
+    ]
+   }
+  }
+ ],
+ "passed": [
+  {
+   "symbol": "UVE",
+   "why": "2026-09-21 증자 공시(424B3), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "JXN",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "APA",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HG",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SAIC",
+   "why": "실적 발표 4거래일 전, 발표 뒤에 다시 봄"
+  },
+  {
+   "symbol": "INSW",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SPNT",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EOG",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LPG",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "VOYA",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AMTB",
+   "why": "2026-09-14 증자 공시(424B5), 매물 부담으로 제외"
+  },
+  {
+   "symbol": "COP",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "R",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "APLE",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LTC",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PR",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CNK",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PBI",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HST",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "MTCH",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "EXEL",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "LTH",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "AES",
+   "why": "하루 변동폭 0.2%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "RPRX",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "DRH",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PAYC",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "THC",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CBL",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "CON",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "OGE",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "DV",
+   "why": "하루 변동폭 0.2%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "CRWD",
+   "why": "실적 발표 2거래일 전, 발표 뒤에 다시 봄"
+  },
+  {
+   "symbol": "HAS",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SJM",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "SLDE",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "HZO",
+   "why": "하루 변동폭 0.1%로 가격이 묶여 있음(인수합병 진행 등), 추세 매매 대상 아님"
+  },
+  {
+   "symbol": "J",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "URBN",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "PS",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  },
+  {
+   "symbol": "BJ",
+   "why": "정해 둔 자리(구조 전환(MSS)) 중 어디에도 해당하지 않음"
+  }
+ ]
+}
